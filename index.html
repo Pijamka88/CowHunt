@@ -92,9 +92,24 @@
         #timer {
             position: fixed;
             top: 10px;
-            right: 10px;
+            left: 50%;
+            transform: translateX(-50%);
             font-size: 1.5em;
             text-shadow: 0 0 10px #6a00ff;
+        }
+
+        .hearts {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .heart {
+            width: 24px;
+            height: 24px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="red"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>');
         }
 
         .stars {
@@ -102,19 +117,6 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-        }
-
-        #leaderboard {
-            flex-direction: column;
-            gap: 10px;
-            padding: 20px;
-        }
-
-        .score-item {
-            padding: 10px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 5px;
-            width: 250px;
         }
 
         @keyframes twinkle {
@@ -144,7 +146,8 @@
         <div class="hud" id="bottomHud">
             <div>Hits: <span id="hits">0</span> | Misses: <span id="misses">0</span></div>
         </div>
-        <div id="timer">03:00</div>
+        <div id="timer">01:00</div>
+        <div class="hearts" id="hearts"></div>
         <div class="crosshair" id="crosshair"></div>
     </div>
 
@@ -160,12 +163,9 @@
         <div style="max-width: 300px; text-align: left; padding: 20px;">
             <h2>How to Play</h2>
             <p>🎯 Shoot cosmic cows!</p>
+            <p>❤️ 3 Lives</p>
             <p>🔫 10 shots before reload</p>
-            <p>⏱ 3 minute mission</p>
-            <p>🐄 Cow types:</p>
-            <p>- Basic (10 pts)</p>
-            <p>- Speedy (20 pts)</p>
-            <p>- Zigzag (30 pts)</p>
+            <p>⏱ 1 minute mission</p>
             <button class="btn" onclick="showScreen('mainMenu')">Back</button>
         </div>
     </div>
@@ -224,6 +224,7 @@
             showScreen('gameScreen');
             initGameState();
             resizeCanvas();
+            updateHearts();
             gameLoop();
         }
 
@@ -234,12 +235,13 @@
                 ammo: 10,
                 hits: 0,
                 misses: 0,
+                lives: 3,
                 isPlaying: true,
                 crosshair: { x: 0, y: 0 },
                 lastSpawn: 0,
                 particles: [],
                 reloading: false,
-                gameTime: 180000,
+                gameTime: 60000,
                 startTime: Date.now()
             };
         }
@@ -308,39 +310,39 @@
             // Body
             ctx.fillStyle = cow.type.color;
             ctx.beginPath();
-            ctx.ellipse(0, 0, 30, 20, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 0, 25, 15, 0, 0, Math.PI * 2);
             ctx.fill();
             
             // Head
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.arc(25, -5, 12, 0, Math.PI * 2);
+            ctx.arc(20, -8, 10, 0, Math.PI * 2);
             ctx.fill();
             
             // Eyes
             ctx.fillStyle = '#000';
             ctx.beginPath();
-            ctx.arc(30, -8, 3, 0, Math.PI * 2);
-            ctx.arc(35, -8, 3, 0, Math.PI * 2);
+            ctx.arc(25, -10, 2, 0, Math.PI * 2);
+            ctx.arc(30, -10, 2, 0, Math.PI * 2);
             ctx.fill();
             
             // Legs
             ctx.strokeStyle = '#000';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(-10, 15);
-            ctx.lineTo(-15, 25);
-            ctx.moveTo(10, 15);
-            ctx.lineTo(15, 25);
+            ctx.moveTo(-10, 10);
+            ctx.lineTo(-15, 20);
+            ctx.moveTo(10, 10);
+            ctx.lineTo(15, 20);
             ctx.stroke();
             
             // Wings
             ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-            ctx.lineWidth = 4;
+            ctx.lineWidth = 3;
             const wingY = Math.sin(cow.wingAngle) * 5;
             ctx.beginPath();
-            ctx.moveTo(-10, wingY);
-            ctx.lineTo(-30, wingY + 10);
+            ctx.moveTo(-8, wingY);
+            ctx.lineTo(-25, wingY + 8);
             ctx.stroke();
             
             ctx.restore();
@@ -348,7 +350,7 @@
 
         // Game logic
         function updateGameState() {
-            if(Date.now() - gameState.lastSpawn > 1000) {
+            if(Date.now() - gameState.lastSpawn > 800) {
                 gameState.targets.push(createCow());
                 gameState.lastSpawn = Date.now();
             }
@@ -411,10 +413,16 @@
 
         function updateTimer() {
             const timeLeft = gameState.gameTime - (Date.now() - gameState.startTime);
-            const minutes = Math.floor(timeLeft / 60000);
             const seconds = Math.floor((timeLeft % 60000) / 1000);
             document.getElementById('timer').textContent = 
-                `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                `00:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function updateHearts() {
+            const hearts = document.getElementById('hearts');
+            hearts.innerHTML = Array(3).fill().map((_,i) => 
+                `<div class="heart" style="opacity: ${i < gameState.lives ? 1 : 0.3}"></div>`
+            ).join('');
         }
 
         // Shooting logic
@@ -437,7 +445,14 @@
                 }
             });
 
-            if(!hit) gameState.misses++;
+            if(!hit) {
+                gameState.misses++;
+                if(gameState.misses % 5 === 0) {
+                    gameState.lives = Math.max(0, gameState.lives - 1);
+                    updateHearts();
+                    if(gameState.lives === 0) endGame();
+                }
+            }
 
             if(gameState.ammo <= 0) {
                 gameState.reloading = true;
