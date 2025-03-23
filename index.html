@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Cosmic Cow Hunt</title>
+    <title>Space Cow Hunt</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -86,12 +86,8 @@
             width: 32px;
             height: 32px;
             pointer-events: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            color: #ff0000;
-            text-shadow: 0 0 5px #ff0000;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%236a00ff"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-12.5c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 7c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>');
+            filter: drop-shadow(0 0 5px #6a00ff);
         }
 
         #timer {
@@ -149,7 +145,7 @@
     <!-- Main Menu -->
     <div id="mainMenu" class="screen menu">
         <div class="stars"></div>
-        <h1 style="color: #a100f6; text-shadow: 0 0 20px #6a00ff;">COSMIC COW HUNT</h1>
+        <h1 style="color: #a100f6; text-shadow: 0 0 20px #6a00ff;">SPACE COW HUNT</h1>
         <button class="btn" onclick="startGame()">Start Game</button>
         <button class="btn" onclick="showScreen('howToPlay')">How to Play</button>
         <button class="btn" onclick="showScreen('leaderboard')">High Scores</button>
@@ -197,6 +193,7 @@
         const ctx = canvas.getContext('2d');
         let gameState = null;
         let highScores = JSON.parse(localStorage.getItem('highScores')) || [];
+        let isShooting = false;
 
         // Game Constants
         const COW_TYPES = {
@@ -287,24 +284,27 @@
             const crosshair = document.getElementById('crosshair');
             crosshair.style.left = `${x - 16}px`;
             crosshair.style.top = `${y - 16}px`;
-            crosshair.textContent = gameState.reloading ? 'RELOADING' : '';
         }
 
-        function handleInput(e) {
-            if(gameState.reloading) return;
-            
-            if(e.type === 'touchstart') {
-                e.preventDefault();
-                handleShoot();
-                updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
-            }
-            else if(e.type === 'mousedown') {
+        function handleShootStart(e) {
+            e.preventDefault();
+            if(!isShooting) {
+                isShooting = true;
                 handleShoot();
             }
         }
 
-        document.addEventListener('touchstart', handleInput);
-        document.addEventListener('mousedown', handleInput);
+        function handleShootEnd() {
+            isShooting = false;
+        }
+
+        document.addEventListener('mousedown', handleShootStart);
+        document.addEventListener('mouseup', handleShootEnd);
+        document.addEventListener('touchstart', (e) => {
+            handleShootStart(e);
+            updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
+        });
+        document.addEventListener('touchend', handleShootEnd);
 
         document.addEventListener('touchmove', e => {
             e.preventDefault();
@@ -341,48 +341,48 @@
             ctx.save();
             ctx.translate(cow.x + 30, cow.y + 30);
             
-            // Square body
+            // Тело (квадратное)
             ctx.fillStyle = cow.type.color;
-            ctx.fillRect(-20, -20, 40, 40);
+            ctx.fillRect(-25, -25, 50, 50);
             
-            // Head
+            // Голова
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.arc(25, -15, 12, 0, Math.PI * 2);
+            ctx.arc(30, -15, 15, 0, Math.PI * 2);
             ctx.fill();
             
-            // Eyes
+            // Глаза
             ctx.fillStyle = '#000';
             ctx.beginPath();
-            ctx.arc(28, -18, 3, 0, Math.PI * 2);
-            ctx.arc(32, -18, 3, 0, Math.PI * 2);
+            ctx.arc(35, -20, 3, 0, Math.PI * 2);
+            ctx.arc(40, -20, 3, 0, Math.PI * 2);
             ctx.fill();
             
-            // Horns
-            ctx.strokeStyle = '#996633';
+            // Рожки
+            ctx.strokeStyle = '#000';
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(30, -25);
-            ctx.lineTo(35, -30);
-            ctx.moveTo(30, -25);
-            ctx.lineTo(25, -30);
+            ctx.moveTo(30, -30);
+            ctx.lineTo(35, -40);
+            ctx.moveTo(30, -30);
+            ctx.lineTo(25, -40);
             ctx.stroke();
             
-            // Wings
+            // Крылья
             ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-            ctx.lineWidth = 5;
-            const wingY = Math.sin(cow.wingAngle) * 10;
+            ctx.lineWidth = 6;
+            const wingAngle = Math.sin(cow.wingAngle) * 0.5;
             ctx.beginPath();
-            ctx.moveTo(-25, wingY);
-            ctx.lineTo(-45, wingY + 15);
-            ctx.moveTo(25, wingY);
-            ctx.lineTo(45, wingY + 15);
+            ctx.moveTo(-30, 0);
+            ctx.lineTo(-50, wingAngle * 20);
+            ctx.moveTo(-30, 0);
+            ctx.lineTo(-50, wingAngle * -20);
             ctx.stroke();
             
-            // Udder
+            // Вымя
             ctx.fillStyle = '#ff69b4';
             ctx.beginPath();
-            ctx.arc(0, 15, 8, 0, Math.PI);
+            ctx.arc(0, 20, 10, 0, Math.PI * 2);
             ctx.fill();
             
             ctx.restore();
@@ -450,7 +450,6 @@
             document.getElementById('hits').textContent = gameState.hits;
             document.getElementById('misses').textContent = gameState.misses;
             updateHearts();
-            updateCrosshair();
         }
 
         function updateHearts() {
