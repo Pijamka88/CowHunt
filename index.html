@@ -3,34 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cow Hunt Galactic</title>
+    <meta name="telegram:web_app_version" content="1.0">
+    <title>Cow Hunter Galaxy</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: linear-gradient(45deg, #1a0033, #330066);
-            color: white;
+            background: linear-gradient(135deg, #2a0a3f, #1a0524);
             font-family: 'Arial', sans-serif;
+            color: white;
+            position: relative;
         }
 
-        #menu, #game, #leaderboard, #gameOver {
+        #menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            margin: 10px;
+            background: #6a1b9a;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #9c27b0;
+        }
+
+        #game {
             display: none;
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .cow {
             position: absolute;
-            width: 100%;
-            height: 100%;
+            width: 80px;
+            height: 80px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="#a1887f" d="M50 10L60 20H90L80 30V50H20V30L10 20H40L50 10Z"/><path fill="#d1c4e9" d="M50 60L60 50H90L80 40V20H20V40L10 50H40L50 60Z"/><path fill="#795548" d="M50 70L60 60H90L80 50V30H20V50L10 60H40L50 70Z"/><circle cx="50" cy="75" r="5" fill="#000"/><path fill="#000" d="M50 80L55 85H45Z"/></svg>') no-repeat;
+            background-size: contain;
+            transform: scaleX(1);
+            transition: transform 0.3s;
         }
 
-        .active {
-            display: block;
-        }
-
-        canvas {
+        .smoke {
             position: absolute;
-            width: 100%;
-            height: 100%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(148,0,211,0.3), transparent);
+            border-radius: 50%;
+            animation: float 10s linear infinite;
         }
 
-        .ui {
+        @keyframes float {
+            0% { transform: translateY(0) scale(0.8); opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { transform: translateY(-100vh) scale(1.2); opacity: 0; }
+        }
+
+        #hud {
             position: fixed;
             top: 20px;
             left: 20px;
@@ -40,384 +81,261 @@
             pointer-events: none;
         }
 
-        .heart {
+        .heart { 
             width: 30px;
             height: 30px;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="red" d="M16 28.72c-1.306 0-2.408-.484-3.313-1.446l-9.938-9.938c-1.406-1.406-2.188-3.313-2.188-5.375 0-3.594 2.906-6.5 6.5-6.5 1.938 0 3.813.688 5.313 2.188 1.5 1.5 2.188 3.375 2.188 5.375 0 1.938-.688 3.813-2.188 5.313-1.5 1.5-3.375 2.188-5.375 2.188-3.594 0-6.5-2.906-6.5-6.5 0-1.938.688-3.813 2.188-5.313 1.5-1.5 3.375-2.188 5.375-2.188 3.594 0 6.5 2.906 6.5 6.5 0 1.938-.688 3.813-2.188 5.313-1.5 1.5-3.375 2.188-5.375 2.188-1.938 0-3.813-.688-5.313-2.188l9.938-9.938c.906-.906 2.008-1.446 3.313-1.446 1.306 0 2.408.484 3.313 1.446l9.938 9.938c1.406 1.406 2.188 3.313 2.188 5.375 0 3.594-2.906 6.5-6.5 6.5-1.938 0-3.813-.688-5.313-2.188z"/></svg>') no-repeat;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23ff4444" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>') no-repeat;
             background-size: contain;
         }
 
-        #reload {
+        #cooldown {
             position: fixed;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            width: 80%;
-            height: 20px;
-            background: #4a008f;
-            border-radius: 10px;
+            width: 100px;
+            height: 10px;
+            background: #444;
+            border-radius: 5px;
         }
 
-        #reloadBar {
-            height: 100%;
+        #cooldown-bar {
             width: 100%;
+            height: 100%;
             background: #9c27b0;
-            border-radius: 10px;
-            transition: width 0.3s;
+            transition: width 0.5s;
         }
 
-        button {
-            margin: 20px;
-            padding: 15px 30px;
-            background: #6a1b9a;
-            border: none;
-            color: white;
-            font-size: 18px;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        button:hover {
-            transform: scale(1.1);
-        }
-
-        #leaderboard table {
+        #leaderboard {
+            display: none;
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border-collapse: collapse;
-            width: 80%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
         }
 
-        #leaderboard th, #leaderboard td {
-            border: 1px solid #9c27b0;
+        .score-entry {
+            background: rgba(255,255,255,0.1);
+            margin: 5px 0;
             padding: 10px;
-            text-align: center;
+            border-radius: 5px;
         }
 
-        #gameOver {
-            text-align: center;
-            padding-top: 40%;
+        @keyframes explode {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.5); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
         }
 
-        @keyframes smoke {
-            0% { background-position: 0 0; }
-            100% { background-position: 100% 100%; }
-        }
-
-        .smoke-bg {
+        .explosion {
             position: absolute;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(156,39,176,0.3) 10%, transparent 10.01%) 0 0,
-                        radial-gradient(circle, rgba(156,39,176,0.3) 10%, transparent 10.01%) 50px 50px;
-            background-size: 100px 100px;
-            animation: smoke 5s linear infinite;
-            pointer-events: none;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, #ff4444, #ff8800);
+            border-radius: 50%;
+            animation: explode 0.3s forwards;
         }
     </style>
 </head>
 <body>
-    <div id="menu" class="active">
-        <button onclick="showScreen('game')">Играть</button>
-        <button onclick="showScreen('leaderboard')">Лидеры</button>
-        <button onclick="window.location.href='https://telegram.org'">Выход</button>
+    <div id="menu">
+        <h1>Cow Hunter Galaxy</h1>
+        <button onclick="startGame()">Играть</button>
+        <button onclick="showLeaderboard()">Таблица лидеров</button>
     </div>
 
     <div id="game">
-        <canvas id="gameCanvas"></canvas>
-        <div class="ui">
+        <div id="hud">
             <div id="hearts"></div>
             <div id="timer">60</div>
         </div>
-        <div id="reload">
-            <div id="reloadBar"></div>
-        </div>
+        <div id="cooldown"><div id="cooldown-bar"></div></div>
     </div>
 
     <div id="leaderboard">
-        <table>
-            <thead>
-                <tr><th>Место</th><th>Имя</th><th>Очки</th></tr>
-            </thead>
-            <tbody id="leaderboardBody">
-            </tbody>
-        </table>
-        <button onclick="showScreen('menu')">Назад</button>
-    </div>
-
-    <div id="gameOver">
-        <h1>Игра окончена!</h1>
-        <p>Ваш счет: <span id="finalScore"></span></p>
-        <button onclick="showScreen('menu')">Меню</button>
-        <button onclick="window.location.reload()">Еще раз</button>
+        <h2>Лучшие результаты</h2>
+        <div id="leaderboard-entries"></div>
+        <button onclick="closeLeaderboard()">Назад</button>
     </div>
 
     <script>
-        const telegram = window.Telegram.WebApp;
-
-        let canvas, ctx;
-        let cows = [];
-        let bullets = [];
-        let explosions = [];
+        let gameActive = false;
         let score = 0;
         let lives = 3;
-        let gameTime = 60;
-        let reloadTime = 0;
-        let animationFrame;
-        let gameInterval;
+        let timeLeft = 60;
+        let cows = [];
+        let cooldown = false;
+        const maxCows = 5;
+        const gameArea = document.getElementById('game');
+        const heartsContainer = document.getElementById('hearts');
+        const timerDisplay = document.getElementById('timer');
+        const cooldownBar = document.getElementById('cooldown-bar');
 
-        class Cow {
-            constructor() {
-                this.x = Math.random() < 0.5 ? -50 : window.innerWidth + 50;
-                this.y = Math.random() * window.innerHeight * 0.7;
-                this.size = 80;
-                this.speed = 2 + Math.random() * 2;
-                this.angle = Math.random() * Math.PI * 2;
-                this.angleSpeed = 0.02 + Math.random() * 0.03;
-                this.hit = false;
-                this.wingPhase = 0;
-            }
-
-            update() {
-                this.angle += this.angleSpeed;
-                this.x += Math.cos(this.angle) * this.speed;
-                this.y += Math.sin(this.angle * 0.5) * 2;
-                this.wingPhase += 0.1;
-
-                if (this.x < -100 || this.x > window.innerWidth + 100) {
-                    this.reset();
-                }
-            }
-
-            reset() {
-                this.x = Math.random() < 0.5 ? -50 : window.innerWidth + 50;
-                this.y = Math.random() * window.innerHeight * 0.7;
-                this.speed = 2 + Math.random() * 2;
-            }
-
-            draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.rotate(Math.atan2(this.y - window.innerHeight/2, this.x - window.innerWidth/2) + Math.PI/2);
-                
-                // Тело
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.arc(0, 0, this.size/2, 0, Math.PI*2);
-                ctx.fill();
-
-                // Крылья
-                ctx.fillStyle = '#8c674a';
-                ctx.beginPath();
-                ctx.moveTo(-this.size/2, 0);
-                ctx.quadraticCurveTo(-this.size, Math.sin(this.wingPhase)*this.size/2, -this.size/2, this.size/2);
-                ctx.fill();
-
-                ctx.beginPath();
-                ctx.moveTo(this.size/2, 0);
-                ctx.quadraticCurveTo(this.size, Math.sin(this.wingPhase)*this.size/2, this.size/2, this.size/2);
-                ctx.fill();
-
-                // Голова
-                ctx.fillStyle = '#8c674a';
-                ctx.beginPath();
-                ctx.arc(0, -this.size/2, this.size/3, 0, Math.PI*2);
-                ctx.fill();
-
-                // Рожки
-                ctx.fillStyle = '#000000';
-                ctx.beginPath();
-                ctx.moveTo(-this.size/4, -this.size*0.7);
-                ctx.lineTo(-this.size/6, -this.size*1.1);
-                ctx.lineTo(-this.size/8, -this.size*1.0);
-                ctx.fill();
-
-                ctx.beginPath();
-                ctx.moveTo(this.size/4, -this.size*0.7);
-                ctx.lineTo(this.size/6, -this.size*1.1);
-                ctx.lineTo(this.size/8, -this.size*1.0);
-                ctx.fill();
-
-                ctx.restore();
-            }
+        function startGame() {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('game').style.display = 'block';
+            initializeGame();
         }
 
-        class Bullet {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.size = 5;
-                this.speed = 10;
-                this.angle = Math.random() * Math.PI * 2;
-            }
-
-            update() {
-                this.x += Math.cos(this.angle) * this.speed;
-                this.y += Math.sin(this.angle) * this.speed;
-            }
-
-            draw() {
-                ctx.fillStyle = '#ff0000';
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
-                ctx.fill();
-            }
-        }
-
-        class Explosion {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.size = 30;
-                this.alpha = 1;
-            }
-
-            update() {
-                this.size += 2;
-                this.alpha -= 0.05;
-            }
-
-            draw() {
-                ctx.save();
-                ctx.globalAlpha = this.alpha;
-                ctx.fillStyle = '#ff00ff';
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
-                ctx.fill();
-                ctx.restore();
-            }
-        }
-
-        function init() {
-            canvas = document.getElementById('gameCanvas');
-            ctx = canvas.getContext('2d');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            document.getElementById('gameCanvas').addEventListener('click', (e) => {
-                if (reloadTime <= 0) {
-                    bullets.push(new Bullet(e.clientX, e.clientY));
-                    reloadTime = 0.5;
-                    document.getElementById('reloadBar').style.width = '0%';
-                }
-            });
-
-            for (let i = 0; i < 5; i++) {
-                cows.push(new Cow());
-            }
-
-            update();
-            startTimer();
+        function initializeGame() {
+            gameActive = true;
+            score = 0;
+            lives = 3;
+            timeLeft = 60;
             updateHearts();
+            resetCooldown();
+            createSmoke();
+            spawnCows();
+            startTimer();
         }
 
-        function update() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function createSmoke() {
+            const smoke = document.createElement('div');
+            smoke.className = 'smoke';
+            smoke.style.left = Math.random() * 100 + 'vw';
+            smoke.style.animationDuration = Math.random() * 5 + 5 + 's';
+            document.body.appendChild(smoke);
+            setTimeout(() => smoke.remove(), 10000);
+        }
 
-            cows.forEach(cow => {
-                cow.update();
-                cow.draw();
-            });
-
-            bullets.forEach((bullet, index) => {
-                bullet.update();
-                bullet.draw();
-
-                cows.forEach(cow => {
-                    const dx = cow.x - bullet.x;
-                    const dy = cow.y - bullet.y;
-                    const distance = Math.sqrt(dx*dx + dy*dy);
-
-                    if (distance < cow.size/2 + bullet.size) {
-                        explosions.push(new Explosion(cow.x, cow.y));
-                        bullets.splice(index, 1);
-                        if (!cow.hit) {
-                            score += 10;
-                            cow.hit = true;
-                            setTimeout(() => cow.reset(), 1000);
-                        }
-                    }
-                });
-
-                if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height) {
-                    bullets.splice(index, 1);
-                }
-            });
-
-            explosions.forEach((explosion, index) => {
-                explosion.update();
-                explosion.draw();
-                if (explosion.alpha <= 0) explosions.splice(index, 1);
-            });
-
-            if (reloadTime > 0) {
-                reloadTime -= 0.016;
-                document.getElementById('reloadBar').style.width = (1 - reloadTime/0.5)*100 + '%';
+        function spawnCows() {
+            if (!gameActive) return;
+            
+            const cow = document.createElement('div');
+            cow.className = 'cow';
+            cow.style.left = Math.random() * 90 + '%';
+            cow.direction = Math.random() < 0.5 ? -1 : 1;
+            cow.style.transform = `scaleX(${cow.direction})`;
+            cow.speed = Math.random() * 3 + 2;
+            cow.angle = 0;
+            cow.amplitude = Math.random() * 50 + 50;
+            gameArea.appendChild(cow);
+            cows.push(cow);
+            
+            moveCow(cow);
+            
+            if (cows.length < maxCows) {
+                setTimeout(spawnCows, 1000);
             }
+        }
 
-            animationFrame = requestAnimationFrame(update);
+        function moveCow(cow) {
+            if (!gameActive) return;
+            
+            cow.angle += 0.05;
+            const y = Math.sin(cow.angle) * cow.amplitude;
+            cow.style.left = parseFloat(cow.style.left) + cow.direction * cow.speed + 'px';
+            cow.style.top = y + 'px';
+            
+            if (parseFloat(cow.style.left) > 100 || parseFloat(cow.style.left) < -10) {
+                cow.remove();
+                cows = cows.filter(c => c !== cow);
+                return;
+            }
+            
+            requestAnimationFrame(() => moveCow(cow));
+        }
+
+        function updateHearts() {
+            heartsContainer.innerHTML = '';
+            for (let i = 0; i < lives; i++) {
+                const heart = document.createElement('div');
+                heart.className = 'heart';
+                heartsContainer.appendChild(heart);
+            }
         }
 
         function startTimer() {
-            gameTime = 60;
-            document.getElementById('timer').textContent = gameTime;
-            gameInterval = setInterval(() => {
-                gameTime--;
-                document.getElementById('timer').textContent = gameTime;
-                if (gameTime <= 0) endGame();
+            const timerInterval = setInterval(() => {
+                if (!gameActive) return;
+                timeLeft--;
+                timerDisplay.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    endGame();
+                }
             }, 1000);
         }
 
         function endGame() {
-            cancelAnimationFrame(animationFrame);
-            clearInterval(gameInterval);
-            document.getElementById('game').classList.remove('active');
-            document.getElementById('gameOver').classList.add('active');
-            document.getElementById('finalScore').textContent = score;
-
-            const leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
-            leaderboard.push({name: 'Игрок', score: score});
-            leaderboard.sort((a, b) => b.score - a.score);
-            leaderboard.splice(5);
-            localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
-
-            updateLeaderboard();
+            gameActive = false;
+            cows.forEach(cow => cow.remove());
+            cows = [];
+            saveScore(score);
+            alert(`Игра окончена! Ваш счет: ${score}`);
+            document.getElementById('game').style.display = 'none';
+            document.getElementById('menu').style.display = 'block';
         }
 
-        function updateHearts() {
-            const hearts = document.getElementById('hearts');
-            hearts.innerHTML = '';
-            for (let i = 0; i < lives; i++) {
-                const heart = document.createElement('div');
-                heart.className = 'heart';
-                hearts.appendChild(heart);
-            }
+        function saveScore(score) {
+            let scores = JSON.parse(localStorage.getItem('cowHunterScores')) || [];
+            scores.push(score);
+            scores.sort((a, b) => b - a);
+            scores = scores.slice(0, 10);
+            localStorage.setItem('cowHunterScores', JSON.stringify(scores));
         }
 
-        function updateLeaderboard() {
-            const body = document.getElementById('leaderboardBody');
-            body.innerHTML = '';
-            const leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
-            leaderboard.forEach((entry, index) => {
-                const row = `<tr><td>${index+1}</td><td>${entry.name}</td><td>${entry.score}</td></tr>`;
-                body.innerHTML += row;
+        function showLeaderboard() {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('leaderboard').style.display = 'block';
+            const entries = document.getElementById('leaderboard-entries');
+            entries.innerHTML = '';
+            const scores = JSON.parse(localStorage.getItem('cowHunterScores')) || [];
+            scores.forEach(score => {
+                const entry = document.createElement('div');
+                entry.className = 'score-entry';
+                entry.textContent = score;
+                entries.appendChild(entry);
             });
         }
 
-        function showScreen(screen) {
-            document.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
-            document.getElementById(screen).classList.add('active');
-            if (screen === 'game') init();
-            if (screen === 'leaderboard') updateLeaderboard();
+        function closeLeaderboard() {
+            document.getElementById('leaderboard').style.display = 'none';
+            document.getElementById('menu').style.display = 'block';
         }
 
-        // Инициализация Telegram Web App
-        telegram.ready();
-        telegram.expand();
+        document.addEventListener('click', (e) => {
+            if (!gameActive || cooldown) return;
+            
+            cooldown = true;
+            cooldownBar.style.width = '0%';
+            setTimeout(resetCooldown, 500);
+            
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.left = e.clientX - 25 + 'px';
+            explosion.style.top = e.clientY - 25 + 'px';
+            document.body.appendChild(explosion);
+            setTimeout(() => explosion.remove(), 300);
+            
+            checkHits(e.clientX, e.clientY);
+        });
+
+        function resetCooldown() {
+            cooldown = false;
+            cooldownBar.style.width = '100%';
+        }
+
+        function checkHits(x, y) {
+            cows.forEach(cow => {
+                const rect = cow.getBoundingClientRect();
+                if (x > rect.left && x < rect.right && y > rect.top && y < rect.bottom) {
+                    cow.remove();
+                    cows = cows.filter(c => c !== cow);
+                    score++;
+                    if (score % 10 === 0) createSmoke();
+                }
+            });
+        }
+
+        // Telegram Web App integration
+        if (window.Telegram) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        }
     </script>
-    <div class="smoke-bg"></div>
 </body>
 </html>
