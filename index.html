@@ -16,7 +16,7 @@
         body {
             background: #2c3e50;
             color: white;
-            font-family: 'Arial Black', sans-serif;
+            font-family: 'Arial', sans-serif;
             overflow: hidden;
         }
 
@@ -27,7 +27,7 @@
             display: none;
             align-items: center;
             justify-content: center;
-            background: #34495e;
+            background: #2c3e50;
         }
 
         .menu {
@@ -44,15 +44,15 @@
             color: white;
             border-radius: 8px;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: background 0.2s;
         }
 
         .btn:active {
-            transform: scale(0.95);
+            background: #2980b9;
         }
 
         #gameCanvas {
-            background: #2c3e50;
+            background: #34495e;
         }
 
         .hud {
@@ -115,7 +115,7 @@
 
         .score-item {
             padding: 8px 12px;
-            background: #3498db;
+            background: rgba(255,255,255,0.1);
             border-radius: 4px;
             width: 200px;
         }
@@ -124,10 +124,10 @@
 <body>
     <!-- Main Menu -->
     <div id="mainMenu" class="screen menu">
-        <h1>🐄 COW HUNT 🎯</h1>
+        <h1>🐮 Pixel Cow Hunt</h1>
         <button class="btn" onclick="startGame()">Start Game</button>
         <button class="btn" onclick="showScreen('howToPlay')">How to Play</button>
-        <button class="btn" onclick="showScreen('leaderboard')">Top 5</button>
+        <button class="btn" onclick="showScreen('leaderboard')">Top Scores</button>
     </div>
 
     <!-- Game Screen -->
@@ -142,6 +142,9 @@
                 <div class="heart active"></div>
             </div>
         </div>
+        <div class="hud" id="bottomHud">
+            <div>Hits: <span id="hits">0</span> | Misses: <span id="misses">0</span></div>
+        </div>
         <div id="timer">01:00</div>
         <div class="crosshair" id="crosshair"></div>
     </div>
@@ -155,7 +158,7 @@
 
     <!-- How to Play -->
     <div id="howToPlay" class="screen">
-        <div style="max-width: 300px; text-align: center; padding: 20px;">
+        <div style="max-width: 300px; text-align: left; padding: 20px;">
             <h2>How to Play</h2>
             <p>🔫 5 shots before reload</p>
             <p>❤️ 3 lives</p>
@@ -171,9 +174,9 @@
         let highScores = JSON.parse(localStorage.getItem('highScores')) || [];
 
         const COW_TYPES = {
-            BASIC: { speed: 2.5, score: 10 },
-            SPEEDY: { speed: 4, score: 20 },
-            ZIGZAG: { speed: 3, score: 30 }
+            BASIC: { speed: 3, score: 10 },
+            SPEEDY: { speed: 5, score: 20 },
+            ZIGZAG: { speed: 4, score: 30 }
         };
 
         function showScreen(screenId) {
@@ -235,14 +238,29 @@
             crosshair.style.top = `${y - 12}px`;
         }
 
-        document.addEventListener('touchstart', e => {
+        let isTouching = false;
+        canvas.addEventListener('touchstart', e => {
             e.preventDefault();
-            if(e.touches.length === 1) handleShoot();
+            if(!isTouching) {
+                isTouching = true;
+                handleShoot();
+                updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        });
+
+        canvas.addEventListener('touchend', () => isTouching = false);
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
             updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
         }, { passive: false });
 
-        document.addEventListener('mousemove', e => {
+        canvas.addEventListener('mousemove', e => {
             updateCrosshairPosition(e.clientX, e.clientY);
+        });
+
+        canvas.addEventListener('mousedown', e => {
+            e.preventDefault();
+            handleShoot();
         });
 
         function createCow() {
@@ -270,49 +288,47 @@
             ctx.save();
             ctx.translate(cow.x + 30, cow.y + 20);
             
-            // Body
+            // Тело (квадратное без заливки)
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 2;
-            ctx.strokeRect(-20, -15, 40, 30);
+            ctx.strokeRect(-20, -10, 40, 20);
             
-            // Head
-            ctx.fillStyle = '#fff';
+            // Голова
             ctx.beginPath();
-            ctx.arc(25, -5, 10, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Horns
-            ctx.strokeStyle = '#000';
-            ctx.beginPath();
-            ctx.moveTo(25, -15);
-            ctx.lineTo(30, -25);
-            ctx.moveTo(25, -15);
-            ctx.lineTo(20, -25);
+            ctx.arc(25, 0, 10, 0, Math.PI * 2);
             ctx.stroke();
             
-            // Eyes
+            // Рога
+            ctx.beginPath();
+            ctx.moveTo(25, -10);
+            ctx.lineTo(35, -20);
+            ctx.moveTo(25, -10);
+            ctx.lineTo(15, -20);
+            ctx.stroke();
+            
+            // Глаза
             ctx.fillStyle = '#000';
             ctx.beginPath();
-            ctx.arc(28, -8, 2, 0, Math.PI * 2);
-            ctx.arc(32, -8, 2, 0, Math.PI * 2);
+            ctx.arc(28, -3, 2, 0, Math.PI * 2);
+            ctx.arc(22, -3, 2, 0, Math.PI * 2);
             ctx.fill();
             
-            // Wings
-            ctx.strokeStyle = '#fff';
+            // Крылья
+            ctx.strokeStyle = '#000';
             ctx.lineWidth = 3;
             const wingY = Math.sin(cow.wingAngle) * 5;
             ctx.beginPath();
             ctx.moveTo(-25, wingY);
-            ctx.lineTo(-45, wingY + 15);
+            ctx.lineTo(-40, wingY + 15);
             ctx.moveTo(25, wingY);
-            ctx.lineTo(45, wingY + 15);
+            ctx.lineTo(40, wingY + 15);
             ctx.stroke();
             
             ctx.restore();
         }
 
         function updateGameState() {
-            if(Date.now() - gameState.lastSpawn > 800) {
+            if(Date.now() - gameState.lastSpawn > 700) {
                 gameState.targets.push(createCow());
                 gameState.lastSpawn = Date.now();
             }
@@ -334,28 +350,35 @@
                 return p.life > 0;
             });
 
-            if(Date.now() - gameState.startTime > gameState.gameTime) endGame();
+            if(Date.now() - gameState.startTime > gameState.gameTime) {
+                endGame();
+            }
         }
 
         function drawGame() {
-            ctx.fillStyle = '#2c3e50';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Фон
+            ctx.fillStyle = '#34495e';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
+            // Коровы
             gameState.targets.forEach(drawCow);
             
-            ctx.fillStyle = '#ff69b4';
+            // Розовые взрывы
             gameState.particles.forEach(p => {
-                ctx.globalAlpha = p.life;
+                ctx.fillStyle = `rgba(255,105,180,${p.life})`;
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+                ctx.arc(p.x, p.y, p.life * 15, 0, Math.PI * 2);
                 ctx.fill();
             });
-            ctx.globalAlpha = 1;
         }
 
         function updateUI() {
             document.getElementById('score').textContent = gameState.score;
             document.getElementById('ammo').textContent = gameState.ammo;
+            document.getElementById('hits').textContent = gameState.hits;
+            document.getElementById('misses').textContent = gameState.misses;
             updateHearts();
             updateTimer();
         }
@@ -376,9 +399,10 @@
 
         function handleShoot() {
             if(!gameState.isPlaying || gameState.ammo <= 0 || gameState.reloading) return;
+
             gameState.ammo--;
-            
             let hit = false;
+
             gameState.targets.forEach(cow => {
                 if(gameState.crosshair.x > cow.x && 
                    gameState.crosshair.x < cow.x + cow.width &&
@@ -387,14 +411,14 @@
                     gameState.score += cow.type.score;
                     gameState.hits++;
                     cow.active = false;
-                    createParticles(cow.x + 30, cow.y + 20);
+                    createPinkExplosion(cow.x + 30, cow.y + 20);
                     hit = true;
                 }
             });
 
             if(!hit) {
                 gameState.misses++;
-                if(gameState.misses % 3 === 0) {
+                if(gameState.misses % 5 === 0) {
                     gameState.lives = Math.max(0, gameState.lives - 1);
                     if(gameState.lives === 0) endGame();
                 }
@@ -409,13 +433,13 @@
             }
         }
 
-        function createParticles(x, y) {
+        function createPinkExplosion(x, y) {
             for(let i = 0; i < 20; i++) {
                 gameState.particles.push({
                     x: x,
                     y: y,
-                    vx: (Math.random() - 0.5) * 10,
-                    vy: (Math.random() - 0.5) * 10,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() - 0.5) * 12,
                     life: 1
                 });
             }
@@ -425,7 +449,8 @@
             gameState.isPlaying = false;
             if(highScores.length < 5 || gameState.score > Math.min(...highScores)) {
                 highScores.push(gameState.score);
-                highScores = highScores.sort((a,b) => b - a).slice(0,5);
+                highScores.sort((a,b) => b - a);
+                highScores = highScores.slice(0,5);
                 localStorage.setItem('highScores', JSON.stringify(highScores));
             }
             showScreen('mainMenu');
@@ -433,13 +458,13 @@
 
         function gameLoop() {
             if(!gameState.isPlaying) return;
+            
             updateGameState();
             drawGame();
             updateUI();
             requestAnimationFrame(gameLoop);
         }
 
-        document.addEventListener('mousedown', handleShoot);
         Telegram.WebApp.ready();
         Telegram.WebApp.expand();
     </script>
