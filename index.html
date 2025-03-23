@@ -1,290 +1,318 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Cow Hunt</title>
+    <title>Galaxy Cow Hunt</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { margin: 0; overflow: hidden; }
-        canvas { display: block; }
-        #menu, #leaderboard { 
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
             color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #gameCanvas {
             display: none;
         }
+        
+        #menu, #gameOverScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
         button {
-            padding: 15px 30px;
-            margin: 10px;
-            font-size: 1.2em;
-            background: #4CAF50;
+            background: #6c5ce7;
             border: none;
             color: white;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 10px;
             cursor: pointer;
-            border-radius: 5px;
+            font-size: 1.2em;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: 0.3s;
         }
-        button:hover { background: #45a049; }
-        #hearts { position: absolute; top: 10px; left: 10px; }
-        #timer { position: absolute; top: 10px; right: 10px; }
+        
+        button:hover {
+            background: #5a4ac9;
+        }
+        
+        .heart {
+            width: 30px;
+            height: 30px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23ff6b6b" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>') no-repeat center;
+            background-size: contain;
+        }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    
     <div id="menu">
-        <h1>Cow Hunt</h1>
-        <button onclick="startGame()">Start Game</button>
-        <button onclick="showLeaderboard()">Leaderboard</button>
-    </div>
-    
-    <div id="leaderboard">
-        <h1>Top Scores</h1>
-        <div id="scoresList"></div>
-        <button onclick="hideLeaderboard()">Back</button>
+        <h1>Galaxy Cow Hunt</h1>
+        <button onclick="startGame()">Играть</button>
+        <button onclick="showLeaderboard()">Рейтинг</button>
     </div>
 
-<script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+    <div id="gameOverScreen" style="display: none;">
+        <h2>Игра окончена!</h2>
+        <p>Ваш счет: <span id="finalScore"></span></p>
+        <button onclick="returnToMenu()">В меню</button>
+    </div>
 
-const gameState = {
-    menu: true,
-    playing: false,
-    leaderboard: false,
-    score: 0,
-    lives: 3,
-    timeLeft: 60,
-    lastShot: 0,
-    shotCooldown: 500
-};
+    <canvas id="gameCanvas"></canvas>
 
-const cows = [];
-const explosions = [];
-const bullets = [];
-
-// Загрузка изображений
-const cowImg = new Image();
-cowImg.src = 'https://i.imgur.com/9uZJY7X.png'; // Пример спрайта коровы
-
-const heartImg = new Image();
-heartImg.src = 'https://i.imgur.com/4yD4t7y.png';
-
-const bulletImg = new Image();
-bulletImg.src = 'https://i.imgur.com/3z3X4yG.png';
-
-// Функции отрисовки
-function drawBackground() {
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, '#1a0d4d');
-    gradient.addColorStop(0.7, '#2c1a6d');
-    gradient.addColorStop(1, '#4d268d');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Фиолетовый туман
-    ctx.fillStyle = 'rgba(128, 0, 128, 0.3)';
-    ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
-}
-
-function drawUI() {
-    // Сердца
-    for(let i = 0; i < gameState.lives; i++) {
-        ctx.drawImage(heartImg, 10 + i*40, 10, 32, 32);
-    }
-    
-    // Таймер
-    ctx.fillStyle = 'white';
-    ctx.font = '30px Arial';
-    ctx.fillText(gameState.timeLeft.toFixed(0), canvas.width - 100, 50);
-    
-    // Счет
-    ctx.fillText('Score: ' + gameState.score, 10, canvas.height - 20);
-}
-
-// Обновление игры
-function update() {
-    if (!gameState.playing) return;
-    
-    // Обновление времени
-    const now = Date.now();
-    if(gameState.lastTime) {
-        const delta = (now - gameState.lastTime) / 1000;
-        gameState.timeLeft = Math.max(0, gameState.timeLeft - delta);
-    }
-    gameState.lastTime = now;
-    
-    // Создание коров
-    if(Math.random() < 0.01) {
-        cows.push({
-            x: canvas.width,
-            y: Math.random() * (canvas.height - 200) + 100,
-            speedX: -2 - Math.random() * 3,
-            speedY: Math.random() * 2 - 1,
-            angle: 0
-        });
-    }
-    
-    // Обновление коров
-    cows.forEach((cow, index) => {
-        cow.x += cow.speedX;
-        cow.y += Math.sin(cow.angle) * 2;
-        cow.angle += 0.1;
-        
-        if(cow.x < -100) {
-            cows.splice(index, 1);
-            gameState.lives--;
-            if(gameState.lives <= 0) endGame();
-        }
-    });
-    
-    // Обновление выстрелов
-    bullets.forEach((bullet, index) => {
-        bullet.x += bullet.speedX;
-        bullet.y += bullet.speedY;
-        
-        // Проверка попаданий
-        cows.forEach((cow, cIndex) => {
-            const dx = cow.x - bullet.x;
-            const dy = cow.y - bullet.y;
-            if(Math.sqrt(dx*dx + dy*dy) < 50) {
-                explosions.push({
-                    x: cow.x,
-                    y: cow.y,
-                    time: Date.now()
-                });
-                cows.splice(cIndex, 1);
-                bullets.splice(index, 1);
-                gameState.score += 10;
-            }
-        });
-        
-        if(bullet.x < 0 || bullet.x > canvas.width || 
-           bullet.y < 0 || bullet.y > canvas.height) {
-            bullets.splice(index, 1);
-        }
-    });
-    
-    // Обновление взрывов
-    explosions.forEach((exp, index) => {
-        if(Date.now() - exp.time > 500) {
-            explosions.splice(index, 1);
-        }
-    });
-    
-    if(gameState.timeLeft <= 0) endGame();
-}
-
-// Отрисовка
-function render() {
-    drawBackground();
-    
-    // Отрисовка коров
-    cows.forEach(cow => {
-        ctx.save();
-        ctx.translate(cow.x, cow.y);
-        ctx.rotate(Math.atan2(cow.speedY, cow.speedX));
-        ctx.drawImage(cowImg, -50, -50, 100, 100);
-        ctx.restore();
-    });
-    
-    // Отрисовка выстрелов
-    bullets.forEach(bullet => {
-        ctx.drawImage(bulletImg, bullet.x - 10, bullet.y - 10, 20, 20);
-    });
-    
-    // Отрисовка взрывов
-    explosions.forEach(exp => {
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-        ctx.beginPath();
-        ctx.arc(exp.x, exp.y, 30, 0, Math.PI*2);
-        ctx.fill();
-    });
-    
-    drawUI();
-    
-    requestAnimationFrame(render);
-}
-
-// Обработка кликов
-canvas.addEventListener('click', (e) => {
-    if(!gameState.playing || Date.now() - gameState.lastShot < gameState.shotCooldown) return;
-    
-    gameState.lastShot = Date.now();
-    
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const angle = Math.atan2(y - canvas.height/2, x - canvas.width/2);
-    
-    bullets.push({
-        x: canvas.width/2,
-        y: canvas.height/2,
-        speedX: Math.cos(angle) * 10,
-        speedY: Math.sin(angle) * 10
-    });
-});
-
-// Управление состоянием игры
-function startGame() {
-    document.getElementById('menu').style.display = 'none';
-    gameState.playing = true;
-    gameState.score = 0;
-    gameState.lives = 3;
-    gameState.timeLeft = 60;
-    cows.length = 0;
-    bullets.length = 0;
-    explosions.length = 0;
-}
-
-function endGame() {
-    gameState.playing = false;
-    updateLeaderboard();
-    document.getElementById('menu').style.display = 'flex';
-}
-
-function showLeaderboard() {
-    const scores = JSON.parse(localStorage.getItem('leaderboard')) || [];
-    const list = document.getElementById('scoresList');
-    list.innerHTML = scores.map(s => `<div>${s.name}: ${s.score}</div>`).join('');
-    document.getElementById('menu').style.display = 'none';
-    document.getElementById('leaderboard').style.display = 'flex';
-}
-
-function hideLeaderboard() {
-    document.getElementById('leaderboard').style.display = 'none';
-    document.getElementById('menu').style.display = 'flex';
-}
-
-function updateLeaderboard() {
-    let scores = JSON.parse(localStorage.getItem('leaderboard')) || [];
-    scores.push({name: 'Player', score: gameState.score});
-    scores.sort((a, b) => b.score - a.score);
-    scores = scores.slice(0, 10);
-    localStorage.setItem('leaderboard', JSON.stringify(scores));
-}
-
-// Инициализация
-function init() {
-    window.addEventListener('resize', () => {
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-    });
-    
-    render();
-}
 
-init();
-</script>
+        let gameState = 'menu';
+        let score = 0;
+        let lives = 3;
+        let timeLeft = 60;
+        let lastShotTime = 0;
+        const shotCooldown = 500;
+        const cows = [];
+        const shots = [];
+        const explosions = [];
+        const stars = [];
+        let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+        
+        class Cow {
+            constructor() {
+                this.x = -100;
+                this.y = Math.random() * canvas.height * 0.6 + 50;
+                this.size = 60;
+                this.speed = 2 + Math.random() * 2;
+                this.angle = 0;
+                this.wingPhase = 0;
+                this.trajectoryOffset = Math.random() * 100;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                
+                // Тело
+                ctx.fillStyle = '#a8d8b9';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size/2, 0, Math.PI*2);
+                ctx.fill();
+                
+                // Крылья
+                ctx.fillStyle = '#88c79a';
+                ctx.beginPath();
+                ctx.moveTo(-this.size/2, 0);
+                ctx.quadraticCurveTo(-this.size*1.5, this.size/4 + Math.sin(this.wingPhase)*10, 
+                                    -this.size/2, this.size/2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.moveTo(this.size/2, 0);
+                ctx.quadraticCurveTo(this.size*1.5, this.size/4 + Math.sin(this.wingPhase)*10, 
+                                    this.size/2, this.size/2);
+                ctx.fill();
+                
+                // Голова
+                ctx.fillStyle = '#f6e58d';
+                ctx.beginPath();
+                ctx.arc(0, -this.size/2, this.size/3, 0, Math.PI*2);
+                ctx.fill();
+                
+                // Рожки
+                ctx.fillStyle = '#535c68';
+                ctx.beginPath();
+                ctx.moveTo(-this.size/4, -this.size*0.7);
+                ctx.lineTo(-this.size/6, -this.size);
+                ctx.lineTo(-this.size/8, -this.size*0.7);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.moveTo(this.size/4, -this.size*0.7);
+                ctx.lineTo(this.size/6, -this.size);
+                ctx.lineTo(this.size/8, -this.size*0.7);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+
+            update() {
+                this.x += this.speed;
+                this.y = this.y + Math.sin((this.x + this.trajectoryOffset)/50) * 2;
+                this.angle = Math.atan2(Math.sin((this.x)/50)*2, this.speed);
+                this.wingPhase += 0.1;
+                
+                if (this.x > canvas.width + 100) {
+                    this.x = -100;
+                    this.y = Math.random() * canvas.height * 0.6 + 50;
+                }
+            }
+        }
+
+        function createCow() {
+            cows.push(new Cow());
+        }
+
+        function shoot(x, y) {
+            if (Date.now() - lastShotTime < shotCooldown) return;
+            shots.push({x: x, y: y, size: 5});
+            lastShotTime = Date.now();
+        }
+
+        function update() {
+            if (gameState !== 'playing') return;
+            
+            ctx.fillStyle = 'rgba(27, 38, 59, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Фиолетовая дымка
+            const gradient = ctx.createLinearGradient(0, canvas.height*0.8, 0, canvas.height);
+            gradient.addColorStop(0, 'rgba(98, 42, 145, 0.5)');
+            gradient.addColorStop(1, 'rgba(98, 42, 145, 0.9)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, canvas.height*0.8, canvas.width, canvas.height*0.2);
+            
+            // Звезды
+            ctx.fillStyle = 'white';
+            stars.forEach(star => {
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI*2);
+                ctx.fill();
+            });
+
+            // Обновление объектов
+            cows.forEach(cow => cow.update());
+            shots.forEach(shot => shot.size += 0.5);
+            explosions.forEach(exp => exp.size += 0.5);
+            
+            // Отрисовка
+            cows.forEach(cow => cow.draw());
+            shots.forEach(shot => {
+                ctx.fillStyle = '#ff6b6b';
+                ctx.beginPath();
+                ctx.arc(shot.x, shot.y, shot.size, 0, Math.PI*2);
+                ctx.fill();
+            });
+            explosions.forEach(exp => {
+                ctx.fillStyle = `rgba(255, 90, 90, ${1 - exp.size/20})`;
+                ctx.beginPath();
+                ctx.arc(exp.x, exp.y, exp.size, 0, Math.PI*2);
+                ctx.fill();
+            });
+
+            // Проверка попаданий
+            shots.forEach((shot, sIndex) => {
+                cows.forEach((cow, cIndex) => {
+                    const dx = shot.x - cow.x;
+                    const dy = shot.y - cow.y;
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+                    
+                    if (distance < cow.size/2 + shot.size) {
+                        explosions.push({x: cow.x, y: cow.y, size: 1});
+                        cows.splice(cIndex, 1);
+                        createCow();
+                        shots.splice(sIndex, 1);
+                        score += 10;
+                    }
+                });
+            });
+
+            // UI
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText('Счет: ' + score, 20, 40);
+            ctx.fillText('Время: ' + Math.ceil(timeLeft), 20, 70);
+            
+            for (let i = 0; i < lives; i++) {
+                ctx.save();
+                ctx.translate(20 + i*40, 100);
+                ctx.scale(0.8, 0.8);
+                ctx.fillStyle = '#ff6b6b';
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(-10, -20, 10, -20, 0, 0);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function gameLoop() {
+            if (gameState === 'playing') {
+                update();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function startGame() {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('gameCanvas').style.display = 'block';
+            gameState = 'playing';
+            score = 0;
+            lives = 3;
+            timeLeft = 60;
+            cows.length = 0;
+            shots.length = 0;
+            explosions.length = 0;
+            
+            for (let i = 0; i < 5; i++) createCow();
+            
+            // Генерация звезд
+            for (let i = 0; i < 100; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2
+                });
+            }
+
+            const timerInterval = setInterval(() => {
+                timeLeft -= 1;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    endGame();
+                }
+            }, 1000);
+
+            canvas.addEventListener('click', (e) => {
+                if (gameState === 'playing') {
+                    shoot(e.clientX, e.clientY);
+                }
+            });
+
+            gameLoop();
+        }
+
+        function endGame() {
+            gameState = 'ended';
+            document.getElementById('gameCanvas').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'block';
+            document.getElementById('finalScore').textContent = score;
+            
+            // Сохранение в рейтинг
+            leaderboard.push(score);
+            leaderboard.sort((a, b) => b - a);
+            leaderboard = leaderboard.slice(0, 10);
+            localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+        }
+
+        function returnToMenu() {
+            document.getElementById('gameOverScreen').style.display = 'none';
+            document.getElementById('menu').style.display = 'block';
+        }
+
+        function showLeaderboard() {
+            alert('Топ-10 результатов:\n' + leaderboard.map((s, i) => `${i+1}. ${s}`).join('\n'));
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
 </body>
 </html>
