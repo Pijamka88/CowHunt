@@ -245,6 +245,25 @@
                 `translate(${x - 16}px, ${y - 16}px)`;
         }
 
+        document.addEventListener('touchstart', e => {
+            e.preventDefault();
+            if(!isShooting && !gameState.reloading) {
+                isShooting = true;
+                handleShoot();
+                updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
+                setTimeout(() => isShooting = false, 100);
+            }
+        });
+
+        document.addEventListener('touchmove', e => {
+            e.preventDefault();
+            updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+
+        document.addEventListener('mousemove', e => {
+            updateCrosshairPosition(e.clientX, e.clientY);
+        });
+
         function createCow() {
             const type = Math.random();
             let cowType;
@@ -270,7 +289,7 @@
             ctx.save();
             ctx.translate(cow.x + 30, cow.y + 20);
             
-            // Body
+            // Body (square outline)
             ctx.strokeStyle = '#8B4513';
             ctx.lineWidth = 3;
             ctx.strokeRect(-20, -15, 40, 30);
@@ -295,6 +314,12 @@
             ctx.arc(33, -8, 2, 0, Math.PI * 2);
             ctx.fill();
             
+            // Udder
+            ctx.fillStyle = '#FF69B4';
+            ctx.beginPath();
+            ctx.arc(0, 15, 8, 0, Math.PI);
+            ctx.fill();
+            
             // Wings
             ctx.strokeStyle = '#FFD700';
             ctx.lineWidth = 4;
@@ -305,12 +330,6 @@
             ctx.moveTo(25, wingY);
             ctx.lineTo(45, wingY + 15);
             ctx.stroke();
-            
-            // Udder
-            ctx.fillStyle = '#ff69b4';
-            ctx.beginPath();
-            ctx.arc(0, 10, 5, 0, Math.PI * 2);
-            ctx.fill();
             
             ctx.restore();
         }
@@ -353,8 +372,8 @@
             // Draw cows
             gameState.targets.forEach(drawCow);
             
-            // Draw particles
-            ctx.fillStyle = '#ff69b4';
+            // Draw pink particles
+            ctx.fillStyle = '#FF69B4';
             gameState.particles.forEach(p => {
                 ctx.globalAlpha = p.life;
                 ctx.beginPath();
@@ -371,7 +390,6 @@
             document.getElementById('misses').textContent = gameState.misses;
             updateHearts();
             
-            // Update reloading status
             const reloading = document.getElementById('reloadingStatus');
             reloading.style.display = gameState.reloading ? 'block' : 'none';
             document.getElementById('crosshair').style.display = 
@@ -442,9 +460,11 @@
             gameState.isPlaying = false;
             
             // Update leaderboard
-            highScores.push(gameState.score);
-            highScores = [...new Set(highScores)].sort((a,b) => b - a).slice(0,5);
-            localStorage.setItem('highScores', JSON.stringify(highScores));
+            if(highScores.length < 5 || gameState.score > Math.min(...highScores)) {
+                highScores.push(gameState.score);
+                highScores = [...new Set(highScores)].sort((a,b) => b - a).slice(0,5);
+                localStorage.setItem('highScores', JSON.stringify(highScores));
+            }
             
             showScreen('mainMenu');
         }
@@ -459,28 +479,8 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Event handlers
-        document.addEventListener('touchstart', e => {
-            e.preventDefault();
-            if(!isShooting) {
-                isShooting = true;
-                handleShoot();
-                updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
-                setTimeout(() => isShooting = false, 100);
-            }
-        });
-
-        document.addEventListener('touchmove', e => {
-            e.preventDefault();
-            updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: false });
-
-        document.addEventListener('mousemove', e => {
-            updateCrosshairPosition(e.clientX, e.clientY);
-        });
-
         document.addEventListener('mousedown', e => {
-            if(!isShooting) {
+            if(!isShooting && !gameState.reloading) {
                 isShooting = true;
                 handleShoot();
                 setTimeout(() => isShooting = false, 100);
