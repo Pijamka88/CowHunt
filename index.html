@@ -156,7 +156,7 @@
         <canvas id="gameCanvas"></canvas>
         <div class="hud" id="topHud">
             <div>Score: <span id="score">0</span></div>
-            <div>Ammo: <span id="ammo">10</span></div>
+            <div>Ammo: <span id="ammo">5</span></div>
             <div class="hearts" id="hearts">
                 <div class="heart active"></div>
                 <div class="heart active"></div>
@@ -172,7 +172,7 @@
 
     <!-- Leaderboard -->
     <div id="leaderboard" class="screen">
-        <h2>TOP 10 SCORES</h2>
+        <h2>TOP 5 SCORES</h2>
         <div id="scoresList"></div>
         <button class="btn" onclick="showScreen('mainMenu')">Back</button>
     </div>
@@ -183,7 +183,7 @@
             <h2>How to Play</h2>
             <p>🎯 Shoot space cows in 60 seconds!</p>
             <p>❤️ 3 lives</p>
-            <p>🔫 10 shots before reload</p>
+            <p>🔫 5 shots before reload</p>
             <button class="btn" onclick="showScreen('mainMenu')">Back</button>
         </div>
     </div>
@@ -232,7 +232,7 @@
         function updateLeaderboard() {
             const list = document.getElementById('scoresList');
             list.innerHTML = highScores.sort((a,b) => b - a)
-                .slice(0,10)
+                .slice(0,5)
                 .map((score,i) => `<div class="score-item">${i+1}. ${score}</div>`)
                 .join('');
         }
@@ -249,7 +249,7 @@
             gameState = {
                 targets: [],
                 score: 0,
-                ammo: 10,
+                ammo: 5,
                 hits: 0,
                 misses: 0,
                 lives: 3,
@@ -285,11 +285,18 @@
             crosshair.style.top = `${y - 16}px`;
         }
 
+        let isShooting = false;
         document.addEventListener('touchstart', e => {
             e.preventDefault();
-            handleShoot();
-            updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
+            if(!isShooting) {
+                isShooting = true;
+                handleShoot();
+                updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
+            }
         });
+
+        document.addEventListener('touchend', () => isShooting = false);
+        document.addEventListener('touchcancel', () => isShooting = false);
 
         document.addEventListener('touchmove', e => {
             e.preventDefault();
@@ -338,6 +345,13 @@
             ctx.arc(20, -8, 10, 0, Math.PI * 2);
             ctx.fill();
             
+            // Ears
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(15, -16, 5, 0, Math.PI * 2);
+            ctx.arc(25, -16, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
             // Eyes
             ctx.fillStyle = '#000';
             ctx.beginPath();
@@ -356,13 +370,10 @@
             ctx.stroke();
             
             // Wings
-            ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-            ctx.lineWidth = 3;
-            const wingY = Math.sin(cow.wingAngle) * 5;
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
             ctx.beginPath();
-            ctx.moveTo(-8, wingY);
-            ctx.lineTo(-25, wingY + 8);
-            ctx.stroke();
+            ctx.ellipse(-15, Math.sin(cow.wingAngle) * 5, 10, 5, Math.PI/4, 0, Math.PI * 2);
+            ctx.fill();
             
             ctx.restore();
         }
@@ -467,7 +478,7 @@
 
             if(!hit) {
                 gameState.misses++;
-                if(gameState.misses % 5 === 0) {
+                if(gameState.misses % 3 === 0) {
                     gameState.lives = Math.max(0, gameState.lives - 1);
                     if(gameState.lives === 0) endGame();
                 }
@@ -476,7 +487,7 @@
             if(gameState.ammo <= 0) {
                 gameState.reloading = true;
                 setTimeout(() => {
-                    gameState.ammo = 10;
+                    gameState.ammo = 5;
                     gameState.reloading = false;
                 }, 2000);
             }
@@ -497,6 +508,7 @@
         function endGame() {
             gameState.isPlaying = false;
             highScores.push(gameState.score);
+            highScores = [...new Set(highScores)].sort((a,b) => b - a).slice(0,5);
             localStorage.setItem('highScores', JSON.stringify(highScores));
             showScreen('mainMenu');
         }
