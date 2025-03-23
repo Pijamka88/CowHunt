@@ -1,286 +1,281 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Cow Hunter</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>Cow Hunt: Galactic Edition</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            background: linear-gradient(135deg, #1a1a2e, #0f3443);
             color: white;
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
         }
 
-        #menu {
-            text-align: center;
-            padding-top: 50px;
+        .screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s;
         }
 
-        button {
-            background: #ff6b6b;
-            border: none;
-            padding: 15px 30px;
-            margin: 10px;
-            border-radius: 10px;
-            color: white;
-            font-size: 18px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        button:hover {
-            background: #4ecdc4;
-        }
-
-        #game {
+        .hidden {
             display: none;
+        }
+
+        #game-area {
             position: relative;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 80%;
+            overflow: hidden;
         }
 
         .cow {
             position: absolute;
-            width: 80px;
-            height: 80px;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><path fill="%23fff" d="M40 10L50 20H30z"/><circle cx="40" cy="35" r="10"/><path fill="%23ffda79" d="M30 45h20v20H30z"/><path fill="%23ff6b6b" d="M35 45h10v10H35z"/><path fill="%234ecdc4" d="M30 65h20v5H30z"/></svg>') center/contain no-repeat;
-            animation: float 2s infinite;
+            width: 70px;
+            height: 70px;
+            background: url('https://i.imgur.com/7QbX3yA.png') no-repeat;
+            background-size: cover;
+            animation: fly 1s infinite;
         }
 
-        @keyframes float {
+        @keyframes fly {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
         }
 
-        .shot {
+        .explosion {
             position: absolute;
-            width: 20px;
-            height: 20px;
-            background: radial-gradient(circle, #ff6b6b, transparent);
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, #ff4, #f00);
             border-radius: 50%;
             animation: explode 0.3s forwards;
         }
 
         @keyframes explode {
-            to { transform: scale(3); opacity: 0; }
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
         }
 
         #hud {
-            position: fixed;
+            position: absolute;
             top: 20px;
-            left: 20px;
-            right: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
         }
 
-        #leaderboard {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.7);
-            padding: 20px;
-            border-radius: 10px;
-            max-width: 300px;
+        #hud div {
+            display: inline-block;
+            margin: 0 25px;
+            font-size: 1.2em;
         }
 
-        .heart {
-            width: 30px;
-            height: 30px;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23ff6b6b" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>') center/contain no-repeat;
+        button {
+            padding: 12px 30px;
+            margin: 10px;
+            font-size: 1.1em;
+            background: #2c3e50;
+            border: 2px solid #3498db;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
         }
 
-        .hidden { display: none; }
+        button:hover {
+            background: #3498db;
+            transform: scale(1.05);
+        }
+
+        #leaderboard-list {
+            list-style: none;
+            padding: 0;
+            width: 80%;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        #leaderboard-list li {
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <div id="menu">
-        <button onclick="startGame()">Начать игру</button>
-        <button onclick="toggleLeaderboard()">Рекорды</button>
+    <div id="menu-screen" class="screen">
+        <h1>Cow Hunt: Galactic</h1>
+        <button onclick="startGame()">Начать миссию</button>
+        <button onclick="showLeaderboard()">Рейтинг</button>
     </div>
 
-    <div id="game" class="hidden">
+    <div id="game-screen" class="screen hidden">
         <div id="hud">
-            <div id="hearts"></div>
-            <div id="timer">60</div>
             <div id="score">0</div>
+            <div id="timer">60</div>
+            <div id="lives">❤️❤️❤️</div>
         </div>
+        <div id="game-area"></div>
     </div>
 
-    <div id="leaderboard" class="hidden">
-        <h2>Рекорды</h2>
-        <ol id="scoresList"></ol>
-        <button onclick="toggleLeaderboard()">Закрыть</button>
+    <div id="leaderboard-screen" class="screen hidden">
+        <h2>Лучшие охотники</h2>
+        <ul id="leaderboard-list"></ul>
+        <button onclick="goToMenu()">Назад</button>
     </div>
 
     <script>
-        const gameState = {
-            cows: [],
-            score: 0,
-            lives: 3,
-            timeLeft: 60,
-            reloadTime: 0.5,
-            canShoot: true,
-            leaderboard: []
-        };
+        let score = 0;
+        let lives = 3;
+        let timeLeft = 60;
+        let gameLoop;
+        let reloadTimeout;
+        const maxCows = 5;
+        const reloadTime = 500;
+
+        const gameArea = document.getElementById('game-area');
+        const scoreDisplay = document.getElementById('score');
+        const timerDisplay = document.getElementById('timer');
+        const livesDisplay = document.getElementById('lives');
 
         function startGame() {
-            document.getElementById('menu').classList.add('hidden');
-            document.getElementById('game').classList.remove('hidden');
-            
-            initHud();
+            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+
+            resetGame();
+            createCows();
             startTimer();
-            generateCows();
-            setupListeners();
-            
-            Telegram.WebApp.expand();
+            gameLoop = setInterval(update, 1000/60);
         }
 
-        function initHud() {
-            const hearts = document.getElementById('hearts');
-            hearts.innerHTML = '';
-            for(let i = 0; i < gameState.lives; i++) {
-                const heart = document.createElement('div');
-                heart.className = 'heart';
-                hearts.appendChild(heart);
+        function resetGame() {
+            score = 0;
+            lives = 3;
+            timeLeft = 60;
+            updateHUD();
+            gameArea.innerHTML = '';
+        }
+
+        function createCows() {
+            for (let i = 0; i < maxCows; i++) {
+                const cow = document.createElement('div');
+                cow.className = 'cow';
+                cow.style.left = Math.random() * 100 + 'vw';
+                cow.style.top = Math.random() * 100 + 'vh';
+                cow.speed = 2 + Math.random() * 3;
+                cow.direction = Math.random() * Math.PI * 2;
+                cow.wobble = 0;
+                gameArea.appendChild(cow);
             }
-            
-            document.getElementById('score').textContent = '0';
-            gameState.timeLeft = 60;
-            document.getElementById('timer').textContent = '60';
+        }
+
+        function update() {
+            document.querySelectorAll('.cow').forEach(cow => {
+                cow.wobble += 0.05;
+                cow.direction += Math.sin(cow.wobble) * 0.03;
+                
+                cow.style.left = 
+                    (parseFloat(cow.style.left) + Math.cos(cow.direction) * cow.speed) + 'px';
+                cow.style.top = 
+                    (parseFloat(cow.style.top) + Math.sin(cow.direction) * cow.speed) + 'px';
+
+                // Edge wrapping
+                const rect = cow.getBoundingClientRect();
+                if (rect.right < 0) cow.style.left = window.innerWidth + 'px';
+                if (rect.left > window.innerWidth) cow.style.left = '-70px';
+                if (rect.bottom < 0) cow.style.top = window.innerHeight + 'px';
+                if (rect.top > window.innerHeight) cow.style.top = '-70px';
+            });
+        }
+
+        function updateHUD() {
+            scoreDisplay.textContent = score;
+            timerDisplay.textContent = timeLeft;
+            livesDisplay.textContent = '❤️'.repeat(lives);
         }
 
         function startTimer() {
-            const timerElement = document.getElementById('timer');
             const timer = setInterval(() => {
-                gameState.timeLeft--;
-                timerElement.textContent = gameState.timeLeft;
-                
-                if(gameState.timeLeft <= 0) {
+                timeLeft--;
+                updateHUD();
+                if (timeLeft <= 0) {
                     clearInterval(timer);
                     endGame();
                 }
             }, 1000);
         }
 
-        function generateCows() {
-            const gameArea = document.getElementById('game');
-            
-            setInterval(() => {
-                if(gameState.timeLeft <= 0) return;
-                
-                const cow = document.createElement('div');
-                cow.className = 'cow';
-                cow.style.left = Math.random() * 100 + 'vw';
-                cow.style.animationDuration = (Math.random() * 2 + 1) + 's';
-                
-                const direction = Math.random() > 0.5 ? 1 : -1;
-                let angle = 0;
-                
-                cow.update = function() {
-                    angle += 0.1 * direction;
-                    this.style.transform = `translateY(${Math.sin(angle) * 30}px)`;
-                    this.style.left = parseFloat(this.style.left) + direction * 0.5 + 'px';
-                    
-                    if(parseFloat(this.style.left) > 110 || parseFloat(this.style.left) < -10) {
-                        this.remove();
-                        gameState.cows = gameState.cows.filter(c => c !== cow);
-                        loseLife();
-                    }
-                };
-                
-                gameState.cows.push(cow);
-                gameArea.appendChild(cow);
-            }, 1500);
-        }
-
-        function setupListeners() {
-            document.getElementById('game').addEventListener('click', (e) => {
-                if(!gameState.canShoot || gameState.timeLeft <= 0) return;
-                
-                gameState.canShoot = false;
-                const shot = document.createElement('div');
-                shot.className = 'shot';
-                shot.style.left = e.clientX - 10 + 'px';
-                shot.style.top = e.clientY - 10 + 'px';
-                document.getElementById('game').appendChild(shot);
-                
-                checkHit(e.clientX, e.clientY);
-                
-                setTimeout(() => {
-                    gameState.canShoot = true;
-                    shot.remove();
-                }, gameState.reloadTime * 1000);
-            });
-        }
-
-        function checkHit(x, y) {
-            gameState.cows.forEach((cow, index) => {
-                const rect = cow.getBoundingClientRect();
-                
-                if(x > rect.left && x < rect.right && y > rect.top && y < rect.bottom) {
-                    gameState.score++;
-                    document.getElementById('score').textContent = gameState.score;
-                    
-                    cow.style.animation = 'explode 0.3s forwards';
-                    setTimeout(() => cow.remove(), 300);
-                    gameState.cows.splice(index, 1);
-                }
-            });
-        }
-
-        function loseLife() {
-            if(gameState.lives > 0) {
-                gameState.lives--;
-                document.querySelector('#hearts .heart:last-child').remove();
-                
-                if(gameState.lives <= 0) {
-                    endGame();
-                }
-            }
-        }
-
         function endGame() {
-            gameState.timeLeft = 0;
-            const name = prompt('Введите ваше имя:');
-            
-            if(name) {
-                gameState.leaderboard.push({name, score: gameState.score});
-                gameState.leaderboard.sort((a, b) => b.score - a.score);
-                localStorage.setItem('leaderboard', JSON.stringify(gameState.leaderboard));
-            }
-            
-            setTimeout(() => {
-                document.getElementById('game').classList.add('hidden');
-                document.getElementById('menu').classList.remove('hidden');
-            }, 1000);
+            clearInterval(gameLoop);
+            saveScore(score);
+            document.getElementById('game-screen').classList.add('hidden');
+            showLeaderboard();
         }
 
-        function toggleLeaderboard() {
-            const lb = document.getElementById('leaderboard');
-            lb.classList.toggle('hidden');
-            
-            if(!lb.classList.contains('hidden')) {
-                const scores = JSON.parse(localStorage.getItem('leaderboard')) || [];
-                const list = document.getElementById('scoresList');
-                list.innerHTML = '';
-                
-                scores.forEach(entry => {
-                    const li = document.createElement('li');
-                    li.textContent = `${entry.name}: ${entry.score}`;
-                    list.appendChild(li);
-                });
-            }
+        function saveScore(score) {
+            let scores = JSON.parse(localStorage.getItem('leaderboard')) || [];
+            scores.push(score);
+            scores.sort((a, b) => b - a);
+            localStorage.setItem('leaderboard', JSON.stringify(scores.slice(0, 10)));
         }
-        
-        // Обновление позиции коров
-        setInterval(() => {
-            gameState.cows.forEach(cow => cow.update());
-        }, 16);
+
+        function showLeaderboard() {
+            const list = document.getElementById('leaderboard-list');
+            list.innerHTML = '';
+            const scores = JSON.parse(localStorage.getItem('leaderboard')) || [];
+            
+            scores.forEach(score => {
+                const li = document.createElement('li');
+                li.textContent = score;
+                list.appendChild(li);
+            });
+            
+            document.getElementById('leaderboard-screen').classList.remove('hidden');
+        }
+
+        function goToMenu() {
+            document.getElementById('leaderboard-screen').classList.add('hidden');
+            document.getElementById('menu-screen').classList.remove('hidden');
+        }
+
+        gameArea.addEventListener('click', (e) => {
+            if (reloadTimeout) return;
+
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.left = e.clientX - 20 + 'px';
+            explosion.style.top = e.clientY - 20 + 'px';
+            gameArea.appendChild(explosion);
+            setTimeout(() => explosion.remove(), 300);
+
+            let hit = false;
+            document.querySelectorAll('.cow').forEach(cow => {
+                const rect = cow.getBoundingClientRect();
+                if (e.clientX > rect.left && e.clientX < rect.right &&
+                    e.clientY > rect.top && e.clientY < rect.bottom) {
+                    cow.remove();
+                    score += 10;
+                    hit = true;
+                    createCows();
+                }
+            });
+
+            if (!hit && lives > 0) {
+                lives--;
+                if (lives < 0) endGame();
+                updateHUD();
+            }
+
+            reloadTimeout = setTimeout(() => {
+                reloadTimeout = null;
+            }, reloadTime);
+        });
     </script>
 </body>
 </html>
