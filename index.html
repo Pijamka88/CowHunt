@@ -66,19 +66,19 @@
             align-items: center;
         }
 
-        #timer {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            font-size: 1.3em;
-        }
-
         .crosshair {
             position: fixed;
             width: 32px;
             height: 32px;
             pointer-events: none;
             background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23ffffff"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-12.5c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 7c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>');
+        }
+
+        #timer {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            font-size: 1.3em;
         }
 
         #reloadingStatus {
@@ -203,22 +203,26 @@
 
         function updateCrosshairPosition(x, y) {
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            
-            gameState.crosshair.x = (x - rect.left) * scaleX;
-            gameState.crosshair.y = (y - rect.top) * scaleY;
-            
-            document.getElementById('crosshair').style.transform = 
-                `translate(${x - 16}px, ${y - 16}px)`;
+            gameState.crosshair.x = (x - rect.left) * (canvas.width / rect.width);
+            gameState.crosshair.y = (y - rect.top) * (canvas.height / rect.height);
+            document.getElementById('crosshair').style.transform = `translate(${x - 16}px, ${y - 16}px)`;
         }
 
+        // Обработка ввода
         document.addEventListener('touchstart', e => {
             e.preventDefault();
             if(!isShooting) {
                 isShooting = true;
                 handleShoot();
                 updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
+                setTimeout(() => isShooting = false, 100);
+            }
+        });
+
+        document.addEventListener('mousedown', e => {
+            if(!isShooting) {
+                isShooting = true;
+                handleShoot();
                 setTimeout(() => isShooting = false, 100);
             }
         });
@@ -234,10 +238,8 @@
 
         function createCow() {
             const type = Math.random();
-            let cowType;
-            if(type < 0.6) cowType = COW_TYPES.BASIC;
-            else if(type < 0.9) cowType = COW_TYPES.SPEEDY;
-            else cowType = COW_TYPES.ZIGZAG;
+            let cowType = type < 0.6 ? COW_TYPES.BASIC : 
+                         type < 0.9 ? COW_TYPES.SPEEDY : COW_TYPES.ZIGZAG;
 
             return {
                 x: Math.random() < 0.5 ? -80 : canvas.width + 80,
@@ -257,22 +259,21 @@
             ctx.save();
             ctx.translate(cow.x + 30, cow.y + 20);
             
-            // Body
+            // Тело
             ctx.strokeStyle = '#8B4513';
             ctx.lineWidth = 3;
             ctx.strokeRect(-20, -15, 40, 30);
             
-            // Head
+            // Голова и рога
             ctx.beginPath();
             ctx.arc(25, -5, 12, 0, Math.PI * 2);
             ctx.stroke();
-            
-            // Eyes
-            ctx.fillStyle = '#000';
             ctx.beginPath();
-            ctx.arc(28, -8, 2, 0, Math.PI * 2);
-            ctx.arc(33, -8, 2, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.moveTo(30, -15);
+            ctx.lineTo(35, -25);
+            ctx.moveTo(30, -15);
+            ctx.lineTo(25, -25);
+            ctx.stroke();
             
             ctx.restore();
         }
@@ -284,7 +285,6 @@
             }
 
             gameState.targets = gameState.targets.filter(cow => {
-                cow.wingAngle += 0.1;
                 if(cow.type === COW_TYPES.ZIGZAG) {
                     cow.zigzagPhase += 0.15;
                     cow.y += Math.sin(cow.zigzagPhase) * 3;
@@ -299,23 +299,15 @@
                 p.life -= 0.03;
                 return p.life > 0;
             });
-
-            if(Date.now() - gameState.startTime > gameState.gameTime) {
-                endGame();
-            }
         }
 
         function drawGame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Draw background
-            ctx.fillStyle = '#1a1a1a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw cows
+            // Коровы
             gameState.targets.forEach(drawCow);
             
-            // Draw particles
+            // Розовые частицы
             ctx.fillStyle = '#ff69b4';
             gameState.particles.forEach(p => {
                 ctx.globalAlpha = p.life;
@@ -329,16 +321,14 @@
         function updateUI() {
             document.getElementById('score').textContent = gameState.score;
             document.getElementById('ammo').textContent = gameState.ammo;
-            
             const reloading = document.getElementById('reloadingStatus');
             reloading.style.display = gameState.reloading ? 'block' : 'none';
-            document.getElementById('crosshair').style.display = 
-                gameState.reloading ? 'none' : 'block';
+            document.getElementById('crosshair').style.display = gameState.reloading ? 'none' : 'block';
             
+            // Таймер
             const timeLeft = gameState.gameTime - (Date.now() - gameState.startTime);
             const seconds = Math.floor(timeLeft / 1000);
-            document.getElementById('timer').textContent = 
-                `00:${String(seconds).padStart(2, '0')}`;
+            document.getElementById('timer').textContent = `00:${String(seconds).padStart(2, '0')}`;
         }
 
         function handleShoot() {
@@ -385,33 +375,25 @@
 
         function endGame() {
             gameState.isPlaying = false;
-            
-            const minScore = Math.min(...highScores);
-            if(gameState.score > minScore || highScores.length < 5) {
-                highScores.push(gameState.score);
-                highScores = [...new Set(highScores)].sort((a,b) => b - a).slice(0,5);
-                localStorage.setItem('highScores', JSON.stringify(highScores));
-            }
-            
+            highScores.push(gameState.score);
+            highScores = [...new Set(highScores)].sort((a,b) => b - a).slice(0,5);
+            localStorage.setItem('highScores', JSON.stringify(highScores));
             showScreen('mainMenu');
         }
 
         function gameLoop() {
             if(!gameState.isPlaying) return;
             
+            if(Date.now() - gameState.startTime > gameState.gameTime) {
+                endGame();
+                return;
+            }
+            
             updateGameState();
             drawGame();
             updateUI();
             requestAnimationFrame(gameLoop);
         }
-
-        document.addEventListener('mousedown', e => {
-            if(!isShooting) {
-                isShooting = true;
-                handleShoot();
-                setTimeout(() => isShooting = false, 100);
-            }
-        });
 
         Telegram.WebApp.ready();
         Telegram.WebApp.expand();
