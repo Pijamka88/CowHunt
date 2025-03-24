@@ -47,11 +47,15 @@
             left: 0;
             width: 100%;
             height: 100%;
-            display: flex;
+            display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             background: var(--dark-beige);
+        }
+
+        .active-screen {
+            display: flex;
         }
 
         .title {
@@ -152,36 +156,36 @@
 </head>
 <body class="crt">
     <!-- Main Menu -->
-    <div id="mainMenu" class="screen">
+    <div id="mainMenu" class="screen active-screen">
         <h1 class="title">Space Bovines</h1>
-        <button class="menu-btn" onclick="showScreen('game')">Start Mission</button>
-        <button class="menu-btn" onclick="showScreen('howToPlay')">Flight Manual</button>
-        <button class="menu-btn" onclick="showScreen('highScores')">Command Log</button>
+        <button class="menu-btn" id="startBtn">Start Mission</button>
+        <button class="menu-btn" id="howToPlayBtn">Flight Manual</button>
+        <button class="menu-btn" id="highScoresBtn">Command Log</button>
     </div>
 
     <!-- How to Play -->
-    <div id="howToPlay" class="screen" style="display: none;">
+    <div id="howToPlayScreen" class="screen">
         <div class="modal">
             <h2>Flight Manual</h2>
             <p>• Tap to shoot (5 rounds)</p>
             <p>• Press R to reload</p>
             <p>• Destroy enemy bovines</p>
             <p>• Complete mission in 60s</p>
-            <button class="menu-btn" onclick="showScreen('mainMenu')">Back</button>
+            <button class="menu-btn" id="backFromHowTo">Back</button>
         </div>
     </div>
 
     <!-- High Scores -->
-    <div id="highScores" class="screen" style="display: none;">
+    <div id="highScoresScreen" class="screen">
         <div class="modal">
             <h2>Command Log</h2>
             <ol id="scoreList"></ol>
-            <button class="menu-btn" onclick="showScreen('mainMenu')">Back</button>
+            <button class="menu-btn" id="backFromScores">Back</button>
         </div>
     </div>
 
     <!-- Game Screen -->
-    <div id="game" class="screen" style="display: none;">
+    <div id="gameScreen" class="screen">
         <div id="topHud" class="hud">SCORE: <span id="score">0</span></div>
         <div id="timer">60</div>
         <canvas id="gameCanvas"></canvas>
@@ -199,13 +203,23 @@
         const ctx = canvas.getContext('2d');
         let gameState = {};
         let highScores = JSON.parse(localStorage.getItem('highScores')) || [];
-
+        
         // Screen management
         function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-            document.getElementById(screenId).style.display = 'flex');
-            if(screenId === 'game') initGame();
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+            document.getElementById(screenId).classList.add('active-screen');
+            if(screenId === 'gameScreen') initGame();
         }
+
+        // Button handlers
+        document.getElementById('startBtn').addEventListener('click', () => showScreen('gameScreen'));
+        document.getElementById('howToPlayBtn').addEventListener('click', () => showScreen('howToPlayScreen'));
+        document.getElementById('highScoresBtn').addEventListener('click', () => {
+            updateScoreList();
+            showScreen('highScoresScreen');
+        });
+        document.getElementById('backFromHowTo').addEventListener('click', () => showScreen('mainMenu'));
+        document.getElementById('backFromScores').addEventListener('click', () => showScreen('mainMenu'));
 
         // Game initialization
         function initGame() {
@@ -226,14 +240,19 @@
                 patterns: [
                     (t) => ({ x: Math.sin(t/500) * 100, y: Math.cos(t/300) * 50 }),
                     (t) => ({ x: Math.sin(t/200) * 150, y: Math.cos(t/400) * 80 }),
-                    () => ({ x: 0, y: 0 })
+                    (t) => ({ x: Math.sin(t/100) * 200, y: Math.cos(t/500) * 100 })
                 ]
             };
 
-            // Initialize hearts
+            // Initialize UI
+            document.getElementById('score').textContent = '0';
+            document.getElementById('hits').textContent = '0';
+            document.getElementById('miss').textContent = '0';
+            document.getElementById('ammo').textContent = '5';
             document.getElementById('hearts').innerHTML = 
                 Array(3).fill('<div class="heart"></div>').join('');
             updateHearts();
+            updateCrosshair();
 
             // Game loop
             function update() {
@@ -373,7 +392,7 @@
         function reload() {
             if(gameState.reloading) return;
             gameState.reloading = true;
-            document.getElementById('crosshair').textContent = 'RELOADING';
+            updateCrosshair();
             setTimeout(() => {
                 gameState.bullets = 5;
                 gameState.reloading = false;
@@ -400,7 +419,10 @@
             highScores.sort((a, b) => b.score - a.score);
             highScores = highScores.slice(0, 5);
             localStorage.setItem('highScores', JSON.stringify(highScores));
-            showScreen('highScores');
+            updateScoreList();
+        }
+
+        function updateScoreList() {
             document.getElementById('scoreList').innerHTML = 
                 highScores.map((s, i) => 
                     `<li>${i+1}. ${s.initials} - ${s.score}</li>`
