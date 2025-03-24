@@ -3,367 +3,329 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Space Cow Hunt</title>
+    <title>Cow Hunt</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
             overflow: hidden;
+            background: #2c3e50;
             touch-action: none;
-            font-family: 'Orbitron', sans-serif;
-            background: #000;
-            color: #fff;
+            font-family: 'Arial Black', sans-serif;
         }
 
         #gameCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
+            border: 3px solid #34495e;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
-        #mainMenu {
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #ecf0f1;
+            font-size: 24px;
+            text-shadow: 2px 2px 2px black;
+            padding: 10px;
+            background: rgba(0,0,0,0.7);
+            border-radius: 10px;
+        }
+
+        #menu {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
             background: rgba(0,0,0,0.9);
-            padding: 2rem;
-            border-radius: 15px;
-            border: 2px solid #6a00ff;
-            z-index: 2;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
         }
 
-        .menu-btn {
-            padding: 1rem 2rem;
-            margin: 0.5rem;
-            font-size: 1.2rem;
-            background: linear-gradient(45deg, #6a00ff, #a100f5);
+        .btn {
+            padding: 15px 30px;
+            font-size: 20px;
+            background: #27ae60;
             border: none;
             color: white;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
-            transition: transform 0.2s;
+            margin: 10px;
+            transition: all 0.3s;
         }
 
-        #hud {
+        .btn:hover {
+            background: #2ecc71;
+            transform: scale(1.1);
+        }
+
+        .crosshair {
             position: absolute;
-            top: 10px;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 1rem;
-            box-sizing: border-box;
-            z-index: 1;
+            width: 40px;
+            height: 40px;
+            pointer-events: none;
+            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyRpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNiAoTWFjaW50b3NoKSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDo4MjRGRTg0QzA3NjgxMUUzQkZGNDhENEJFQjM2OTcyRiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDo4MjRGRTg0RDA3NjgxMUUzQkZGNDhENEJFQjM2OTcyRiI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOjgyNEZFODRBMDc2ODExRTNCRkY0OEQ0QkVCMzY5NzJGIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjgyNEZFODRCMDc2ODExRTNCRkY0OEQ0QkVCMzY5NzJGIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+Y7ZvUAAAA2FJREFUeNrEl21IU1EYx8+9d1tGU0stP5ShlqJmKRSKRlZQIWVFH4JIjSLRKILoRZGiD1FEUfQiJX4JoqgPvVh9KIqKXqQPFmUvvqVpWq6Zb7O5Obfd7p7OuXShaNvdHBf+cLbnOc/5n+c8z3PO1hFFEXZyaWAHl1arDWiOIAgBzf8nAUVRVJ1MJrOqQCgUwq4J0H8J0HU6XUBJqJqA2+0O2AFVAbPZHLADqgImkylgB1QFIiIiAnZAVSA8PDxgB1QFdDpdwA6oCuj1+oAdUBXQarUBO6AqEBoaGrADqgIajSZgB1QFDAbDjhxwuVxgs9nA4XCA0+kEr9cLPM8D+7AsC2FhYWA0GsFkMoHZbA5OgGVZqKurg+7ubhgaGoLx8XGYm5uD5eVlWFtbA0EQ5FqtVgvR0dEQFxcHSUlJkJ6eDnl5eVBQUAA6nW57Aaurq1BfXw+tra3Q19cHExMT4PP5/ntxWq0WkpOTISsrC0pKSqCyshIMBsPWAouLi1BbWwtNTU3Q09MDs7OzO06w2NhYyMnJgerqaqiqqgKj0bi5wNzcHNy6dQsePHgAnZ2dsLS09J8Jtry8DB0dHXDjxg24c+cOTE1NbSywsrICd+/ehfv370N7ezvY7fZtE4znebBarfK6+vp6mJ6e/lvA5/PB48eP4e7du9DW1gY2m21HCcZxHPT398OTJ0+gpqYGJiYm/hRobm6GmzdvQktLCywsLOwqwRiGgaGhIXj69Clcv34dRkdH/x/F0tISXL16FZ4/fw5jY2O7TjAqk5OT8OzZM7h8+TJMTk6CBl+Uq1evQlNTE4yMjOxJglGZn5+HxsZGuHTpEoyPj4OmsbER7t27B11dXXuWYFTsdjs0NDTAhQsXYGZmBjQ4OeCkMjQ0tKcJRmV2dhaePn0K58+fB01fXx+cO3cO+vv79zzBqExNTcHFixflHNDg5ICTCk4u+yFABScXnFw0OMHgpIIlcz8EqODkgpOLBicYnFRwctmPAJX/JxecXHBm3I8AFZxccHLBSQUnF5xZ9yNABScXnFw0OMHgpLKwsLAvArid4uSiwQkGJxWcXPZDgApOLji54My6HwEqOLng5KLBCQYnlWAH6L8E6L8E6L8E6L8E6L8Egs0fAgwAprFw0Wg4S2kAAAAASUVORK5CYII=') center/contain no-repeat;
         }
 
-        #bottomHud {
+        #reloadBtn {
             position: absolute;
-            bottom: 10px;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 1rem;
-            box-sizing: border-box;
+            bottom: 20px;
+            right: 20px;
+            background: #e67e22;
         }
 
-        .hearts {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .heart {
-            color: #ff3366;
-            font-size: 1.5rem;
-        }
-
-        #reloadingText {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #ff0000;
-            font-size: 2rem;
-            text-shadow: 0 0 10px #ff0000;
-            display: none;
-            z-index: 3;
-        }
-
-        #timer {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 1.2rem;
-            color: #00ff9d;
-        }
-
-        #leaderboard {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.9);
-            padding: 2rem;
-            border-radius: 15px;
-            border: 2px solid #6a00ff;
-            display: none;
-            z-index: 3;
+        #reloadBtn.cooldown {
+            background: #95a5a6;
         }
     </style>
 </head>
 <body>
-    <div id="mainMenu">
-        <h1 style="color: #6a00ff; margin-bottom: 2rem;">SPACE COW HUNT</h1>
-        <button class="menu-btn" id="startBtn">Start Game</button>
-        <button class="menu-btn" id="howToBtn">How to Play</button>
-        <button class="menu-btn" id="leaderboardBtn">High Scores</button>
+    <div id="menu">
+        <h1 style="color: #ecf0f1; margin-bottom: 40px;">COW HUNT!</h1>
+        <button class="btn" id="startBtn">Start Game</button>
+        <div style="color: #bdc3c7; margin-top: 20px;">Ammo: <span id="menuAmmo">10</span></div>
     </div>
 
-    <div id="hud">
-        <div>Score: <span id="score">0</span></div>
-        <div id="timer">60s</div>
-        <div class="hearts" id="lives"></div>
-    </div>
-
-    <div id="bottomHud">
-        <div>Ammo: <span id="ammo">5</span></div>
-        <div>Hits: <span id="hits">0</span></div>
-        <div>Misses: <span id="misses">0</span></div>
-    </div>
-
-    <div id="reloadingText">RELOADING...</div>
-    <div id="leaderboard">
-        <h2>TOP 5 COWBOYS</h2>
-        <ol id="highScores"></ol>
-        <button class="menu-btn" onclick="closeLeaderboard()">Close</button>
-    </div>
-
+    <div id="hud">Score: <span id="score">0</span> | Ammo: <span id="ammo">10</span></div>
     <canvas id="gameCanvas"></canvas>
+    <button class="btn" id="reloadBtn">Reload (R)</button>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        let gameState = {};
-        let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+        const startBtn = document.getElementById('startBtn');
+        const reloadBtn = document.getElementById('reloadBtn');
+        const scoreElement = document.getElementById('score');
+        const ammoElement = document.getElementById('ammo');
+        const menuAmmo = document.getElementById('menuAmmo');
         
-        // Инициализация игры
-        function initGame() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            
-            gameState = {
-                cows: [],
-                score: 0,
-                ammo: 5,
-                lives: 3,
-                hits: 0,
-                misses: 0,
-                isPlaying: false,
-                reloading: false,
-                particles: [],
-                crosshair: { x: 0, y: 0 },
-                lastShot: 0,
-                timeLeft: 60
+        // Game state
+        let gameState = {
+            targets: [],
+            score: 0,
+            ammo: 10,
+            isPlaying: false,
+            crosshair: { x: 0, y: 0 },
+            lastSpawn: 0,
+            gameTime: 45000,
+            effects: [],
+            reloadCooldown: false
+        };
+
+        // Cow sprite
+        const cowSprite = new Image();
+        cowSprite.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyRpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYiBQaG90b3Nob3AgQ1M2IChNYWNpbnRvc2gpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjFERjc3MEUxQkE3NjExRTNCN0M5Q0M0ODc5RkQ3NDhCIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOjFERjc3MEUyQkE3NjExRTNCN0M5Q0M0ODc5RkQ3NDhCIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6MURGNzcwREZCQTc2MTFFM0I3QzlDQzQ4NzlGRDc0OEIiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6MURGNzcwRTA0N0VGMTFFM0I3QzlDQzQ4NzlGRDc0OEIiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz5HPzi5AAACl0lEQVR42sSXvU8UQRTHZ3b3bg+OOzg5QY0hMRqMIRqjJv4BxpgYtY0a/4BYaGNjY2NCNMZ/QA0W2hCNsTAxRk2M0RATK4kQMBg5BO7Y293Z8X1n9lhOPNjdY5c7vkl2d2b3ve+bH+/NzGqtNcW5NMX8agHw+XyH9k3TJKUUaZrm9l3X3VfA8zxqa2ujvr4+ymQyNDs7S0tLS1QoFPYXYIxROp2mvr5+6u3tpXw+T8+ePaO1tTUqlUr7C3DOqaOjgzo7O6m5uZmEEFQul8myrH8T4JxTLBYjIQSVy2UqFovkOM7+Alprsm2bbNumQqFApVKJlFJ1CbiuS6urq7SwsEDLy8u0ublJjuPUL7C+vk4TExM0PDxMk5OTtLKyQrZt1y+Qy+Uom83S8PAwjY2N0dzcHG1tbdUvYFkWbWxs0NzcA5qenkYB9Wl7e7t+AcYYBQIBikajFA6H0R9YfQKBQIDC4TBFIhH0B1afQDwexwzEYjH0B1afQDAYxAyEQiH0B1afgGmaFAwGMRt+vx/9gdUn4PP5MBvRaBT9gdUnIKXEDGSzWfQHVp8A5xzT39rain7BYOoTwBpgDTAbrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA38FWAAk7+D/6wEw0AAAAAASUVORK5CYII=';
+
+        // Effects
+        const effects = {
+            shoot: [],
+            hit: []
+        };
+
+        // Canvas setup
+        function resizeCanvas() {
+            canvas.width = Math.min(window.innerWidth, 800);
+            canvas.height = Math.min(window.innerHeight, 600);
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Crosshair
+        const crosshair = document.createElement('div');
+        crosshair.className = 'crosshair';
+        document.body.appendChild(crosshair);
+
+        // Input handling
+        function updateCrosshair(x, y) {
+            gameState.crosshair.x = x;
+            gameState.crosshair.y = y;
+            crosshair.style.transform = `translate(${x - 20}px, ${y - 20}px)`;
+        }
+
+        canvas.addEventListener('mousemove', e => updateCrosshair(e.clientX, e.clientY));
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            updateCrosshair(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+
+        // Game functions
+        function createTarget() {
+            return {
+                x: Math.random() < 0.5 ? -100 : canvas.width + 100,
+                y: Math.random() * (canvas.height - 100),
+                speed: (Math.random() * 4) + 2,
+                direction: Math.random() < 0.5 ? 1 : -1,
+                width: 64,
+                height: 64,
+                frame: 0,
+                active: true
             };
-            
-            updateLivesDisplay();
-            startGameTimer();
         }
 
-        // Обновление отображения жизней
-        function updateLivesDisplay() {
-            const livesContainer = document.getElementById('lives');
-            livesContainer.innerHTML = Array(gameState.lives).fill('<span class="heart">❤</span>').join('');
+        function createEffect(x, y, type) {
+            effects[type].push({
+                x,
+                y,
+                life: 1,
+                particles: Array.from({ length: 10 }, () => ({
+                    x,
+                    y,
+                    dx: (Math.random() - 0.5) * 10,
+                    dy: (Math.random() - 0.5) * 10,
+                    size: Math.random() * 3 + 1
+                }))
+            });
         }
 
-        // Таймер игры
-        function startGameTimer() {
-            const timerInterval = setInterval(() => {
-                gameState.timeLeft--;
-                document.getElementById('timer').textContent = `${gameState.timeLeft}s`;
-                
-                if(gameState.timeLeft <= 0) {
-                    clearInterval(timerInterval);
-                    endGame();
-                }
-            }, 1000);
+        function checkCollision(target) {
+            const dx = gameState.crosshair.x - (target.x + target.width/2);
+            const dy = gameState.crosshair.y - (target.y + target.height/2);
+            return Math.sqrt(dx*dx + dy*dy) < 40;
         }
 
-        // Создание коров разных типов
-        class SpaceCow {
-            constructor(type) {
-                this.types = {
-                    basic: { speed: 2, color: '#ff9966', score: 100 },
-                    speedy: { speed: 4, color: '#ff4444', score: 200 },
-                    tank: { speed: 1, color: '#8888ff', score: 300 }
-                };
-                
-                this.type = type || Object.keys(this.types)[Math.floor(Math.random() * 3)];
-                this.config = this.types[this.type];
-                
-                this.x = Math.random() < 0.5 ? -100 : canvas.width + 100;
-                this.y = Math.random() * canvas.height * 0.8;
-                this.angle = 0;
-                this.health = this.type === 'tank' ? 2 : 1;
-                this.active = true;
+        function gameLoop(timestamp) {
+            if (!gameState.isPlaying) return;
+
+            // Spawn targets
+            if (timestamp - gameState.lastSpawn > 800) {
+                gameState.targets.push(createTarget());
+                gameState.lastSpawn = timestamp;
             }
 
-            update() {
-                const wave = Math.sin(this.angle) * 50;
-                this.x += this.config.speed * (this.x < canvas.width/2 ? 1 : -1);
-                this.y += wave * 0.1;
-                this.angle += 0.05;
-            }
+            // Update targets
+            gameState.targets = gameState.targets.filter(target => {
+                target.x += target.speed * target.direction;
+                target.frame = (target.frame + 0.2) % 4;
+                return target.active && 
+                       target.x > -150 && 
+                       target.x < canvas.width + 150;
+            });
 
-            draw() {
-                ctx.fillStyle = this.config.color;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, 20, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Крылья
-                ctx.strokeStyle = this.config.color;
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, 30, Math.PI * 0.2, Math.PI * 0.8);
-                ctx.stroke();
-            }
-        }
+            // Update effects
+            effects.shoot = effects.shoot.filter(e => {
+                e.life -= 0.1;
+                return e.life > 0;
+            });
 
-        // Основной игровой цикл
-        function gameLoop() {
-            if(!gameState.isPlaying) return;
+            effects.hit = effects.hit.filter(e => {
+                e.life -= 0.05;
+                e.particles.forEach(p => {
+                    p.x += p.dx;
+                    p.y += p.dy;
+                    p.dy += 0.5;
+                });
+                return e.life > 0;
+            });
 
-            ctx.fillStyle = 'rgba(25, 0, 51, 0.2)';
+            // Update HUD
+            scoreElement.textContent = gameState.score;
+            ammoElement.textContent = gameState.ammo;
+            menuAmmo.textContent = gameState.ammo;
+
+            // Clear canvas
+            ctx.fillStyle = '#87CEEB';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Создание звёздного фона
-            if(Math.random() < 0.05) {
-                ctx.fillStyle = `hsl(${Math.random()*360}, 100%, 80%)`;
-                ctx.beginPath();
-                ctx.arc(
-                    Math.random()*canvas.width,
-                    Math.random()*canvas.height,
-                    Math.random()*2,
-                    0, Math.PI*2
+
+            // Draw ground
+            ctx.fillStyle = '#558B2F';
+            ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+
+            // Draw targets
+            gameState.targets.forEach(target => {
+                const frameY = Math.floor(target.frame) * 64;
+                ctx.drawImage(
+                    cowSprite,
+                    0, frameY, 64, 64,
+                    target.x, target.y, 64, 64
                 );
+            });
+
+            // Draw effects
+            effects.shoot.forEach(e => {
+                ctx.fillStyle = `rgba(255, 200, 0, ${e.life})`;
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, 10 * e.life, 0, Math.PI * 2);
                 ctx.fill();
-            }
+            });
 
-            // Создание новых коров
-            if(Math.random() < 0.02) {
-                gameState.cows.push(new SpaceCow());
-            }
-
-            // Обновление коров
-            gameState.cows = gameState.cows.filter(cow => {
-                cow.update();
-                cow.draw();
-                return cow.active && cow.x > -150 && cow.x < canvas.width + 150;
+            effects.hit.forEach(e => {
+                ctx.fillStyle = `rgba(255, 0, 0, ${e.life})`;
+                e.particles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
             });
 
             requestAnimationFrame(gameLoop);
         }
 
-        // Обработка выстрела
-        function handleShoot(e) {
-            if(!gameState.isPlaying || gameState.reloading || Date.now() - gameState.lastShot < 200) return;
-
-            gameState.lastShot = Date.now();
-            gameState.ammo--;
+        // Shooting logic
+        function handleShoot() {
+            if (!gameState.isPlaying || gameState.ammo <= 0) return;
             
-            const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || e.touches[0].clientX) - rect.left;
-            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            gameState.ammo--;
+            createEffect(gameState.crosshair.x, gameState.crosshair.y, 'shoot');
 
-            let hit = false;
-            gameState.cows.forEach(cow => {
-                const dx = x - cow.x;
-                const dy = y - cow.y;
-                if(Math.sqrt(dx*dx + dy*dy) < 30) {
-                    cow.health--;
-                    if(cow.health <= 0) {
-                        cow.active = false;
-                        gameState.score += cow.config.score;
-                        gameState.hits++;
-                    }
-                    hit = true;
+            gameState.targets.forEach(target => {
+                if (checkCollision(target)) {
+                    target.active = false;
+                    gameState.score += 100;
+                    createEffect(target.x + 32, target.y + 32, 'hit');
                 }
             });
+        }
 
-            if(!hit) gameState.misses++;
-            if(hit) new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU').play();
-
-            updateHud();
+        // Reload logic
+        function reload() {
+            if (gameState.reloadCooldown || gameState.ammo >= 10) return;
             
-            if(gameState.ammo <= 0) {
-                gameState.reloading = true;
-                document.getElementById('reloadingText').style.display = 'block';
-                setTimeout(() => {
-                    gameState.ammo = 5;
-                    gameState.reloading = false;
-                    document.getElementById('reloadingText').style.display = 'none';
-                }, 2000);
-            }
+            gameState.ammo = 10;
+            gameState.reloadCooldown = true;
+            reloadBtn.classList.add('cooldown');
+            setTimeout(() => {
+                gameState.reloadCooldown = false;
+                reloadBtn.classList.remove('cooldown');
+            }, 2000);
         }
 
-        // Обновление интерфейса
-        function updateHud() {
-            document.getElementById('score').textContent = gameState.score;
-            document.getElementById('ammo').textContent = gameState.ammo;
-            document.getElementById('hits').textContent = gameState.hits;
-            document.getElementById('misses').textContent = gameState.misses;
-        }
-
-        // Завершение игры
-        function endGame() {
-            gameState.isPlaying = false;
-            document.getElementById('mainMenu').style.display = 'block';
-            
-            if(leaderboard.length < 5 || gameState.score > leaderboard[4].score) {
-                const name = prompt('New high score! Enter your name:');
-                if(name) {
-                    leaderboard.push({ name, score: gameState.score });
-                    leaderboard.sort((a,b) => b.score - a.score);
-                    leaderboard = leaderboard.slice(0,5);
-                    localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
-                }
-            }
-        }
-
-        // Лидерборд
-        function showLeaderboard() {
-            const list = document.getElementById('highScores');
-            list.innerHTML = leaderboard
-                .map((entry, i) => `<li>${i+1}. ${entry.name} - ${entry.score}</li>`)
-                .join('');
-            document.getElementById('leaderboard').style.display = 'block';
-        }
-
-        function closeLeaderboard() {
-            document.getElementById('leaderboard').style.display = 'none';
-        }
-
-        // Инициализация событий
         canvas.addEventListener('mousedown', handleShoot);
         canvas.addEventListener('touchstart', handleShoot);
+        document.addEventListener('keydown', e => e.key === 'r' && reload());
+        reloadBtn.addEventListener('click', reload);
 
-        document.getElementById('startBtn').addEventListener('click', () => {
-            document.getElementById('mainMenu').style.display = 'none';
-            initGame();
-            gameState.isPlaying = true;
-            gameLoop();
+        // Game control
+        startBtn.addEventListener('click', () => {
+            gameState = {
+                targets: [],
+                score: 0,
+                ammo: 10,
+                isPlaying: true,
+                crosshair: { x: 0, y: 0 },
+                lastSpawn: 0,
+                gameTime: 45000,
+                effects: [],
+                reloadCooldown: false
+            };
+            
+            document.getElementById('menu').style.display = 'none';
+            crosshair.style.display = 'block';
+            reloadBtn.style.display = 'block';
+            
+            setTimeout(() => {
+                gameState.isPlaying = false;
+                crosshair.style.display = 'none';
+                reloadBtn.style.display = 'none';
+                document.getElementById('menu').style.display = 'block';
+                alert(`Game Over! Score: ${gameState.score}`);
+            }, gameState.gameTime);
+
+            requestAnimationFrame(gameLoop);
         });
 
-        document.getElementById('howToBtn').addEventListener('click', () => {
-            alert('How to Play:\n- Shoot space cows before time runs out\n- 5 shots before reload\n- 3 lives\n- Different cow types:\n  Red: Fast (200pts)\n  Blue: Tank (300pts)\n  Orange: Basic (100pts)');
-        });
-
-        document.getElementById('leaderboardBtn').addEventListener('click', showLeaderboard);
-
-        // Инициализация Telegram Web App
+        // Init Telegram Web App
         Telegram.WebApp.ready();
         Telegram.WebApp.expand();
     </script>
