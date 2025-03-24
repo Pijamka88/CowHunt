@@ -72,6 +72,7 @@
             left: 10px;
             display: flex;
             gap: 20px;
+            align-items: center;
         }
 
         #bottomHud {
@@ -108,24 +109,21 @@
             background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="red"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>');
         }
 
-        .stars {
+        #reloadingText {
             position: fixed;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-
-        @keyframes twinkle {
-            0% { opacity: 0.2; }
-            50% { opacity: 1; }
-            100% { opacity: 0.2; }
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff00ff;
+            font-size: 2em;
+            text-shadow: 0 0 10px #ff00ff;
+            display: none;
         }
     </style>
 </head>
 <body>
     <!-- Main Menu -->
     <div id="mainMenu" class="screen menu">
-        <div class="stars"></div>
         <h1 style="color: #a100f6; text-shadow: 0 0 20px #6a00ff;">COSMIC COW HUNT</h1>
         <button class="btn" onclick="startGame()">Start Mission</button>
         <button class="btn" onclick="showScreen('howToPlay')">How to Play</button>
@@ -145,6 +143,7 @@
         </div>
         <div id="timer">01:00</div>
         <div class="crosshair" id="crosshair"></div>
+        <div id="reloadingText">RELOADING...</div>
     </div>
 
     <!-- Leaderboard -->
@@ -159,9 +158,9 @@
         <div style="max-width: 300px; text-align: left; padding: 20px;">
             <h2>How to Play</h2>
             <p>🎯 Shoot cosmic cows!</p>
+            <p>❤️ 3 Lives</p>
             <p>🔫 5 shots before reload</p>
-            <p>⏱ 1 minute mission</p>
-            <p>❤️ 3 lives</p>
+            <p>⏱ 60 seconds mission</p>
             <button class="btn" onclick="showScreen('mainMenu')">Back</button>
         </div>
     </div>
@@ -171,7 +170,6 @@
         const ctx = canvas.getContext('2d');
         let gameState = null;
         let highScores = JSON.parse(localStorage.getItem('highScores')) || [];
-        let lastShotTime = 0;
 
         // Game Constants
         const COW_TYPES = {
@@ -181,25 +179,12 @@
         };
 
         // Initialize
-        createStars();
         showScreen('mainMenu');
+        initHearts();
 
-        function createStars() {
-            const stars = document.querySelector('.stars');
-            for(let i = 0; i < 100; i++) {
-                const star = document.createElement('div');
-                star.style.cssText = `
-                    position: absolute;
-                    width: ${Math.random() * 3}px;
-                    height: ${Math.random() * 3}px;
-                    background: white;
-                    top: ${Math.random() * 100}%;
-                    left: ${Math.random() * 100}%;
-                    animation: twinkle ${2 + Math.random() * 3}s infinite;
-                    border-radius: 50%;
-                `;
-                stars.appendChild(star);
-            }
+        function initHearts() {
+            const hearts = document.getElementById('hearts');
+            hearts.innerHTML = Array(3).fill('<div class="heart"></div>').join('');
         }
 
         function showScreen(screenId) {
@@ -243,11 +228,6 @@
             updateHearts();
         }
 
-        function updateHearts() {
-            const hearts = document.getElementById('hearts');
-            hearts.innerHTML = Array(gameState.lives).fill('<div class="heart"></div>').join('');
-        }
-
         // Canvas setup
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -256,6 +236,18 @@
         window.addEventListener('resize', resizeCanvas);
 
         // Input handling
+        let lastTap = 0;
+        function handleInput(x, y) {
+            const now = Date.now();
+            if(now - lastTap < 100) return;
+            lastTap = now;
+            
+            if(gameState.isPlaying && !gameState.reloading) {
+                handleShoot();
+            }
+            updateCrosshairPosition(x, y);
+        }
+
         function updateCrosshairPosition(x, y) {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
@@ -270,17 +262,12 @@
 
         document.addEventListener('touchstart', e => {
             e.preventDefault();
-            if(Date.now() - lastShotTime > 200) {
-                handleShoot();
-                lastShotTime = Date.now();
-            }
-            updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: false });
+            handleInput(e.touches[0].clientX, e.touches[0].clientY);
+        });
 
-        document.addEventListener('touchmove', e => {
-            e.preventDefault();
-            updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: false });
+        document.addEventListener('mousedown', e => {
+            handleInput(e.clientX, e.clientY);
+        });
 
         document.addEventListener('mousemove', e => {
             updateCrosshairPosition(e.clientX, e.clientY);
@@ -318,7 +305,7 @@
             ctx.strokeRect(-25, -15, 50, 30);
             
             // Head (filled circle)
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = cow.type.color;
             ctx.beginPath();
             ctx.arc(20, 0, 12, 0, Math.PI * 2);
             ctx.fill();
@@ -326,19 +313,17 @@
             // Eyes
             ctx.fillStyle = '#000';
             ctx.beginPath();
-            ctx.arc(25, -3, 3, 0, Math.PI * 2);
-            ctx.arc(30, -3, 3, 0, Math.PI * 2);
+            ctx.arc(25, -5, 3, 0, Math.PI * 2);
+            ctx.arc(30, -5, 3, 0, Math.PI * 2);
             ctx.fill();
             
             // Wings (larger)
             ctx.strokeStyle = 'rgba(255,255,255,0.8)';
             ctx.lineWidth = 4;
-            const wingY = Math.sin(cow.wingAngle) * 8;
+            const wingY = Math.sin(cow.wingAngle) * 5;
             ctx.beginPath();
-            ctx.moveTo(-15, wingY);
-            ctx.lineTo(-35, wingY + 15);
-            ctx.moveTo(15, wingY);
-            ctx.lineTo(35, wingY + 15);
+            ctx.moveTo(-20, wingY);
+            ctx.lineTo(-40, wingY + 15);
             ctx.stroke();
             
             ctx.restore();
@@ -405,6 +390,17 @@
             document.getElementById('ammo').textContent = gameState.ammo;
             document.getElementById('hits').textContent = gameState.hits;
             document.getElementById('misses').textContent = gameState.misses;
+            
+            // Update crosshair visibility
+            const reloading = gameState.reloading;
+            document.getElementById('crosshair').style.display = reloading ? 'none' : 'block';
+            document.getElementById('reloadingText').style.display = reloading ? 'block' : 'none';
+        }
+
+        function updateHearts() {
+            const hearts = document.querySelectorAll('.heart');
+            hearts.forEach((h, i) => 
+                h.style.opacity = i < gameState.lives ? 1 : 0.3);
         }
 
         function updateTimer() {
@@ -437,7 +433,7 @@
 
             if(!hit) {
                 gameState.misses++;
-                if(gameState.misses % 3 === 0) {
+                if(gameState.misses % 5 === 0) {
                     gameState.lives = Math.max(0, gameState.lives - 1);
                     updateHearts();
                     if(gameState.lives === 0) endGame();
@@ -454,7 +450,7 @@
         }
 
         function createParticles(x, y) {
-            for(let i = 0; i < 15; i++) {
+            for(let i = 0; i < 10; i++) {
                 gameState.particles.push({
                     x: x,
                     y: y,
@@ -482,9 +478,6 @@
             updateTimer();
             requestAnimationFrame(gameLoop);
         }
-
-        // Event listeners
-        document.addEventListener('mousedown', handleShoot);
 
         // Telegram integration
         Telegram.WebApp.ready();
