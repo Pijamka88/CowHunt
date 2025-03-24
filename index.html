@@ -2,277 +2,447 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Cow Defense</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stellar Cattle</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+        :root {
+            --primary: #D4B996;
+            --secondary: #3A2E29;
+            --accent: #8C704F;
+            --bg: #1E1915;
         }
 
         body {
-            background: #000;
-            color: #fff;
-            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
             overflow: hidden;
+            background: var(--bg);
+            touch-action: none;
+            font-family: 'Courier New', monospace;
+            color: var(--primary);
         }
 
         .screen {
-            position: fixed;
+            position: absolute;
             width: 100%;
             height: 100%;
             display: none;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: rgba(0, 0, 0, 0.9);
+            background: radial-gradient(circle at center, var(--bg) 0%, #181310 100%);
         }
 
-        .screen.active {
+        #mainMenu {
             display: flex;
         }
 
-        .menu {
-            text-align: center;
+        .menu-title {
+            font-size: 2.8em;
+            margin: 30px 0;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            background: linear-gradient(to right, var(--primary), #B0A18E);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 15px rgba(212,185,150,0.3);
         }
 
-        .title {
-            font-size: 3em;
-            margin-bottom: 2rem;
-            color: #0ff;
-            text-shadow: 0 0 10px #0ff;
-        }
-
-        .btn {
-            padding: 1rem 2rem;
-            margin: 1rem;
-            font-size: 1.2em;
-            background: #002;
-            border: 2px solid #0ff;
-            color: #0ff;
-            border-radius: 5px;
+        .menu-btn {
+            padding: 15px 40px;
+            margin: 15px;
+            font-size: 1.4em;
+            background: transparent;
+            border: 2px solid var(--accent);
+            color: var(--primary);
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
         }
 
-        .btn:hover {
-            background: #005;
-            box-shadow: 0 0 15px #0ff;
+        .menu-btn::before {
+            content: '>';
+            position: absolute;
+            left: -20px;
+            transition: all 0.3s;
+            opacity: 0;
         }
 
-        #gameCanvas {
-            border: 2px solid #0ff;
-            margin: 1rem;
+        .menu-btn:hover {
+            background: rgba(140,112,79,0.2);
+            padding-left: 50px;
+            border-color: var(--primary);
+        }
+
+        .menu-btn:hover::before {
+            left: 10px;
+            opacity: 1;
+        }
+
+        #gameScreen canvas {
+            border: 2px solid var(--accent);
+            box-shadow: 0 0 30px rgba(140,112,79,0.2);
         }
 
         .hud {
-            position: fixed;
-            padding: 1rem;
-            background: rgba(0, 0, 50, 0.8);
-            border: 1px solid #0ff;
-            border-radius: 5px;
+            position: absolute;
+            width: 100%;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            background: linear-gradient(to bottom, rgba(30,25,21,0.9), transparent);
         }
 
         #topHud {
-            top: 1rem;
-            left: 1rem;
+            top: 0;
+            font-size: 1.2em;
         }
 
         #bottomHud {
-            bottom: 1rem;
-            left: 1rem;
+            bottom: 0;
+            justify-content: space-around;
+            background: linear-gradient(to top, rgba(30,25,21,0.9), transparent);
+        }
+
+        .hearts {
+            display: flex;
+            gap: 8px;
+        }
+
+        .heart {
+            width: 28px;
+            height: 28px;
+            background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="%23D4B996" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>') center/cover;
+            opacity: 0.8;
         }
 
         .crosshair {
-            position: fixed;
+            position: absolute;
             width: 40px;
             height: 40px;
             pointer-events: none;
-            background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" stroke="%2300ffff" stroke-width="2" fill="none"/></svg>');
+            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyRpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYiBQaG90b3Nob3AgQ1M2IChNYWNpbnRvc2gpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjFERjc3MEUxQkE3NjExRTNCN0M5Q0M0ODc5RkQ3NDhCIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOjFERjc3MEUyQkE3NjExRTNCN0M5Q0M0ODc5RkQ3NDhCIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6MURGNzcwREZCQTc2MTFFM0I3QzlDQzQ4NzlGRDc0OEIiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6MURGNzcwRTA0N0VGMTFFM0I3QzlDQzQ4NzlGRDc0OEIiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz5HPzi5AAACl0lEQVR42sSXvU8UQRTHZ3b3bg+OOzg5QY0hMRqMIRqjJv4BxpgYtY0a/4BYaGNjY2NCNMZ/QA0W2hCNsTAxRk2M0RATK4kQMBg5BO7Y293Z8X1n9lhOPNjdY5c7vkl2d2b3ve+bH+/NzGqtNcW5NMX8agHw+XyH9k3TJKUUaZrm9l3X3VfA8zxqa2ujvr4+ymQyNDs7S0tLS1QoFPYXYIxROp2mvr5+6u3tpXw+T8+ePaO1tTUqlUr7C3DOqaOjgzo7O6m5uZmEEFQul8myrH8T4JxTLBYjIQSVy2UqFovkOM7+Alprsm2bbNumQqFApVKJlFJ1CbiuS6urq7SwsEDLy8u0ublJjuPUL7C+vk4TExM0PDxMk5OTtLKyQrZt1y+Qy+Uom83S8PAwjY2N0dzcHG1tbdUvYFkWbWxs0NzcA5qensYB9Wl7e7t+AcYYBQIBikajFA6H0R9YfQKBQIDC4TBFIhH0B1afQDwexwzEYjH0B1afgGmaFAwGMRt+vx/9gdUn4PP5MBvRaBT9gdUnIKXEDGSzWfQHVp8A5xzT39raintBYOoTwBpgDTAbrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA2wBlgDrAHWAGuANcAaYA3sugD/AAMA3r6D/6wEw0AAAAAASUVORK5CYII=') center/contain no-repeat;
+            opacity: 0.9;
+        }
+
+        .reloading {
+            background: none !important;
+            color: var(--primary) !important;
+            font-family: monospace !important;
+            font-size: 1.4em !important;
+            letter-spacing: 2px;
+        }
+
+        #leaderboard {
+            width: 80%;
+            max-width: 400px;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 12px;
+            padding: 12px;
+            background: rgba(212,185,150,0.1);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+        }
+
+        .info-screen {
+            text-align: center;
+            padding: 20px;
+            max-width: 500px;
+            line-height: 1.6;
+        }
+
+        .scanlines {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0,0,0,0.1) 0px,
+                rgba(0,0,0,0.1) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 999;
         }
     </style>
 </head>
 <body>
+    <div class="scanlines"></div>
+    
     <!-- Main Menu -->
-    <div class="screen active" id="mainMenu">
-        <div class="menu">
-            <h1 class="title">SPACE COW DEFENSE</h1>
-            <button class="btn" onclick="showScreen('gameScreen')">START</button>
-            <button class="btn" onclick="showScreen('howToPlay')">HOW TO PLAY</button>
-            <button class="btn" onclick="showScreen('leaderboard')">LEADERBOARD</button>
-        </div>
+    <div id="mainMenu" class="screen">
+        <h1 class="menu-title">Stellar Cattle</h1>
+        <button class="menu-btn" onclick="showScreen('gameScreen')">ENGAGE</button>
+        <button class="menu-btn" onclick="showScreen('howToPlay')">BRIEFING</button>
+        <button class="menu-btn" onclick="showScreen('leaderboard')">LOG</button>
     </div>
 
     <!-- How To Play -->
-    <div class="screen" id="howToPlay">
-        <div class="menu">
-            <h2>HOW TO PLAY</h2>
-            <p>Shoot space cows before they escape!</p>
-            <p>Ammo: 5 shots before reload</p>
-            <p>Time limit: 60 seconds</p>
-            <button class="btn" onclick="showScreen('mainMenu')">BACK</button>
+    <div id="howToPlay" class="screen">
+        <h1 class="menu-title">Directive</h1>
+        <div class="info-screen">
+            <p>> TERRAFORMING PROTOCOL ACTIVATED</p>
+            <p>> ELIMINATE BIOHAZARD SPECIMENS</p>
+            <p>> AMMO CAPACITY: 5 ROUNDS</p>
+            <p>> RELOAD REQUIRED WHEN EMPTY</p>
+            <p>> MISSION DURATION: 60 SECONDS</p>
+            <p>> HULL INTEGRITY: 3 LAYERS</p>
         </div>
+        <button class="menu-btn" onclick="showScreen('mainMenu')">RETURN</button>
     </div>
 
     <!-- Leaderboard -->
-    <div class="screen" id="leaderboard">
-        <div class="menu">
-            <h2>TOP SCORES</h2>
-            <div id="scores"></div>
-            <button class="btn" onclick="showScreen('mainMenu')">BACK</button>
-        </div>
+    <div id="leaderboard" class="screen">
+        <h1 class="menu-title">Mission Log</h1>
+        <div id="scoresList"></div>
+        <button class="menu-btn" onclick="showScreen('mainMenu')">RETURN</button>
     </div>
 
     <!-- Game Screen -->
-    <div class="screen" id="gameScreen">
+    <div id="gameScreen" class="screen">
         <div class="hud" id="topHud">
-            Score: <span id="score">0</span> | 
-            Time: <span id="timer">60</span>
+            <div>CREDITS: <span id="score">0</span></div>
+            <div>T-MINUS: <span id="timer">60</span></div>
+            <div class="hearts" id="hearts"></div>
         </div>
+        
         <canvas id="gameCanvas"></canvas>
+        
         <div class="hud" id="bottomHud">
-            Ammo: <span id="ammo">5</span> | 
-            Hits: <span id="hits">0</span>
+            <div>AMMO: <span id="ammo">5</span></div>
+            <div>TARGETS: <span id="hits">0</span></div>
+            <div>MISS: <span id="miss">0</span></div>
         </div>
     </div>
 
     <div class="crosshair"></div>
 
     <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let gameInterval, timerInterval;
+        
         // Game State
-        let gameState = {
+        let state = {
             score: 0,
             ammo: 5,
             hits: 0,
+            miss: 0,
+            lives: 3,
             time: 60,
             cows: [],
-            interval: null,
-            reloading: false
+            effects: [],
+            reloading: false,
+            patterns: [
+                t => ({ x: t*2, y: Math.sin(t/10)*50 }),
+                t => ({ x: t*1.5, y: (t%20 < 10 ? t%10 : 10-t%10)*5 }),
+                t => ({ x: t*3, y: 0 })
+            ]
         };
 
-        // Elements
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        let crosshairX = 0, crosshairY = 0;
-
+        // Leaderboard
+        let leaderboard = JSON.parse(localStorage.getItem('leaderboard') || [];
+        
         // Screen Management
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
-            
-            if(screenId === 'gameScreen') startGame();
-            if(screenId === 'leaderboard') updateLeaderboard();
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+            document.getElementById(id).style.display = 'flex';
+            if(id === 'gameScreen') initGame();
+            if(id === 'leaderboard') updateLeaderboard();
         }
 
-        // Game Functions
-        function startGame() {
-            // Reset state
-            gameState = {
+        // Game Initialization
+        function initGame() {
+            state = {
                 score: 0,
                 ammo: 5,
                 hits: 0,
+                miss: 0,
+                lives: 3,
                 time: 60,
                 cows: [],
-                interval: null,
+                effects: [],
                 reloading: false
             };
             
-            // Setup canvas
-            canvas.width = 800;
-            canvas.height = 600;
+            updateHUD();
+            clearInterval(gameInterval);
+            clearInterval(timerInterval);
             
-            // Start game loop
-            gameState.interval = setInterval(gameLoop, 1000);
+            gameInterval = setInterval(updateGame, 50);
+            timerInterval = setInterval(() => {
+                state.time--;
+                document.getElementById('timer').textContent = state.time;
+                if(state.time <= 0) endGame();
+            }, 1000);
             
-            // Input handlers
-            canvas.addEventListener('mousemove', updateCrosshair);
-            canvas.addEventListener('click', handleShoot);
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
         }
 
-        function gameLoop() {
-            // Update game state
-            gameState.time--;
-            document.getElementById('timer').textContent = gameState.time;
+        function resizeCanvas() {
+            canvas.width = Math.min(window.innerWidth, 800);
+            canvas.height = Math.min(window.innerHeight - 120, 600);
+        }
+
+        // Game Logic
+        function spawnCow() {
+            return {
+                type: Math.floor(Math.random()*3),
+                t: 0,
+                x: -100,
+                y: Math.random()*(canvas.height-100),
+                pattern: state.patterns[Math.floor(Math.random()*state.patterns.length)],
+                hit: false
+            };
+        }
+
+        function updateGame() {
+            if(Math.random() < 0.05) state.cows.push(spawnCow());
             
-            // Spawn cows
-            if(Math.random() < 0.1) {
-                gameState.cows.push({
-                    x: -50,
-                    y: Math.random() * canvas.height,
-                    speed: Math.random() * 3 + 2
-                });
-            }
-            
-            // Update cows
-            gameState.cows = gameState.cows.filter(cow => {
-                cow.x += cow.speed;
-                return cow.x < canvas.width + 50;
+            state.cows = state.cows.filter(cow => {
+                cow.t += 0.5;
+                const offset = cow.pattern(cow.t);
+                cow.x = offset.x;
+                cow.y += offset.y;
+                
+                if(cow.x > canvas.width + 100 || cow.hit) {
+                    if(!cow.hit) state.miss++;
+                    return false;
+                }
+                return true;
             });
-            
-            // Update HUD
-            document.getElementById('score').textContent = gameState.score;
-            document.getElementById('ammo').textContent = gameState.ammo;
-            document.getElementById('hits').textContent = gameState.hits;
-            
-            // End game
-            if(gameState.time <= 0) endGame();
+
+            updateHUD();
+            draw();
         }
 
-        function updateCrosshair(e) {
-            const rect = canvas.getBoundingClientRect();
-            crosshairX = e.clientX - rect.left;
-            crosshairY = e.clientY - rect.top;
-            document.querySelector('.crosshair').style.transform = 
-                `translate(${e.clientX - 20}px, ${e.clientY - 20}px)`;
-        }
-
-        function handleShoot() {
-            if(gameState.ammo > 0 && !gameState.reloading) {
-                gameState.ammo--;
-                
-                // Check hits
-                gameState.cows = gameState.cows.filter(cow => {
-                    const hit = Math.abs(cow.x - crosshairX) < 30 && 
-                               Math.abs(cow.y - crosshairY) < 30;
-                    if(hit) {
-                        gameState.score += 100;
-                        gameState.hits++;
-                    }
-                    return !hit;
-                });
-                
-                if(gameState.ammo === 0) reload();
+        function draw() {
+            ctx.fillStyle = '#181310';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw stars
+            for(let i = 0; i < 50; i++) {
+                ctx.fillStyle = `rgba(212,185,150,${Math.random()*0.5})`;
+                ctx.fillRect(
+                    Math.random()*canvas.width,
+                    Math.random()*canvas.height,
+                    Math.random()*2,
+                    Math.random()*2
+                );
             }
+            
+            // Draw cows
+            state.cows.forEach(cow => {
+                ctx.fillStyle = ['#D4B996','#8C704F','#B0A18E'][cow.type];
+                
+                // Body
+                ctx.fillRect(cow.x, cow.y + 10, 40, 20);
+                
+                // Head
+                ctx.beginPath();
+                ctx.arc(cow.x + 40, cow.y + 20, 10, 0, Math.PI*2);
+                ctx.fill();
+                
+                // Legs
+                ctx.fillRect(cow.x + 5, cow.y + 30, 5, 10);
+                ctx.fillRect(cow.x + 15, cow.y + 30, 5, 10);
+                
+                // Wings
+                ctx.beginPath();
+                ctx.moveTo(cow.x, cow.y);
+                ctx.lineTo(cow.x - 10, cow.y - 10);
+                ctx.lineTo(cow.x + 10, cow.y - 10);
+                ctx.closePath();
+                ctx.fill();
+            });
+        }
+
+        // Input Handling
+        document.addEventListener('mousedown', handleShoot);
+        document.addEventListener('touchstart', handleShoot);
+        document.addEventListener('keydown', e => e.key === 'r' && reload());
+
+        function handleShoot(e) {
+            if(state.reloading || state.ammo <= 0) return;
+            
+            state.ammo--;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            
+            const hitCow = state.cows.find(cow => 
+                x > cow.x && x < cow.x + 50 &&
+                y > cow.y && y < cow.y + 50
+            );
+            
+            if(hitCow) {
+                hitCow.hit = true;
+                state.score += 100;
+                state.hits++;
+            } else {
+                state.miss++;
+            }
+            
+            if(state.ammo === 0) reload();
         }
 
         function reload() {
-            gameState.reloading = true;
-            setTimeout(() => {
-                gameState.ammo = 5;
-                gameState.reloading = false;
-            }, 2000);
+            if(!state.reloading) {
+                state.reloading = true;
+                document.querySelector('.crosshair').classList.add('reloading');
+                setTimeout(() => {
+                    state.ammo = 5;
+                    state.reloading = false;
+                    document.querySelector('.crosshair').classList.remove('reloading');
+                }, 2000);
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById('score').textContent = state.score;
+            document.getElementById('ammo').textContent = state.ammo;
+            document.getElementById('hits').textContent = state.hits;
+            document.getElementById('miss').textContent = state.miss;
+            
+            const hearts = document.getElementById('hearts');
+            hearts.innerHTML = Array(state.lives).fill('<div class="heart"></div>').join('');
         }
 
         function endGame() {
-            clearInterval(gameState.interval);
-            updateLeaderboard();
+            clearInterval(gameInterval);
+            clearInterval(timerInterval);
+            
+            leaderboard.push(state.score);
+            leaderboard.sort((a,b) => b - a);
+            leaderboard = leaderboard.slice(0,5);
+            localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+            
             showScreen('mainMenu');
         }
 
         function updateLeaderboard() {
-            let scores = JSON.parse(localStorage.getItem('scores') || '[]');
-            scores.push(gameState.score);
-            scores = scores.sort((a,b) => b - a).slice(0, 5);
-            localStorage.setItem('scores', JSON.stringify(scores));
-            
-            document.getElementById('scores').innerHTML = 
-                scores.map((s,i) => `<div>${i+1}. ${s}</div>`).join('');
+            const list = document.getElementById('scoresList');
+            list.innerHTML = leaderboard
+                .map((score,i) => `<div class="leaderboard-item">
+                    <span>RECORD ${i+1}</span>
+                    <span>${score}</span>
+                </div>`)
+                .join('');
         }
 
         // Init
         Telegram.WebApp.ready();
         Telegram.WebApp.expand();
+        showScreen('mainMenu');
     </script>
 </body>
 </html>
