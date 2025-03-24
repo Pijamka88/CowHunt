@@ -62,6 +62,7 @@
             border-radius: 10px;
             display: flex;
             gap: 10px;
+            align-items: center;
         }
 
         #topHud {
@@ -92,10 +93,12 @@
 
         #timer {
             position: absolute;
-            top: 10px;
-            right: 10px;
-            font-size: 24px;
-            text-shadow: 0 0 10px #7159c1;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            text-shadow: 0 0 15px #7159c1;
+            z-index: 1;
         }
 
         .leaderboard {
@@ -104,6 +107,11 @@
             border-radius: 15px;
             max-height: 70vh;
             overflow-y: auto;
+        }
+
+        .explosion {
+            position: absolute;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -138,7 +146,7 @@
         <div id="timer">60</div>
         <div id="topHud" class="hud">
             <div>Score: <span id="score">0</span></div>
-            <div id="lives"></div>
+            <div id="lives" style="display: flex; gap: 5px;"></div>
         </div>
         <canvas id="gameCanvas"></canvas>
         <div id="bottomHud" class="hud">
@@ -165,10 +173,11 @@
             crosshair: { x: 0, y: 0 },
             lastSpawn: 0,
             gameTime: 60000,
+            explosions: [],
             cowTypes: [
-                { speed: 3, color: '#ff6666', pattern: 'linear' },
-                { speed: 5, color: '#66ff66', pattern: 'sin' },
-                { speed: 4, color: '#6666ff', pattern: 'circle' }
+                { speed: 3, color: '#ff6666', pattern: 'sin', wings: true },
+                { speed: 5, color: '#66ff66', pattern: 'circle', wings: false },
+                { speed: 4, color: '#6666ff', pattern: 'zigzag', wings: true }
             ]
         };
 
@@ -206,8 +215,9 @@
         }, { passive: false });
 
         function updateCrosshair(x, y) {
-            gameState.crosshair.x = x;
-            gameState.crosshair.y = y;
+            const rect = canvas.getBoundingClientRect();
+            gameState.crosshair.x = x - rect.left;
+            gameState.crosshair.y = y - rect.top;
             crosshair.style.transform = `translate(${x-16}px, ${y-16}px)`;
         }
 
@@ -219,9 +229,26 @@
                 y: Math.random() * (canvas.height - 50),
                 type,
                 angle: 0,
+                wingPhase: 0,
                 direction: Math.random() < 0.5 ? 1 : -1,
                 hit: false
             };
+        }
+
+        // Explosion effect
+        function createExplosion(x, y) {
+            const particles = [];
+            for(let i = 0; i < 20; i++) {
+                particles.push({
+                    x,
+                    y,
+                    dx: (Math.random() - 0.5) * 10,
+                    dy: (Math.random() - 0.5) * 10,
+                    life: 1,
+                    color: `hsl(${Math.random() * 360}, 100%, 50%)`
+                });
+            }
+            gameState.explosions.push({ particles });
         }
 
         // Game loop
@@ -246,9 +273,26 @@
                         cow.y += Math.sin(cow.angle) * 2;
                         cow.angle += 0.05;
                         break;
+                    case 'zigzag':
+                        cow.x += cow.direction * cow.type.speed;
+                        cow.y += Math.sin(cow.angle) * 3;
+                        cow.angle += 0.2;
+                        break;
                 }
-                cow.x += cow.type.speed * cow.direction;
+                cow.wingPhase = (cow.wingPhase + 0.1) % (Math.PI * 2);
                 return cow.x > -100 && cow.x < canvas.width + 100;
+            });
+
+            // Update explosions
+            gameState.explosions = gameState.explosions.filter(explosion => {
+                explosion.particles = explosion.particles.filter(p => {
+                    p.x += p.dx;
+                    p.y += p.dy;
+                    p.dy += 0.3;
+                    p.life -= 0.02;
+                    return p.life > 0;
+                });
+                return explosion.particles.length > 0;
             });
 
             // Draw
@@ -262,24 +306,42 @@
                 
                 // Body
                 ctx.fillStyle = cow.type.color;
-                ctx.fillRect(-15, -10, 30, 20);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 20, 15, 0, 0, Math.PI * 2);
+                ctx.fill();
                 
                 // Head
                 ctx.beginPath();
-                ctx.arc(15, 0, 10, 0, Math.PI * 2);
+                ctx.arc(25, 0, 10, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Legs
-                ctx.fillRect(-15, 10, 5, 10);
-                ctx.fillRect(-5, 10, 5, 10);
-                ctx.fillRect(5, 10, 5, 10);
-                ctx.fillRect(15, 10, 5, 10);
+                ctx.fillRect(-15, 12, 5, 15);
+                ctx.fillRect(-5, 12, 5, 15);
+                ctx.fillRect(5, 12, 5, 15);
+                ctx.fillRect(15, 12, 5, 15);
                 
                 // Wings
-                ctx.fillStyle = 'rgba(255,255,255,0.5)';
-                ctx.fillRect(-20, -5, 10, 10);
-                ctx.fillRect(-20, 5, 10, 10);
+                if(cow.type.wings) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                    ctx.beginPath();
+                    ctx.ellipse(-15, -5 + Math.sin(cow.wingPhase) * 5, 
+                               10, 15, Math.PI/4, 0, Math.PI * 2);
+                    ctx.ellipse(-15, 5 + Math.sin(cow.wingPhase + Math.PI) * 5, 
+                               10, 15, -Math.PI/4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
                 ctx.restore();
+            });
+
+            // Draw explosions
+            gameState.explosions.forEach(explosion => {
+                explosion.particles.forEach(p => {
+                    ctx.fillStyle = `hsla(${p.color}, ${p.life})`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 3 * p.life, 0, Math.PI * 2);
+                    ctx.fill();
+                });
             });
 
             requestAnimationFrame(gameLoop);
@@ -293,15 +355,16 @@
             let hit = false;
             
             gameState.targets = gameState.targets.filter(cow => {
-                const rect = canvas.getBoundingClientRect();
-                const cx = cow.x + rect.left;
-                const cy = cow.y + rect.top;
-                const distance = Math.hypot(gameState.crosshair.x - cx, gameState.crosshair.y - cy);
+                const distance = Math.hypot(
+                    gameState.crosshair.x - (cow.x + 25),
+                    gameState.crosshair.y - cow.y
+                );
                 
                 if(distance < 30) {
                     hit = true;
                     gameState.score += 100;
                     gameState.hits++;
+                    createExplosion(cow.x + 25, cow.y);
                     return false;
                 }
                 return true;
@@ -315,7 +378,7 @@
 
             if(gameState.ammo === 0) {
                 gameState.reloading = true;
-                crosshair.style.backgroundImage = 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 32 32\'><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%237159c1\' font-size=\'14\'>RLD</text></svg>")';
+                crosshair.style.backgroundImage = 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 32 32\'><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23ff0000\' font-size=\'14\' font-weight=\'bold\'>RLD</text></svg>")';
                 setTimeout(() => {
                     gameState.ammo = 5;
                     gameState.reloading = false;
@@ -355,7 +418,8 @@
                 lives: 3,
                 isPlaying: true,
                 reloading: false,
-                lastSpawn: 0
+                lastSpawn: 0,
+                explosions: []
             });
 
             updateHUD();
