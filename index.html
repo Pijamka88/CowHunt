@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Space Cow Hunt</title>
+    <title>Pixel Cow Hunt</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -145,7 +145,7 @@
     <!-- Main Menu -->
     <div id="mainMenu" class="screen menu">
         <div class="stars"></div>
-        <h1 style="color: #a100f6; text-shadow: 0 0 20px #6a00ff;">SPACE COW HUNT</h1>
+        <h1 style="color: #a100f6; text-shadow: 0 0 20px #6a00ff;">PIXEL COW HUNT</h1>
         <button class="btn" onclick="startGame()">Start Game</button>
         <button class="btn" onclick="showScreen('howToPlay')">How to Play</button>
         <button class="btn" onclick="showScreen('leaderboard')">High Scores</button>
@@ -181,9 +181,9 @@
     <div id="howToPlay" class="screen">
         <div style="max-width: 300px; text-align: left; padding: 20px;">
             <h2>How to Play</h2>
-            <p>🎯 Shoot space cows in 60 seconds!</p>
-            <p>❤️ 3 lives (1 miss = 1 life)</p>
+            <p>🎯 1 tap = 1 shot</p>
             <p>🔫 5 shots before reload</p>
+            <p>⏱ 60 seconds mission</p>
             <button class="btn" onclick="showScreen('mainMenu')">Back</button>
         </div>
     </div>
@@ -286,22 +286,27 @@
             crosshair.style.top = `${y - 16}px`;
         }
 
-        document.addEventListener('touchstart', e => {
+        function handleShootStart(e) {
             e.preventDefault();
             if(!isShooting) {
                 isShooting = true;
                 handleShoot();
             }
-            updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
-        });
+        }
 
-        document.addEventListener('touchend', () => isShooting = false);
+        function handleShootEnd() {
+            isShooting = false;
+        }
 
+        document.addEventListener('touchstart', handleShootStart);
+        document.addEventListener('touchend', handleShootEnd);
         document.addEventListener('touchmove', e => {
             e.preventDefault();
             updateCrosshairPosition(e.touches[0].clientX, e.touches[0].clientY);
         }, { passive: false });
 
+        document.addEventListener('mousedown', handleShootStart);
+        document.addEventListener('mouseup', handleShootEnd);
         document.addEventListener('mousemove', e => {
             updateCrosshairPosition(e.clientX, e.clientY);
         });
@@ -319,8 +324,8 @@
                 y: Math.random() * (canvas.height - 80),
                 speed: cowType.speed,
                 direction: Math.random() < 0.5 ? 1 : -1,
-                width: 60,
-                height: 40,
+                width: 50,
+                height: 50,
                 type: cowType,
                 active: true,
                 wingAngle: 0,
@@ -330,43 +335,35 @@
 
         function drawCow(cow) {
             ctx.save();
-            ctx.translate(cow.x + 30, cow.y + 20);
+            ctx.translate(cow.x + 25, cow.y + 25);
             
-            // Square body (outline only)
+            // Body (square outline)
             ctx.strokeStyle = cow.type.color;
             ctx.lineWidth = 3;
-            ctx.strokeRect(-15, -10, 30, 20);
+            ctx.strokeRect(-20, -20, 40, 40);
             
-            // Head
-            ctx.strokeStyle = '#ffffff';
+            // Head (filled circle)
+            ctx.fillStyle = cow.type.color;
             ctx.beginPath();
-            ctx.arc(20, -8, 10, 0, Math.PI * 2);
-            ctx.stroke();
+            ctx.arc(0, -10, 12, 0, Math.PI * 2);
+            ctx.fill();
             
             // Eyes
             ctx.fillStyle = '#000';
             ctx.beginPath();
-            ctx.arc(24, -10, 2, 0, Math.PI * 2);
-            ctx.arc(28, -10, 2, 0, Math.PI * 2);
+            ctx.arc(-5, -15, 2, 0, Math.PI * 2);
+            ctx.arc(5, -15, 2, 0, Math.PI * 2);
             ctx.fill();
             
-            // Legs
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(-8, 12);
-            ctx.lineTo(-12, 20);
-            ctx.moveTo(8, 12);
-            ctx.lineTo(12, 20);
-            ctx.stroke();
-            
-            // Wings
+            // Wings (larger)
             ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 4;
             const wingY = Math.sin(cow.wingAngle) * 5;
             ctx.beginPath();
-            ctx.moveTo(-8, wingY);
-            ctx.lineTo(-25, wingY + 8);
+            ctx.moveTo(-25, wingY);
+            ctx.lineTo(-45, wingY + 15);
+            ctx.moveTo(25, wingY);
+            ctx.lineTo(45, wingY + 15);
             ctx.stroke();
             
             ctx.restore();
@@ -465,15 +462,17 @@
                     gameState.score += cow.type.score;
                     gameState.hits++;
                     cow.active = false;
-                    createParticles(cow.x + 30, cow.y + 20);
+                    createParticles(cow.x + 25, cow.y + 25);
                     hit = true;
                 }
             });
 
             if(!hit) {
                 gameState.misses++;
-                gameState.lives = Math.max(0, gameState.lives - 1);
-                if(gameState.lives === 0) endGame();
+                if(gameState.misses % 5 === 0) {
+                    gameState.lives = Math.max(0, gameState.lives - 1);
+                    if(gameState.lives === 0) endGame();
+                }
             }
 
             if(gameState.ammo <= 0) {
@@ -514,10 +513,6 @@
             updateTimer();
             requestAnimationFrame(gameLoop);
         }
-
-        // Event listeners
-        document.addEventListener('mousedown', handleShoot);
-        document.addEventListener('touchstart', handleShoot);
 
         // Telegram integration
         Telegram.WebApp.ready();
