@@ -1,319 +1,292 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Cosmo Cows Invasion</title>
+    <title>Space Cows</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: #0a0a1a;
+            background: #1a1a1a;
             font-family: 'Arial', sans-serif;
             touch-action: none;
             color: white;
         }
 
+        #gameCanvas {
+            background: linear-gradient(to bottom, #0a0a2b, #2d1a3b);
+        }
+
         .screen {
-            display: none;
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            background: rgba(25, 25, 60, 0.95);
+            background: rgba(45, 26, 59, 0.95);
             padding: 2rem;
             border-radius: 15px;
-            box-shadow: 0 0 30px rgba(128, 0, 255, 0.3);
+            border: 2px solid #4a3177;
             min-width: 300px;
         }
 
-        .active {
-            display: block;
+        .hidden {
+            display: none;
         }
 
-        button {
-            background: #483D8B;
-            border: 2px solid #9370DB;
+        .button {
+            background: #4a3177;
+            border: none;
             padding: 1rem 2rem;
             color: white;
-            font-size: 1.1em;
+            font-size: 1.2em;
             border-radius: 8px;
             cursor: pointer;
             margin: 0.5rem;
-            transition: all 0.3s;
+            transition: transform 0.2s;
         }
 
-        button:hover {
-            background: #5F4B8B;
+        .button:hover {
             transform: scale(1.05);
+            background: #5b3e8a;
         }
 
-        #gameUI {
+        .game-info {
             position: absolute;
             width: 100%;
-            pointer-events: none;
-        }
-
-        .status-bar {
+            padding: 10px;
             display: flex;
             justify-content: space-between;
-            padding: 1rem;
             font-size: 1.2em;
         }
 
-        #hearts span {
-            color: #FF4444;
-            margin: 0 3px;
-        }
-
-        #ammo {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+        #topBar {
+            top: 0;
             background: rgba(0, 0, 0, 0.7);
-            padding: 10px 20px;
-            border-radius: 20px;
         }
 
-        #timer {
+        #bottomBar {
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: space-around;
+        }
+
+        .hearts {
+            display: flex;
+            gap: 5px;
+        }
+
+        .heart {
+            width: 25px;
+            height: 25px;
+            background: #ff3366;
+            clip-path: polygon(50% 0%, 100% 35%, 82% 100%, 50% 75%, 18% 100%, 0% 35%);
+        }
+
+        #reloadOverlay {
             position: absolute;
-            top: 20px;
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
-            font-size: 1.5em;
-            color: #FFD700;
-        }
-
-        .reloading {
-            color: #FF4444 !important;
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+            color: #ff3366;
+            text-shadow: 0 0 10px rgba(255,51,102,0.5);
         }
     </style>
 </head>
 <body>
-    <div id="gameUI">
-        <div class="status-bar">
-            <div id="score">Score: 0</div>
-            <div id="hearts">♥♥♥</div>
-        </div>
-        <div id="timer">60</div>
-        <div id="ammo">Ammo: 5/5</div>
-    </div>
-
     <canvas id="gameCanvas"></canvas>
 
-    <div id="mainMenu" class="screen active">
-        <h1>Cosmo Cows</h1>
-        <button onclick="showScreen('game')">Start Game</button>
-        <button onclick="showScreen('howToPlay')">How to Play</button>
-        <button onclick="showScreen('highscores')">High Scores</button>
+    <!-- Game UI -->
+    <div class="game-info" id="topBar">
+        <div>Score: <span id="score">0</span></div>
+        <div>Time: <span id="timer">60</span>s</div>
     </div>
 
-    <div id="howToPlay" class="screen">
+    <div class="game-info" id="bottomBar">
+        <div>Ammo: <span id="ammo">5</span></div>
+        <div>Hits: <span id="hits">0</span>/<span id="misses">0</span></div>
+        <div class="hearts" id="lives"></div>
+    </div>
+
+    <div id="reloadOverlay" class="hidden">Reloading</div>
+
+    <!-- Screens -->
+    <div class="screen" id="mainMenu">
+        <h1>Space Cows</h1>
+        <button class="button" onclick="showScreen('game')">Start Game</button>
+        <button class="button" onclick="showScreen('howToPlay')">How to Play</button>
+        <button class="button" onclick="showScreen('highScores')">High Scores</button>
+    </div>
+
+    <div class="screen hidden" id="howToPlay">
         <h2>How to Play</h2>
-        <p>Shoot flying cows in 60 seconds!</p>
-        <p>- Tap to shoot (5 bullets)</p>
-        <p>- Reload when empty</p>
-        <p>- Avoid missing too many</p>
-        <button onclick="showScreen('mainMenu')">Back</button>
+        <p>Shoot flying space cows!<br>
+        - 5 shots before reload<br>
+        - 3 lives<br>
+        - 60 seconds<br>
+        - Different cow types give various points</p>
+        <button class="button" onclick="showScreen('mainMenu')">Back</button>
     </div>
 
-    <div id="highscores" class="screen">
-        <h2>Top 5 Scores</h2>
-        <ol id="highscoresList"></ol>
-        <button onclick="showScreen('mainMenu')">Back</button>
-    </div>
-
-    <div id="gameOver" class="screen">
-        <h2>Game Over</h2>
-        <p>Final Score: <span id="finalScore">0</span></p>
-        <input type="text" id="playerName" placeholder="Your name" maxlength="10">
-        <button onclick="saveScore()">Save Score</button>
+    <div class="screen hidden" id="highScores">
+        <h2>Top Scores</h2>
+        <div id="leaderboard"></div>
+        <button class="button" onclick="showScreen('mainMenu')">Back</button>
     </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        let gameState = {
-            score: 0,
-            ammo: 5,
-            lives: 3,
-            timeLeft: 60,
-            hits: 0,
-            misses: 0,
-            reloading: false,
-            gameActive: false
-        };
-
+        const screens = document.querySelectorAll('.screen');
+        let gameTime = 60;
+        let score = 0;
+        let hits = 0;
+        let misses = 0;
+        let lives = 3;
+        let ammo = 5;
+        let isReloading = false;
+        let animationFrameId;
         let cows = [];
         let bullets = [];
-        let stars = [];
-        let animationFrameId;
-        let lastSpawn = 0;
-        let highscores = JSON.parse(localStorage.getItem('highscores')) || [];
+        let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
 
-        // Game setup
-        function initGame() {
-            gameState = {
-                score: 0,
-                ammo: 5,
-                lives: 3,
-                timeLeft: 60,
-                hits: 0,
-                misses: 0,
-                reloading: false,
-                gameActive: true
-            };
-            cows = [];
-            bullets = [];
-            stars = Array(200).fill().map(() => ({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                size: Math.random() * 3,
-                speed: Math.random() * 0.5 + 0.2
-            }));
-            updateUI();
-        }
+        const COW_TYPES = {
+            BASIC: { speed: 3, score: 100, color: '#6d4c41' },
+            FAST: { speed: 5, score: 150, color: '#4a3177' },
+            STRONG: { speed: 2, score: 200, color: '#2d1a3b' }
+        };
 
-        function updateUI() {
-            document.getElementById('score').textContent = `Score: ${gameState.score}`;
-            document.getElementById('hearts').innerHTML = '♥'.repeat(gameState.lives);
-            document.getElementById('ammo').textContent = 
-                gameState.reloading ? 'Reloading...' : `Ammo: ${gameState.ammo}/5`;
-            document.getElementById('ammo').className = gameState.reloading ? 'reloading' : '';
-            document.getElementById('timer').textContent = gameState.timeLeft;
-        }
-
-        // Game objects
         class Cow {
             constructor() {
-                this.type = Math.floor(Math.random() * 3);
+                this.type = Object.values(COW_TYPES)[Math.floor(Math.random() * 3)];
                 this.x = Math.random() * canvas.width;
-                this.y = canvas.height + 50;
-                this.speed = this.type === 0 ? 2 : this.type === 1 ? 3 : 4;
+                this.y = canvas.height + 100;
                 this.angle = 0;
-                this.phase = 0;
-                this.alive = true;
+                this.health = this.type === COW_TYPES.STRONG ? 2 : 1;
+                this.pathOffset = Math.random() * 100;
             }
 
             update() {
-                this.phase += 0.05;
-                this.y -= this.speed;
+                this.y -= this.type.speed;
+                this.angle = Math.sin((Date.now() + this.pathOffset) * 0.005) * 0.5;
                 
-                // Different movement patterns
-                switch(this.type) {
-                    case 0: // Sine wave
-                        this.x += Math.sin(this.phase * 2) * 2;
-                        break;
-                    case 1: // Zig-zag
-                        this.x += Math.sin(this.phase * 4) * 3;
-                        break;
-                    case 2: // Spiral
-                        this.x += Math.sin(this.phase) * 4;
-                        this.y -= Math.cos(this.phase) * 1;
-                        break;
+                if(this.type === COW_TYPES.FAST) {
+                    this.x += Math.sin(Date.now() * 0.005) * 2;
                 }
-
-                if(this.y < -100) gameState.lives--;
+                if(this.type === COW_TYPES.STRONG) {
+                    this.y -= 0.5;
+                }
             }
 
             draw() {
                 ctx.save();
                 ctx.translate(this.x, this.y);
-                
+                ctx.rotate(this.angle);
+
                 // Body
-                ctx.fillStyle = '#483D8B';
-                ctx.fillRect(-20, -10, 40, 20);
-                
+                ctx.fillStyle = this.type.color;
+                ctx.fillRect(-25, -15, 50, 30);
+
                 // Head
                 ctx.beginPath();
-                ctx.arc(0, -20, 10, 0, Math.PI * 2);
+                ctx.arc(0, -25, 10, 0, Math.PI * 2);
                 ctx.fill();
-                
+
                 // Legs
-                ctx.fillRect(-15, 10, 5, 15);
-                ctx.fillRect(10, 10, 5, 15);
-                
+                ctx.fillRect(-20, 15, 10, 20);
+                ctx.fillRect(10, 15, 10, 20);
+
                 // Wings
-                ctx.fillStyle = '#9370DB80';
+                ctx.fillStyle = `${this.type.color}80`;
                 ctx.beginPath();
-                ctx.ellipse(-25, -5, 10, 5, Math.PI/4, 0, Math.PI * 2);
-                ctx.ellipse(25, -5, 10, 5, -Math.PI/4, 0, Math.PI * 2);
+                ctx.ellipse(-30, 0, 15, 8, 0, 0, Math.PI * 2);
+                ctx.ellipse(30, 0, 15, 8, 0, 0, Math.PI * 2);
                 ctx.fill();
 
                 ctx.restore();
             }
         }
 
-        // Game loop
-        function gameLoop() {
-            ctx.fillStyle = '#1a0a2a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Stars
-            ctx.fillStyle = '#FFFFFF';
-            stars.forEach(star => {
-                star.y += star.speed;
-                if(star.y > canvas.height) {
-                    star.y = 0;
-                    star.x = Math.random() * canvas.width;
-                }
-                ctx.beginPath();
-                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-                ctx.fill();
-            });
-
-            // Cows
-            if(Date.now() - lastSpawn > 1000) {
-                cows.push(new Cow());
-                lastSpawn = Date.now();
+        class Bullet {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.speed = 15;
             }
 
+            update() {
+                this.y -= this.speed;
+            }
+
+            draw() {
+                ctx.fillStyle = '#ff3366';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function updateGameInfo() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('timer').textContent = gameTime;
+            document.getElementById('ammo').textContent = ammo;
+            document.getElementById('hits').textContent = hits;
+            document.getElementById('misses').textContent = misses;
+            
+            const hearts = document.getElementById('lives');
+            hearts.innerHTML = '';
+            for(let i = 0; i < lives; i++) {
+                hearts.innerHTML += '<div class="heart"></div>';
+            }
+        }
+
+        function checkCollisions() {
+            bullets.forEach((bullet, bIndex) => {
+                cows.forEach((cow, cIndex) => {
+                    if(Math.hypot(bullet.x - cow.x, bullet.y - cow.y) < 30) {
+                        cow.health--;
+                        if(cow.health <= 0) {
+                            score += cow.type.score;
+                            hits++;
+                            cows.splice(cIndex, 1);
+                        }
+                        bullets.splice(bIndex, 1);
+                    }
+                });
+            });
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Spawn cows
+            if(Math.random() < 0.03) cows.push(new Cow());
+
+            // Update entities
             cows.forEach((cow, index) => {
                 cow.update();
                 cow.draw();
-                if(cow.y < -100 || cow.y > canvas.height) {
+                if(cow.y < -100) {
                     cows.splice(index, 1);
-                    if(cow.alive) gameState.misses++;
+                    misses++;
+                    lives--;
                 }
             });
 
-            // Bullets
             bullets.forEach((bullet, index) => {
-                bullet.y -= 15;
-                ctx.fillStyle = '#FFD700';
-                ctx.beginPath();
-                ctx.arc(bullet.x, bullet.y, 3, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Collision detection
-                cows.forEach((cow, cIndex) => {
-                    if(cow.alive && Math.hypot(bullet.x - cow.x, bullet.y - cow.y) < 20) {
-                        cow.alive = false;
-                        gameState.score += 100;
-                        gameState.hits++;
-                        bullets.splice(index, 1);
-                        cows.splice(cIndex, 1);
-                    }
-                });
-
+                bullet.update();
+                bullet.draw();
                 if(bullet.y < 0) bullets.splice(index, 1);
             });
 
-            // Update game state
-            gameState.timeLeft = Math.max(0, 60 - Math.floor((Date.now() - gameStartTime)/1000));
-            updateUI();
+            checkCollisions();
+            updateGameInfo();
 
-            // End conditions
-            if(gameState.lives <= 0 || gameState.timeLeft <= 0) {
+            // Game over conditions
+            gameTime = Math.max(0, gameTime - 0.016);
+            if(gameTime <= 0 || lives <= 0) {
                 endGame();
                 return;
             }
@@ -321,81 +294,80 @@
             animationFrameId = requestAnimationFrame(gameLoop);
         }
 
+        function startGame() {
+            gameTime = 60;
+            score = 0;
+            hits = 0;
+            misses = 0;
+            lives = 3;
+            ammo = 5;
+            cows = [];
+            bullets = [];
+            showScreen('game');
+            gameLoop();
+        }
+
         function endGame() {
-            gameState.gameActive = false;
             cancelAnimationFrame(animationFrameId);
-            showScreen('gameOver');
-            document.getElementById('finalScore').textContent = gameState.score;
-        }
-
-        // Screens management
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
-            
-            if(screenId === 'highscores') {
-                updateHighscoresList();
-            }
-            if(screenId === 'game') {
-                resizeCanvas();
-                initGame();
-                gameStartTime = Date.now();
-                gameLoop();
-            }
-        }
-
-        function updateHighscoresList() {
-            const list = document.getElementById('highscoresList');
-            list.innerHTML = highscores.slice(0,5)
-                .map((score, i) => `<li>${i+1}. ${score.name}: ${score.value}</li>`)
-                .join('');
-        }
-
-        function saveScore() {
-            const name = document.getElementById('playerName').value.trim() || 'Player';
-            highscores.push({ name, value: gameState.score });
-            highscores.sort((a,b) => b.value - a.value);
-            localStorage.setItem('highscores', JSON.stringify(highscores));
-            showScreen('highscores');
-        }
-
-        // Event handlers
-        function handleShoot(e) {
-            if(!gameState.gameActive || gameState.reloading) return;
-
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-
-            if(gameState.ammo > 0) {
-                bullets.push({x, y});
-                gameState.ammo--;
-                if(gameState.ammo === 0) {
-                    gameState.reloading = true;
-                    setTimeout(() => {
-                        gameState.ammo = 5;
-                        gameState.reloading = false;
-                        updateUI();
-                    }, 2000);
+            if(score > 0 && (leaderboard.length < 5 || score > leaderboard[4]?.score)) {
+                const name = prompt('Enter your name for the leaderboard:');
+                if(name) {
+                    leaderboard.push({ name, score });
+                    leaderboard.sort((a, b) => b.score - a.score);
+                    leaderboard = leaderboard.slice(0, 5);
+                    localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
                 }
-                updateUI();
+            }
+            showScreen('mainMenu');
+        }
+
+        function showScreen(screenId) {
+            screens.forEach(screen => {
+                screen.classList.toggle('hidden', screen.id !== screenId);
+            });
+            if(screenId === 'highScores') {
+                const lb = leaderboard.map((entry, i) => 
+                    `${i+1}. ${entry.name}: ${entry.score}`).join('<br>');
+                document.getElementById('leaderboard').innerHTML = lb || 'No scores yet!';
             }
         }
 
+        function handleShoot(e) {
+            if(!document.getElementById('game').classList.contains('hidden') && !isReloading) {
+                if(ammo <= 0) {
+                    isReloading = true;
+                    document.getElementById('reloadOverlay').classList.remove('hidden');
+                    setTimeout(() => {
+                        ammo = 5;
+                        isReloading = false;
+                        document.getElementById('reloadOverlay').classList.add('hidden');
+                    }, 1000);
+                    return;
+                }
+
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX || e.touches[0].clientX) - rect.left;
+                const y = (e.clientY || e.touches[0].clientY) - rect.top;
+                
+                bullets.push(new Bullet(x, y));
+                ammo--;
+            }
+        }
+
+        // Init
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         }
 
-        // Initialization
         window.addEventListener('resize', resizeCanvas);
         canvas.addEventListener('click', handleShoot);
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            handleShoot(e.touches[0]);
+            handleShoot(e);
         });
         resizeCanvas();
-        updateHighscoresList();
+        showScreen('mainMenu');
     </script>
 </body>
 </html>
