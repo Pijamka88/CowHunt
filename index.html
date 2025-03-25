@@ -1,215 +1,217 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Cosmo Cows</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cosmic Cow Hunt</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: #2d1e0f;
-            font-family: 'Courier New', monospace;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
-        
-        #gameCanvas {
-            position: fixed;
-            top: 0;
-            left: 0;
+        #gameContainer {
+            position: relative;
         }
-
+        canvas {
+            border: 1px solid #333;
+        }
         .menu {
-            position: fixed;
+            position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            background: rgba(245, 222, 179, 0.9);
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            color: #fff;
+            z-index: 2;
         }
-
-        h1 {
-            color: #5e4a32;
-            margin: 0 0 1rem 0;
-            font-size: 2.5em;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
         button {
-            background: #8b7355;
-            color: white;
+            padding: 10px 20px;
+            font-size: 20px;
+            background: #4CAF50;
             border: none;
-            padding: 1rem 2rem;
-            font-size: 1.2em;
+            color: white;
+            border-radius: 5px;
             cursor: pointer;
-            border-radius: 8px;
-            transition: transform 0.2s;
+            transition: background 0.3s;
         }
-
         button:hover {
-            transform: scale(1.1);
+            background: #45a049;
         }
-
-        .cow {
+        #score {
             position: absolute;
-            width: 80px;
-            height: 60px;
-            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQCAYAAACOEfKtAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAHJSURBVHgB7dxBboMwEAXQmfAjdO8F2iN0zxG6dEUrqSq/wTOJ5X8CJLKx33QkIYwxH8Y5d6iq6gNjjFQ5M8a8Y4x5wRhzIeWcc28YYy6knHvuBWPMhZRzzr1gjLmQcs65F4wxF1LOOfeCMeZCyjnnXjDGXEg559wLxpgLKeece8EYcyHlnHMvGGMupJxz7gVjzIWUc869YIy5kHLOuReMMRdSzjn3gjHmQso5514wxlxIOefcC8aYCynnnHvBGPM/8/m8Y4z5j3PuHWPMhZRzzr1gjLmQcs65F4wxF1LOOfeCMeZCyjnnXjDGXEg559wLxpgLKeece8EYcyHlnHMvGGMupJxz7gVjzIWUc869YIy5kHLOuReMMRdSzjn3gjHmQso5514wxlxIOefcC8aYCynnnHvBGPNv5/M5YIz5j3PuHWPMhZRzzr1gjLmQcs65F4wxF1LOOfeCMeZCyjnnXjDGXEg559wLxpgLKeece8EYcyHlnHvBGHMh5ZxzLxhjLqScc+4FY8yFlHPOvWCMuZByzrkXjDEXUs4594Ix5kLKOedeMMZcSDnn3AvGmAsp55x7wRhzIeWccy8YY/7pfD5njDHGGGOMMcYYY4wxxhhjjDHGGGOMMcYYY4wxxhhjjDHGGGOMMcYYY4wxxhhjjDHGGGOMMcYYY4wxxhhjjDHGGGOMMcYYY4wxxhhjjDHGGGOMMcYYY4wxxhhjjDHGGGOMMcYYY4wxxhhjjDHGGGOMMcYYY4wxxvwH4AmWZVM4bAAAAABJRU5ErkJggg==');
-            background-size: contain;
-            background-repeat: no-repeat;
-            transition: transform 0.3s;
-            animation: fly 3s infinite;
-        }
-
-        @keyframes fly {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
-        }
-
-        .score {
-            position: fixed;
             top: 20px;
-            right: 20px;
-            color: #8b7355;
+            left: 20px;
+            color: #fff;
             font-size: 24px;
-            font-weight: bold;
-            text-shadow: 1px 1px 2px white;
+            z-index: 1;
         }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    <div class="score">Score: 0</div>
-    
-    <div id="mainMenu" class="menu">
-        <h1>Cosmo Cows</h1>
-        <button onclick="startGame()">Start Hunt</button>
+    <div id="gameContainer">
+        <canvas id="background"></canvas>
+        <canvas id="gameCanvas"></canvas>
+        <div class="menu" id="mainMenu">
+            <h1>Cosmic Cow Hunt</h1>
+            <button onclick="startGame()">Start Game</button>
+        </div>
+        <div id="score">Score: 0</div>
     </div>
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        let score = 0;
-        let cows = [];
-        let animationFrame;
+<script>
+const config = {
+    cowSpeed: 2,
+    spawnInterval: 1500,
+    maxCows: 7,
+    starCount: 100
+};
 
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+let canvas, ctx, bgCanvas, bgCtx;
+let cows = [];
+let score = 0;
+let stars = [];
+let animationFrameId;
+let lastSpawn = 0;
+
+function init() {
+    canvas = document.getElementById('gameCanvas');
+    ctx = canvas.getContext('2d');
+    bgCanvas = document.getElementById('background');
+    bgCtx = bgCanvas.getContext('2d');
+    
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    canvas.addEventListener('click', handleClick);
+    
+    createStars();
+    gameLoop();
+}
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    bgCanvas.width = window.innerWidth;
+    bgCanvas.height = window.innerHeight;
+}
+
+function createStars() {
+    stars = [];
+    for(let i = 0; i < config.starCount; i++) {
+        stars.push({
+            x: Math.random() * bgCanvas.width,
+            y: Math.random() * bgCanvas.height,
+            size: Math.random() * 2,
+            alpha: Math.random()
+        });
+    }
+}
+
+function drawBackground() {
+    bgCtx.fillStyle = '#000';
+    bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+    
+    stars.forEach(star => {
+        bgCtx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+        bgCtx.beginPath();
+        bgCtx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        bgCtx.fill();
+    });
+}
+
+function Cow() {
+    this.x = Math.random() < 0.5 ? -50 : canvas.width + 50;
+    this.y = Math.random() * (canvas.height - 100);
+    this.speed = config.cowSpeed * (Math.random() * 0.5 + 0.75);
+    this.angle = Math.random() * Math.PI * 2;
+    this.frame = 0;
+    this.width = 60;
+    this.height = 40;
+}
+
+Cow.prototype.update = function() {
+    this.x += Math.cos(this.angle) * this.speed;
+    this.y += Math.sin(this.angle) * this.speed;
+    this.frame = (this.frame + 0.2) % 4;
+};
+
+function drawCow(cow) {
+    ctx.save();
+    ctx.translate(cow.x, cow.y);
+    
+    // Тело коровы
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, cow.width/2, cow.height/2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Крылья
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    const wingY = Math.sin(cow.frame) * 5;
+    ctx.beginPath();
+    ctx.ellipse(-15, wingY, 10, 20, Math.PI/4, 0, Math.PI * 2);
+    ctx.ellipse(15, wingY, 10, 20, -Math.PI/4, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+}
+
+function spawnCow() {
+    if(cows.length < config.maxCows) {
+        cows.push(new Cow());
+    }
+}
+
+function handleClick(e) {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    cows.forEach((cow, index) => {
+        const dist = Math.hypot(mouseX - cow.x, mouseY - cow.y);
+        if(dist < cow.width) {
+            cows.splice(index, 1);
+            score += 100;
+            document.getElementById('score').textContent = `Score: ${score}`;
         }
+    });
+}
 
-        class Star {
-            constructor() {
-                this.reset();
-            }
-
-            reset() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.z = Math.random() * 1500;
-                this.speed = 0.5 + Math.random();
-            }
-
-            update() {
-                this.z -= this.speed;
-                if(this.z <= 0) this.reset();
-                
-                const scale = 1 - this.z/1500;
-                ctx.fillStyle = `rgba(245, 222, 179, ${scale})`;
-                
-                const x = (this.x - canvas.width/2) * (scale*10) + canvas.width/2;
-                const y = (this.y - canvas.height/2) * (scale*10) + canvas.height/2;
-                
-                ctx.beginPath();
-                ctx.arc(x, y, scale*2, 0, Math.PI*2);
-                ctx.fill();
-            }
+function gameLoop(timestamp) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBackground();
+    
+    if(timestamp - lastSpawn > config.spawnInterval) {
+        spawnCow();
+        lastSpawn = timestamp;
+    }
+    
+    cows.forEach((cow, index) => {
+        cow.update();
+        drawCow(cow);
+        
+        if(cow.x < -100 || cow.x > canvas.width + 100 || 
+           cow.y < -100 || cow.y > canvas.height + 100) {
+            cows.splice(index, 1);
         }
+    });
+    
+    animationFrameId = requestAnimationFrame(gameLoop);
+}
 
-        const stars = Array(200).fill().map(() => new Star());
+function startGame() {
+    document.getElementById('mainMenu').style.display = 'none';
+    score = 0;
+    cows = [];
+    document.getElementById('score').textContent = 'Score: 0';
+    lastSpawn = 0;
+    if(animationFrameId) cancelAnimationFrame(animationFrameId);
+    gameLoop();
+}
 
-        function createCow() {
-            const cow = document.createElement('div');
-            cow.className = 'cow';
-            cow.style.left = `${Math.random() * (window.innerWidth - 100)}px`;
-            cow.style.top = `${window.innerHeight}px`;
-            document.body.appendChild(cow);
-            
-            setTimeout(() => {
-                cow.remove();
-                cows = cows.filter(c => c !== cow);
-            }, 5000);
-
-            return cow;
-        }
-
-        function animate() {
-            ctx.fillStyle = '#2d1e0f';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            stars.forEach(star => star.update());
-            
-            cows.forEach(cow => {
-                const rect = cow.getBoundingClientRect();
-                cow.style.left = `${parseFloat(cow.style.left) + 2}px`;
-                cow.style.top = `${parseFloat(cow.style.top) - 3}px`;
-            });
-
-            animationFrame = requestAnimationFrame(animate);
-        }
-
-        function shoot(e) {
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-
-            cows.forEach((cow, index) => {
-                const cowRect = cow.getBoundingClientRect();
-                if(x > cowRect.left && x < cowRect.right && 
-                   y > cowRect.top && y < cowRect.bottom) {
-                    cow.remove();
-                    cows.splice(index, 1);
-                    score += 100;
-                    document.querySelector('.score').textContent = `Score: ${score}`;
-                    playHitSound();
-                }
-            });
-        }
-
-        function playHitSound() {
-            const context = new AudioContext();
-            const osc = context.createOscillator();
-            osc.type = 'square';
-            osc.frequency.value = 800;
-            
-            const gain = context.createGain();
-            osc.connect(gain);
-            gain.connect(context.destination);
-            
-            gain.gain.setValueAtTime(0.5, context.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
-            
-            osc.start();
-            osc.stop(context.currentTime + 0.3);
-        }
-
-        function startGame() {
-            document.getElementById('mainMenu').style.display = 'none';
-            score = 0;
-            cows = [];
-            resizeCanvas();
-            animate();
-            
-            setInterval(() => {
-                cows.push(createCow());
-            }, 1500);
-
-            canvas.addEventListener('click', shoot);
-        }
-
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-    </script>
+window.onload = init;
+</script>
 </body>
 </html>
