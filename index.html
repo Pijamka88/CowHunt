@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Cosmo Cows</title>
+    <title>Space Cow Hunt</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body {
@@ -21,81 +21,101 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 50, 0.8);
             padding: 30px;
             color: white;
             text-align: center;
             border-radius: 10px;
-            border: 1px solid #4af;
-            box-shadow: 0 0 20px #4af;
+            border: 1px solid #4FC3F7;
+            box-shadow: 0 0 20px #4FC3F7;
             z-index: 1000;
-            max-width: 80%;
         }
         .menu h1 {
-            color: #4af;
-            text-shadow: 0 0 10px #4af;
+            color: #4FC3F7;
             margin-top: 0;
+            text-shadow: 0 0 10px #4FC3F7;
         }
         .menu button {
             padding: 12px 25px;
             font-size: 18px;
             margin-top: 20px;
             cursor: pointer;
-            background: linear-gradient(to bottom, #4af, #28f);
-            border: none;
+            background: linear-gradient(to bottom, #1A237E, #0D47A1);
+            border: 1px solid #4FC3F7;
             color: white;
             border-radius: 5px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
             transition: all 0.3s;
         }
         .menu button:hover {
-            background: linear-gradient(to bottom, #6cf, #4af);
-            box-shadow: 0 0 15px #4af;
+            background: linear-gradient(to bottom, #0D47A1, #1A237E);
+            box-shadow: 0 0 10px #4FC3F7;
         }
         #hud {
             position: fixed;
-            top: 10px;
-            left: 10px;
+            top: 15px;
+            left: 15px;
             color: white;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 50, 0.7);
             padding: 10px 15px;
             border-radius: 5px;
-            border: 1px solid #4af;
+            border: 1px solid #4FC3F7;
             display: flex;
             gap: 20px;
             font-size: 18px;
         }
-        #lives {
-            color: #f44;
+        .hud-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .star {
-            position: absolute;
-            background: white;
-            border-radius: 50%;
+        .heart {
+            color: #FF4081;
+            font-size: 20px;
+        }
+        #ammo.reloading {
+            color: #FFEB3B;
+        }
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
         }
     </style>
 </head>
 <body>
+    <div id="stars" class="stars"></div>
+
     <div id="mainMenu" class="menu">
-        <h1>Cosmo Cows</h1>
-        <p>Охота на космических коров в скафандрах</p>
-        <button onclick="startGame()">Старт</button>
+        <h1>SPACE COW HUNT</h1>
+        <p>Уничтожьте коров в скафандрах, угрожающих галактике!</p>
+        <button onclick="startGame()">СТАРТ</button>
     </div>
 
     <div id="gameOverMenu" class="menu" style="display: none;">
-        <h1>Миссия завершена</h1>
+        <h1>МИССИЯ ЗАВЕРШЕНА</h1>
         <p>Попаданий: <span id="finalHits">0</span></p>
         <p>Промахов: <span id="finalMisses">0</span></p>
+        <p>Точность: <span id="finalAccuracy">0</span>%</p>
         <p>Счет: <span id="finalScore">0</span></p>
-        <button onclick="startGame()">Повторить</button>
+        <button onclick="startGame()">ПОВТОРИТЬ</button>
     </div>
 
     <div id="hud">
-        <div>Время: <span id="timer">1:00</span></div>
-        <div>Патроны: <span id="ammo">5</span></div>
-        <div>Жизни: <span id="lives">♥♥♥</span></div>
-        <div>Счет: <span id="score">0</span></div>
+        <div class="hud-item">
+            <span class="heart">♥♥♥</span>
+        </div>
+        <div class="hud-item">
+            <span id="timer">1:00</span>
+        </div>
+        <div class="hud-item">
+            <span id="ammo">5</span>
+        </div>
+        <div class="hud-item">
+            <span id="stats">0/0</span>
+        </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -103,12 +123,11 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const starsContainer = document.getElementById('stars');
         
-        // Игровые переменные
         let gameActive = false;
         let cows = [];
         let shots = [];
-        let stars = [];
         let score = 0;
         let lives = 3;
         let timeLeft = 60;
@@ -117,169 +136,208 @@
         let ammo = 5;
         let isReloading = false;
         let gameTimer;
-        let starTimer;
+        let stars = [];
 
-        // Конфигурация игры
+        // Создание звездного фона
+        function createStars() {
+            for (let i = 0; i < 200; i++) {
+                const star = document.createElement('div');
+                star.style.position = 'absolute';
+                star.style.width = `${Math.random() * 3}px`;
+                star.style.height = star.style.width;
+                star.style.backgroundColor = 'white';
+                star.style.borderRadius = '50%';
+                star.style.opacity = Math.random();
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * 100}%`;
+                starsContainer.appendChild(star);
+                stars.push({
+                    element: star,
+                    speed: Math.random() * 0.2 + 0.1
+                });
+            }
+        }
+
+        function animateStars() {
+            if (!gameActive) return;
+            
+            stars.forEach(star => {
+                const currentTop = parseFloat(star.element.style.top);
+                let newTop = currentTop + star.speed;
+                
+                if (newTop > 100) {
+                    newTop = -5;
+                    star.element.style.left = `${Math.random() * 100}%`;
+                }
+                
+                star.element.style.top = `${newTop}%`;
+            });
+            
+            requestAnimationFrame(animateStars);
+        }
+
         const config = {
-            cowSpeed: 1.2,
+            cowSpeed: 1.8,
             spawnInterval: 1500,
-            maxCows: 7,
+            maxCows: 8,
             cowWidth: 50,
             cowHeight: 40,
+            headRadius: 15,
             reloadTime: 2000,
-            shotDuration: 500
+            wingSpan: 30
         };
 
-        // Класс космической коровы
-        class CosmoCow {
+        class SpaceCow {
             constructor() {
                 this.width = config.cowWidth;
                 this.height = config.cowHeight;
+                this.headRadius = config.headRadius;
+                this.wingSpan = config.wingSpan;
                 this.reset();
             }
 
             reset() {
-                // Начинаем либо слева, либо справа
+                // Направление движения (слева направо или справа налево)
                 this.direction = Math.random() > 0.5 ? 1 : -1;
-                this.x = this.direction > 0 ? -this.width : canvas.width + this.width;
-                this.y = Math.random() * (canvas.height - 100) + 50;
                 
-                // Скорость и цвет
-                this.speed = config.cowSpeed + Math.random() * 0.5;
-                this.color = `hsl(${Math.floor(Math.random() * 60) + 200}, 70%, 50%)`;
+                if (this.direction === 1) {
+                    // Слева направо
+                    this.x = -this.width;
+                    this.y = Math.random() * (canvas.height - 100) + 50;
+                } else {
+                    // Справа налево
+                    this.x = canvas.width + this.width;
+                    this.y = Math.random() * (canvas.height - 100) + 50;
+                }
                 
-                // Анимация крыльев
-                this.wingPhase = Math.random() * Math.PI * 2;
-                this.wingSpeed = 0.05 + Math.random() * 0.03;
+                this.vx = this.direction * config.cowSpeed;
+                this.color = `hsl(${Math.random() * 60 + 200}, 70%, 50%)`;
+                this.scarfColor = `hsl(${Math.random() * 360}, 80%, 60%)`;
             }
 
             update() {
-                this.x += this.speed * this.direction;
-                this.wingPhase += this.wingSpeed;
+                this.x += this.vx;
                 
-                // Если корова ушла за экран
-                if ((this.direction > 0 && this.x > canvas.width + this.width) || 
-                    (this.direction < 0 && this.x < -this.width)) {
+                // Колебательное движение по вертикали
+                this.y += Math.sin(Date.now() / 500) * 0.3;
+                
+                // Если корова ушла за границы экрана
+                if ((this.direction === 1 && this.x > canvas.width + this.width) ||
+                    (this.direction === -1 && this.x < -this.width)) {
                     this.reset();
                 }
             }
 
             draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
+                // Тело (скафандр)
+                ctx.fillStyle = this.color;
+                ctx.fillRect(
+                    this.x - this.width/2, 
+                    this.y - this.height/2, 
+                    this.width, 
+                    this.height
+                );
                 
-                // Если корова летит влево, отражаем изображение
-                if (this.direction < 0) {
-                    ctx.scale(-1, 1);
+                // Голова
+                ctx.beginPath();
+                ctx.arc(
+                    this.x + (this.direction * this.width/2), 
+                    this.y - this.height/4, 
+                    this.headRadius, 
+                    0, 
+                    Math.PI*2
+                );
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                
+                // Визор скафандра
+                ctx.fillStyle = 'rgba(100, 200, 255, 0.5)';
+                ctx.beginPath();
+                ctx.arc(
+                    this.x + (this.direction * this.width/2), 
+                    this.y - this.height/4, 
+                    this.headRadius - 3, 
+                    0, 
+                    Math.PI*2
+                );
+                ctx.fill();
+                
+                // Ножки
+                ctx.fillStyle = 'gray';
+                for (let i = 0; i < 3; i++) {
+                    const legX = this.x - this.width/3 + i * this.width/3;
+                    ctx.fillRect(
+                        legX - 3, 
+                        this.y + this.height/2 - 5, 
+                        6, 
+                        10
+                    );
                 }
                 
-                // Тело коровы (скафандр)
-                ctx.fillStyle = this.color;
+                // Крылья Пегаса
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                // Левое крыло
                 ctx.beginPath();
-                ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Шлем
-                ctx.fillStyle = 'rgba(200, 240, 255, 0.7)';
-                ctx.beginPath();
-                ctx.ellipse(0, -this.height/4, this.width/3, this.height/4, 0, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Крылья
-                const wingSize = this.width/3;
-                const wingY = Math.sin(this.wingPhase) * 5;
-                
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-                ctx.beginPath();
-                ctx.moveTo(this.width/2, wingY);
-                ctx.lineTo(this.width/2 + wingSize, wingY - wingSize/2);
-                ctx.lineTo(this.width/2 + wingSize, wingY + wingSize/2);
+                ctx.moveTo(this.x - this.width/2 - 5, this.y);
+                ctx.lineTo(this.x - this.width/2 - this.wingSpan, this.y - this.height/3);
+                ctx.lineTo(this.x - this.width/2 - this.wingSpan/2, this.y + this.height/6);
                 ctx.closePath();
                 ctx.fill();
                 
-                // Глаз
-                ctx.fillStyle = 'black';
+                // Правое крыло
                 ctx.beginPath();
-                ctx.arc(this.width/4, -this.height/6, 3, 0, Math.PI * 2);
+                ctx.moveTo(this.x + this.width/2 + 5, this.y);
+                ctx.lineTo(this.x + this.width/2 + this.wingSpan, this.y - this.height/3);
+                ctx.lineTo(this.x + this.width/2 + this.wingSpan/2, this.y + this.height/6);
+                ctx.closePath();
                 ctx.fill();
                 
-                ctx.restore();
+                // Двигатель (для направления движения)
+                ctx.fillStyle = 'orange';
+                const engineX = this.x - (this.direction * this.width/2);
+                ctx.beginPath();
+                ctx.arc(engineX, this.y, 5, 0, Math.PI*2);
+                ctx.fill();
+                
+                // Пламя двигателя
+                ctx.fillStyle = 'red';
+                ctx.beginPath();
+                ctx.moveTo(engineX, this.y + 5);
+                ctx.lineTo(engineX - (this.direction * 10), this.y + 15);
+                ctx.lineTo(engineX + (this.direction * 10), this.y + 15);
+                ctx.closePath();
+                ctx.fill();
             }
         }
 
-        // Класс выстрела
         class Shot {
             constructor(x, y) {
                 this.x = x;
                 this.y = y;
                 this.radius = 3;
                 this.alpha = 1;
-                this.created = Date.now();
+                this.color = `hsl(${Math.random() * 60 + 30}, 100%, 50%)`;
             }
 
             draw() {
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 100, 100, ${this.alpha})`;
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                ctx.fillStyle = `${this.color.replace(')', `, ${this.alpha})`)}`;
                 ctx.fill();
                 
                 // Эффект свечения
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius * 3, 0, Math.PI * 2);
-                const gradient = ctx.createRadialGradient(
-                    this.x, this.y, this.radius, 
-                    this.x, this.y, this.radius * 3
-                );
-                gradient.addColorStop(0, `rgba(255, 100, 100, ${this.alpha * 0.3})`);
-                gradient.addColorStop(1, `rgba(255, 100, 100, 0)`);
-                ctx.fillStyle = gradient;
+                ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI*2);
+                ctx.fillStyle = `${this.color.replace(')', `, ${this.alpha * 0.3})`)}`;
                 ctx.fill();
             }
 
             update() {
-                const elapsed = Date.now() - this.created;
-                this.alpha = 1 - (elapsed / config.shotDuration);
-                this.radius = 3 + (elapsed / config.shotDuration) * 10;
+                this.radius += 1;
+                this.alpha -= 0.08;
             }
         }
 
-        // Создание звездного фона
-        function createStars() {
-            stars = [];
-            const count = Math.floor((canvas.width * canvas.height) / 1000);
-            
-            for (let i = 0; i < count; i++) {
-                stars.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    size: Math.random() * 1.5,
-                    speed: 0.2 + Math.random() * 0.3,
-                    alpha: 0.3 + Math.random() * 0.7
-                });
-            }
-        }
-
-        // Обновление звезд
-        function updateStars() {
-            ctx.fillStyle = 'white';
-            
-            stars.forEach(star => {
-                star.x -= star.speed;
-                if (star.x < 0) {
-                    star.x = canvas.width;
-                    star.y = Math.random() * canvas.height;
-                }
-                
-                ctx.globalAlpha = star.alpha;
-                ctx.beginPath();
-                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-                ctx.fill();
-            });
-            
-            ctx.globalAlpha = 1;
-        }
-
-        // Запуск игры
         function startGame() {
             gameActive = true;
             document.getElementById('mainMenu').style.display = 'none';
@@ -298,62 +356,53 @@
             
             updateHUD();
             resizeCanvas();
-            createStars();
             
-            // Запуск таймеров
             gameTimer = setInterval(() => {
                 timeLeft--;
                 updateHUD();
-                if (timeLeft <= 0) endGame();
+                if(timeLeft <= 0) endGame();
             }, 1000);
             
-            starTimer = setInterval(() => {
-                stars.forEach(star => {
-                    star.alpha = Math.min(1, star.alpha + (Math.random() * 0.2 - 0.1));
-                });
-            }, 300);
-            
             spawnCow();
+            animateStars();
             gameLoop();
         }
 
-        // Завершение игры
         function endGame() {
             gameActive = false;
             clearInterval(gameTimer);
-            clearInterval(starTimer);
             document.getElementById('gameOverMenu').style.display = 'block';
             document.getElementById('finalHits').textContent = hits;
             document.getElementById('finalMisses').textContent = misses;
+            
+            const accuracy = hits + misses > 0 ? Math.round((hits / (hits + misses)) * 100 : 0;
+            document.getElementById('finalAccuracy').textContent = accuracy;
+            
             document.getElementById('finalScore').textContent = score;
         }
 
-        // Обновление интерфейса
         function updateHUD() {
+            document.querySelector('.heart').textContent = '♥'.repeat(lives) + '♡'.repeat(3 - lives);
             document.getElementById('timer').textContent = `${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2, '0')}`;
             document.getElementById('ammo').textContent = ammo + (isReloading ? ' (R)' : '');
-            document.getElementById('lives').textContent = '♥'.repeat(lives) + '♡'.repeat(3 - lives);
-            document.getElementById('score').textContent = score;
+            document.getElementById('stats').textContent = `${hits}/${hits + misses}`;
         }
 
-        // Создание новой коровы
         function spawnCow() {
             if (!gameActive) return;
             if (cows.length < config.maxCows) {
-                cows.push(new CosmoCow());
+                cows.push(new SpaceCow());
             }
             setTimeout(spawnCow, config.spawnInterval);
         }
 
-        // Проверка попадания
         function checkHit(x, y) {
             let hit = false;
-            
             cows.forEach((cow, index) => {
-                const left = cow.x - cow.width/2;
-                const right = cow.x + cow.width/2;
-                const top = cow.y - cow.height/2;
-                const bottom = cow.y + cow.height/2;
+                const left = how.x - how.width/2;
+                const right = how.x + how.width/2;
+                const top = how.y - how.height/2;
+                const bottom = how.y + how.height/2;
                 
                 if (x >= left && x <= right && y >= top && y <= bottom) {
                     cows.splice(index, 1);
@@ -362,54 +411,50 @@
                     updateHUD();
                     shots.push(new Shot(x, y));
                     hit = true;
+                    
+                    // Эффект взрыва
+                    for (let i = 0; i < 10; i++) {
+                        const angle = Math.random() * Math.PI*2;
+                        const distance = Math.random() * 20;
+                        shots.push(new Shot(
+                            x + Math.cos(angle) * distance,
+                            y + Math.sin(angle) * distance
+                        ));
+                    }
                 }
             });
-            
             if (!hit && ammo > 0) {
                 misses++;
                 updateHUD();
             }
-            
-            return hit;
         }
 
-        // Основной игровой цикл
         function gameLoop() {
             if (!gameActive) return;
             
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Затемнение для эффекта движения
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Рисуем звезды
-            updateStars();
-            
-            // Обновляем и рисуем коров
             cows.forEach(cow => {
                 cow.update();
                 cow.draw();
             });
             
-            // Обновляем и рисуем выстрелы
             shots.forEach((shot, index) => {
                 shot.update();
                 shot.draw();
-                
-                // Удаляем старые выстрелы
-                if (Date.now() - shot.created > config.shotDuration) {
-                    shots.splice(index, 1);
-                }
+                if (shot.alpha <= 0) shots.splice(index, 1);
             });
             
             requestAnimationFrame(gameLoop);
         }
 
-        // Обработка изменения размера экрана
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            createStars();
         }
 
-        // Обработка кликов/тапов
         canvas.addEventListener('pointerdown', (e) => {
             if (!gameActive) return;
             
@@ -421,42 +466,33 @@
             
             if (ammo > 0) {
                 ammo--;
-                const hit = checkHit(x, y);
+                checkHit(x, y);
                 shots.push(new Shot(x, y));
-                
-                if (!hit && ammo === 0) {
-                    startReload();
-                }
             } else {
-                startReload();
+                misses++;
+                lives--;
+                if (lives <= 0) endGame();
+                isReloading = true;
+                setTimeout(() => {
+                    ammo = 5;
+                    isReloading = false;
+                    updateHUD();
+                }, config.reloadTime);
             }
-            
             updateHUD();
         });
 
-        // Начало перезарядки
-        function startReload() {
-            misses++;
-            lives--;
-            if (lives <= 0) {
-                endGame();
-                return;
-            }
-            
-            isReloading = true;
-            updateHUD();
-            
-            setTimeout(() => {
-                ammo = 5;
-                isReloading = false;
-                updateHUD();
-            }, config.reloadTime);
-        }
-
-        // Инициализация
         window.addEventListener('resize', resizeCanvas);
-        Telegram.WebApp.ready();
-        Telegram.WebApp.expand();
+        
+        // Инициализация
+        createStars();
+        resizeCanvas();
+        
+        // Для интеграции с Telegram
+        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        }
     </script>
 </body>
 </html>
