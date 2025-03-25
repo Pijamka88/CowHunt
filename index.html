@@ -1,257 +1,215 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bird Hunt</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
+            margin: 0;
             overflow: hidden;
             touch-action: none;
             background: #87CEEB;
-            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        
         #gameCanvas {
-            position: fixed;
-            top: 0;
-            left: 0;
+            background: #87CEEB;
         }
-        
-        #ui {
+        #score {
             position: fixed;
-            top: 10px;
-            left: 10px;
-            color: white;
+            top: 20px;
+            left: 20px;
             font-size: 24px;
+            color: white;
+            font-family: Arial;
             text-shadow: 2px 2px 2px rgba(0,0,0,0.5);
-            z-index: 100;
-        }
-        
-        #startScreen {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: white;
-            z-index: 200;
-        }
-        
-        button {
-            padding: 10px 20px;
-            font-size: 20px;
-            background: #4CAF50;
-            border: none;
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <div id="ui">
-        Score: <span id="score">0</span>
-    </div>
-    
-    <div id="startScreen">
-        <h1>Bird Hunt</h1>
-        <button onclick="startGame()">Start Game</button>
-        <p>Click on birds to shoot them!</p>
-    </div>
-    
+    <div id="score">Score: 0</div>
     <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+
         let score = 0;
-        let gameActive = false;
-        let animationFrameId;
-        
-        // Game objects
         let birds = [];
-        let explosions = [];
-        
-        // Game settings
-        const BIRD_SPEED = 2;
-        const SPAWN_INTERVAL = 1500;
-        const GAME_DURATION = 30000;
-        
-        function initGame() {
-            // Set canvas size
+        let shots = [];
+        let gameRunning = true;
+
+        // Настройки игры
+        const config = {
+            birdSpeed: 2,
+            spawnInterval: 1500,
+            maxBirds: 10,
+            birdRadius: 20
+        };
+
+        class Bird {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                const side = Math.floor(Math.random() * 4);
+                const angle = Math.random() * Math.PI/2 - Math.PI/4;
+                
+                switch(side) {
+                    case 0: // Left
+                        this.x = -config.birdRadius;
+                        this.y = Math.random() * canvas.height;
+                        this.vx = Math.cos(angle) * config.birdSpeed;
+                        this.vy = Math.sin(angle) * config.birdSpeed;
+                        break;
+                    case 1: // Right
+                        this.x = canvas.width + config.birdRadius;
+                        this.y = Math.random() * canvas.height;
+                        this.vx = -Math.cos(angle) * config.birdSpeed;
+                        this.vy = Math.sin(angle) * config.birdSpeed;
+                        break;
+                    case 2: // Top
+                        this.x = Math.random() * canvas.width;
+                        this.y = -config.birdRadius;
+                        this.vx = Math.sin(angle) * config.birdSpeed;
+                        this.vy = Math.cos(angle) * config.birdSpeed;
+                        break;
+                    case 3: // Bottom
+                        this.x = Math.random() * canvas.width;
+                        this.y = canvas.height + config.birdRadius;
+                        this.vx = Math.sin(angle) * config.birdSpeed;
+                        this.vy = -Math.cos(angle) * config.birdSpeed;
+                        break;
+                }
+                
+                this.color = `hsl(${Math.random() * 360}, 70%, 50%)`;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // Проверка выхода за границы
+                if (this.x < -config.birdRadius || this.x > canvas.width + config.birdRadius ||
+                    this.y < -config.birdRadius || this.y > canvas.height + config.birdRadius) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, config.birdRadius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                // Глаз
+                ctx.beginPath();
+                ctx.arc(
+                    this.x + config.birdRadius/3, 
+                    this.y - config.birdRadius/3, 
+                    config.birdRadius/5, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fillStyle = 'white';
+                ctx.fill();
+            }
+        }
+
+        class Shot {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 5;
+                this.alpha = 1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 0, 0, ${this.alpha})`;
+                ctx.fill();
+            }
+
+            update() {
+                this.radius += 1;
+                this.alpha -= 0.1;
+            }
+        }
+
+        function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            
-            // Initialize Telegram Web App
-            if (window.Telegram.WebApp.initData) {
-                Telegram.WebApp.expand();
-                Telegram.WebApp.MainButton.setText('Close Game').show().onClick(() => {
-                    Telegram.WebApp.close();
-                });
-            }
         }
-        
-        function createBird() {
-            const side = Math.floor(Math.random() * 4);
-            let x, y, dx, dy;
-            
-            switch(side) {
-                case 0: // top
-                    x = Math.random() * canvas.width;
-                    y = -50;
-                    dx = (Math.random() - 0.5) * BIRD_SPEED;
-                    dy = BIRD_SPEED;
-                    break;
-                case 1: // right
-                    x = canvas.width + 50;
-                    y = Math.random() * canvas.height;
-                    dx = -BIRD_SPEED;
-                    dy = (Math.random() - 0.5) * BIRD_SPEED;
-                    break;
-                case 2: // bottom
-                    x = Math.random() * canvas.width;
-                    y = canvas.height + 50;
-                    dx = (Math.random() - 0.5) * BIRD_SPEED;
-                    dy = -BIRD_SPEED;
-                    break;
-                case 3: // left
-                    x = -50;
-                    y = Math.random() * canvas.height;
-                    dx = BIRD_SPEED;
-                    dy = (Math.random() - 0.5) * BIRD_SPEED;
-                    break;
-            }
-            
-            birds.push({
-                x, y,
-                dx, dy,
-                active: true,
-                size: 50
-            });
-        }
-        
-        function updateGame() {
-            // Update birds positions
-            birds.forEach(bird => {
-                if (bird.active) {
-                    bird.x += bird.dx;
-                    bird.y += bird.dy;
-                    
-                    // Remove birds that go off screen
-                    if (bird.x < -100 || bird.x > canvas.width + 100 || 
-                        bird.y < -100 || bird.y > canvas.height + 100) {
-                        bird.active = false;
-                    }
-                }
-            });
-            
-            // Filter out inactive birds
-            birds = birds.filter(bird => bird.active);
-            
-            // Update explosions
-            explosions = explosions.filter(explosion => {
-                explosion.timeLeft--;
-                return explosion.timeLeft > 0;
-            });
-        }
-        
-        function draw() {
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw birds
-            birds.forEach(bird => {
-                if (bird.active) {
-                    ctx.fillStyle = '#FF0000';
-                    ctx.beginPath();
-                    ctx.arc(bird.x, bird.y, bird.size/2, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            });
-            
-            // Draw explosions
-            explosions.forEach(explosion => {
-                ctx.fillStyle = `rgba(255, 165, 0, ${explosion.timeLeft/10})`;
-                ctx.beginPath();
-                ctx.arc(explosion.x, explosion.y, explosion.size, 0, Math.PI * 2);
-                ctx.fill();
-            });
-        }
-        
+
         function gameLoop() {
-            if (!gameActive) return;
-            
-            updateGame();
-            draw();
-            animationFrameId = requestAnimationFrame(gameLoop);
-        }
-        
-        function startGame() {
-            document.getElementById('startScreen').style.display = 'none';
-            score = 0;
-            document.getElementById('score').textContent = '0';
-            birds = [];
-            explosions = [];
-            gameActive = true;
-            
-            // Bird spawner
-            const spawnInterval = setInterval(createBird, SPAWN_INTERVAL);
-            
-            // Game timer
-            setTimeout(() => {
-                gameActive = false;
-                clearInterval(spawnInterval);
-                cancelAnimationFrame(animationFrameId);
-                document.getElementById('startScreen').style.display = 'block';
-            }, GAME_DURATION);
-            
-            gameLoop();
-        }
-        
-        function handleShoot(e) {
-            if (!gameActive) return;
-            
-            const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || e.touches[0].clientX) - rect.left;
-            const y = (e.clientY || e.touches[0].clientY) - rect.top;
-            
+            if (!gameRunning) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Обновление и отрисовка птиц
             birds.forEach(bird => {
-                if (bird.active) {
-                    const distance = Math.sqrt(
-                        Math.pow(x - bird.x, 2) + Math.pow(y - bird.y, 2)
-                    );
-                    
-                    if (distance < bird.size/2) {
-                        bird.active = false;
-                        score += 100;
-                        document.getElementById('score').textContent = score;
-                        explosions.push({
-                            x: bird.x,
-                            y: bird.y,
-                            size: bird.size,
-                            timeLeft: 10
-                        });
-                    }
+                bird.update();
+                bird.draw();
+            });
+
+            // Обновление и отрисовка выстрелов
+            shots.forEach((shot, index) => {
+                shot.update();
+                shot.draw();
+                if (shot.alpha <= 0) {
+                    shots.splice(index, 1);
+                }
+            });
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function spawnBird() {
+            if (!gameRunning) return;
+            if (birds.length < config.maxBirds) {
+                birds.push(new Bird());
+            }
+            setTimeout(spawnBird, config.spawnInterval);
+        }
+
+        function checkHit(x, y) {
+            birds.forEach((bird, index) => {
+                const dx = x - bird.x;
+                const dy = y - bird.y;
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                
+                if (distance < config.birdRadius) {
+                    birds.splice(index, 1);
+                    score += 100;
+                    scoreElement.textContent = `Score: ${score}`;
+                    shots.push(new Shot(bird.x, bird.y));
                 }
             });
         }
-        
-        // Event listeners
-        canvas.addEventListener('mousedown', handleShoot);
-        canvas.addEventListener('touchstart', handleShoot);
-        window.addEventListener('resize', initGame);
-        
-        // Initialize game
-        initGame();
+
+        // Обработчики событий
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            checkHit(x, y);
+            shots.push(new Shot(x, y));
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // Инициализация игры
+        resizeCanvas();
+        spawnBird();
+        gameLoop();
+
+        // Для интеграции с Telegram
+        Telegram.WebApp.ready();
+        Telegram.WebApp.expand();
     </script>
 </body>
 </html>
