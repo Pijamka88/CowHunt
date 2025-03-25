@@ -22,14 +22,13 @@
             width: 100%;
             height: 100%;
             display: none;
+            justify-content: center;
+            align-items: center;
             background: rgba(0, 0, 0, 0.9);
         }
 
         #mainMenu {
-            display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
             background: linear-gradient(45deg, #2e0854, #4a148c);
         }
 
@@ -89,6 +88,11 @@
             color: #ff4081;
             text-shadow: 0 0 5px #ff4081;
         }
+
+        #leaderboard {
+            padding: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -102,7 +106,7 @@
 
     <!-- How to Play -->
     <div id="howToPlay" class="screen">
-        <div style="max-width: 500px; padding: 20px;">
+        <div style="max-width: 500px; padding: 20px; text-align: center;">
             <h2>Правила игры</h2>
             <p>🔫 Патроны: 5</p>
             <p>❤️ Жизни: 3</p>
@@ -114,7 +118,7 @@
 
     <!-- Highscores -->
     <div id="highscores" class="screen">
-        <div style="max-width: 500px;">
+        <div style="max-width: 500px; text-align: center;">
             <h2>Топ-5 рекордов</h2>
             <div id="leaderboard"></div>
             <button onclick="showScreen('mainMenu')">Назад</button>
@@ -125,7 +129,7 @@
     <div id="gameScreen" class="screen">
         <div id="topHUD" class="hud">
             <div>Score: <span id="score">0</span></div>
-            <div>❤️❤️❤️</div>
+            <div id="lives">❤️❤️❤️</div>
             <div>⏱️ <span id="timer">60</span>s</div>
         </div>
         
@@ -147,8 +151,9 @@
             timeLeft: 60,
             reloading: false,
             cows: [],
-            animations: [],
-            gameActive: false
+            gameActive: false,
+            intervalId: null,
+            animationFrameId: null
         };
 
         const CowTypes = {
@@ -163,8 +168,14 @@
 
         // Управление экранами
         function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-            document.getElementById(screenId).style.display = 'flex';
+            document.querySelectorAll('.screen').forEach(s => {
+                s.style.display = 'none';
+                s.classList.remove('active');
+            });
+            const activeScreen = document.getElementById(screenId);
+            activeScreen.style.display = 'flex';
+            activeScreen.classList.add('active');
+            
             if(screenId === 'gameScreen') startGame();
             if(screenId === 'highscores') updateLeaderboard();
         }
@@ -178,6 +189,9 @@
         }
 
         function resetGameState() {
+            // Очистка предыдущих коров
+            document.querySelectorAll('.cow').forEach(cow => cow.remove());
+            
             gameState = {
                 score: 0,
                 lives: 3,
@@ -187,8 +201,9 @@
                 timeLeft: 60,
                 reloading: false,
                 cows: [],
-                animations: [],
-                gameActive: true
+                gameActive: true,
+                intervalId: null,
+                animationFrameId: null
             };
             updateHUD();
         }
@@ -239,7 +254,7 @@
                 }
             });
 
-            requestAnimationFrame(gameLoop);
+            gameState.animationFrameId = requestAnimationFrame(gameLoop);
         }
 
         // Обработка кликов
@@ -292,32 +307,36 @@
             document.getElementById('hits').textContent = gameState.hits;
             document.getElementById('misses').textContent = gameState.misses;
             document.getElementById('timer').textContent = gameState.timeLeft;
-            document.querySelector('#topHUD div:nth-child(2)').innerHTML = 
+            document.getElementById('lives').innerHTML = 
                 '❤️'.repeat(gameState.lives) + '🖤'.repeat(3 - gameState.lives);
         }
 
         function gameTimer() {
-            const timer = setInterval(() => {
+            gameState.intervalId = setInterval(() => {
                 gameState.timeLeft--;
                 updateHUD();
                 
                 if(gameState.timeLeft <= 0) {
                     endGame();
-                    clearInterval(timer);
                 }
             }, 1000);
         }
 
         function endGame() {
             gameState.gameActive = false;
+            clearInterval(gameState.intervalId);
+            cancelAnimationFrame(gameState.animationFrameId);
             saveScore();
             showScreen('mainMenu');
         }
 
         // Рекорды
         function saveScore() {
-            const leaderboard = JSON.parse(localStorage.getItem('leaderboard') || [];
-            leaderboard.push({ score: gameState.score, date: new Date().toLocaleDateString() });
+            const leaderboard = JSON.parse(localStorage.getItem('leaderboard') || '[]');
+            leaderboard.push({
+                score: gameState.score,
+                date: new Date().toLocaleDateString('ru-RU')
+            });
             leaderboard.sort((a, b) => b.score - a.score);
             localStorage.setItem('leaderboard', JSON.stringify(leaderboard.slice(0, 5)));
         }
@@ -326,7 +345,7 @@
             const leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
             const list = leaderboard.map((entry, i) => 
                 `<div>${i+1}. ${entry.score} (${entry.date})</div>`).join('');
-            document.getElementById('leaderboard').innerHTML = list;
+            document.getElementById('leaderboard').innerHTML = list || '<div>Нет рекордов</div>';
         }
 
         // Инициализация
