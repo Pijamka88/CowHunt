@@ -1,343 +1,274 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Cosmic Cows Hunt</title>
+    <title>Cosmo Cows</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: #1a1a2e;
-            touch-action: none;
+            background: #1a1a1a;
             font-family: 'Arial', sans-serif;
-            color: white;
+            touch-action: none;
+        }
+        
+        #gameCanvas {
+            background: linear-gradient(to bottom, #fff5e6 0%, #e6d5c3 100%);
         }
 
-        .screen {
-            display: none;
+        .menu {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            background: rgba(40, 40, 80, 0.95);
+            background: rgba(245, 235, 220, 0.9);
             padding: 2rem;
             border-radius: 15px;
-            border: 2px solid #6c5ce7;
-            box-shadow: 0 0 20px rgba(108, 92, 231, 0.5);
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
         }
 
-        .active {
-            display: block;
+        .menu h1 {
+            color: #6d4c41;
+            margin: 0 0 1.5rem;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
         }
 
-        button {
-            padding: 15px 30px;
-            font-size: 18px;
-            background: #6c5ce7;
+        .menu button {
+            background: #a1887f;
             border: none;
-            border-radius: 25px;
+            padding: 1rem 2rem;
             color: white;
+            font-size: 1.2em;
+            border-radius: 25px;
             cursor: pointer;
-            margin: 10px;
-            transition: all 0.3s;
-            border: 2px solid #857cd6;
+            transition: transform 0.2s;
         }
 
-        button:hover {
-            background: #857cd6;
+        .menu button:hover {
             transform: scale(1.05);
+            background: #8d6e63;
         }
 
-        #gameCanvas {
-            cursor: crosshair;
-        }
-
-        #hud {
-            position: fixed;
-            width: 100%;
-            padding: 10px;
-            display: flex;
-            justify-content: space-between;
-            background: rgba(0, 0, 0, 0.7);
-        }
-
-        #stats {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            padding: 10px;
-            display: flex;
-            justify-content: space-around;
-            background: rgba(0, 0, 0, 0.7);
-        }
-
-        .hearts span {
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #6d4c41;
             font-size: 24px;
-            color: #ff4757;
-            margin: 0 3px;
-        }
-
-        #leaderboard {
-            list-style: none;
-            padding: 0;
+            font-weight: bold;
+            background: rgba(255, 245, 230, 0.8);
+            padding: 10px 20px;
+            border-radius: 10px;
         }
     </style>
 </head>
 <body>
+    <div id="score">Score: 0</div>
     <canvas id="gameCanvas"></canvas>
-    
-    <div id="hud">
-        <div>Score: <span id="score">0</span></div>
-        <div>Time: <span id="time">60</span></div>
-    </div>
-
-    <div id="stats">
-        <div>Ammo: <span id="ammo">5</span></div>
-        <div>Hits: <span id="hits">0</span></div>
-        <div>Miss: <span id="miss">0</span></div>
-        <div class="hearts" id="hearts">❤️❤️❤️</div>
-    </div>
-
-    <!-- Main Menu -->
-    <div id="mainMenu" class="screen active">
-        <h1>🛸 Cosmic Cows 🐄</h1>
-        <button onclick="showScreen('game')">Start Game</button><br>
-        <button onclick="showScreen('howToPlay')">How to Play</button><br>
-        <button onclick="showScreen('leaderboard')">High Scores</button>
-    </div>
-
-    <!-- How to Play -->
-    <div id="howToPlay" class="screen">
-        <h2>How to Play</h2>
-        <p>🔫 5 bullets before reload<br>
-           🎯 Tap to shoot flying cows<br>
-           ⏱ 60 seconds mission<br>
-           💥 3 lives max</p>
-        <button onclick="showScreen('mainMenu')">Back</button>
-    </div>
-
-    <!-- Leaderboard -->
-    <div id="leaderboard" class="screen">
-        <h2>Top 5 Pilots</h2>
-        <ul id="highscores"></ul>
-        <button onclick="showScreen('mainMenu')">Back</button>
+    <div class="menu" id="mainMenu">
+        <h1>Cosmo Cows</h1>
+        <button onclick="startGame()">Start Hunt</button>
     </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        let cows = [];
-        let gameTime = 60;
-        let score = 0;
-        let ammo = 5;
-        let hits = 0;
-        let miss = 0;
-        let lives = 3;
-        let isReloading = false;
-        let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+        const mainMenu = document.getElementById('mainMenu');
+        const scoreElement = document.getElementById('score');
 
-        const COW_TYPES = [
-            { color: '#a29bfe', speed: 3, score: 100 },
-            { color: '#74b9ff', speed: 5, score: 200 },
-            { color: '#ff7675', speed: 7, score: 300 }
-        ];
+        let score = 0;
+        let animationFrameId;
+        let stars = [];
+        let cows = [];
+        let bullets = [];
+        let lastSpawn = 0;
+        let gameStarted = false;
+
+        // Звуковые эффекты (Base64 encoded)
+        const shootSound = new Audio('data:audio/wav;base64,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qJrx4KOQjahZxWbcZgztj2c49nKmkId44S71j0c8eV9yDK6uPRzx5X18eDvjvQ6yKo9ZSS6l//8elePK/Lf//IInrOF/FvDoADYAGBMGb7FtErm5MXMlmPAJQVgWta7Zx2go+8xJ0UiCb8LHHdftWyLJE0QIAIsI+UbXu67dZMjmgDGCGl1H+vpF4NSDckSIkk7Vd+sxEhBQMRU8j/12UIRhzSaUdQ+rQU5kGeFxm+hb1oh6pWWmv3uvmReDl0UnvtapVaIzo1jZbf/pD6ElLqSX+rUmOQNpJFa/r+sa4e/pBlAABoAAAAA3CUgShLdGIxsY7AUABPRrgCABdDuQ5GC7DqPQCgbbJUAoRSUj+NIEig0YfyWUho1VBBBA//uQZB4ABZx5zfMakeAAAAmwAAAAF5F3P0w9GtAAACfAAAAAwLhMDmAYWMgVEG1U0FIGCBgXBXAtfMH10000EEEEEECUBYln03TTTdNBDZopopYvrTTdNa325mImNg3TTPV9q3pmY0xoO6bv3r00y+IDGid/9aaaZTGMuj9mpu9Mpio1dXrr5HERTZSmqU36A3CumzN/9Robv/Xx4v9ijkSRSNLQhAWumap82WRSBUqXStV/YcS+XVLnSS+WLDroqArFkMEsAS+eWmrUzrO0oEmE40RlMZ5+ODIkAyKAGUwZ3mVKmcamcJnMW26MRPgUw6j+LkhyHGVGYjSUUKNpuJUQoOIAyDvEyG8S5yfK6dhZc0Tx1KI/gviKL6qvvFs1+bWtaz58uUNnryq6kt5RzOCkPWlVqVX2a/EEBUdU1KrXLf40GoiiFXK///qpoiDXrOgqDR38JB0bw7SoL+ZB9o1RCkQjQ2CBYZKd/+VJxZRRZlqSkKiws0WFxUyCwsKiMy7hUVFhIaCrNQsKkTIsLivwKKigsj8XYlwt/WKi2N4d//uQRCSAAjURNIHpMZBGYiaQPSYyAAABLAAAAAAAACWAAAAApUF/Mg+0aohSIRobBAsMlO//Kk4soosy1JSFRYWaLC4qZBYWFRGZdwqKiwkNBVmoWFSJkWFxX4FFRQWR+LsS4W/rFRb/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////VEFHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU291bmRib3kuZGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjAwNGh0dHA6Ly93d3cuc291bmRib3kuZGUAAAAAAAAAACU=');
+        const hitSound = new Audio('data:audio/wav;base64,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//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////VEFHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU291bmRib3kuZGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjAwNGh0dHA6Ly93d3cuc291bmRib3kuZGUAAAAAAAAAACU=');
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         }
 
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        class CosmicCow {
+        class Star {
             constructor() {
-                this.type = COW_TYPES[Math.floor(Math.random() * COW_TYPES.length)];
-                this.x = canvas.width + 100;
-                this.y = Math.random() * (canvas.height - 80);
-                this.angle = Math.random() * Math.PI * 2;
-                this.speed = this.type.speed;
-                this.radius = 20;
-                this.amplitude = Math.random() * 50 + 30;
-            }
-
-            update() {
-                this.angle += 0.03;
-                this.x -= this.speed;
-                this.y += Math.sin(this.angle) * 2;
-                
-                if (this.x < -100) this.reset();
+                this.reset();
             }
 
             reset() {
-                this.x = canvas.width + 100;
-                this.y = Math.random() * (canvas.height - 80);
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2;
+                this.speed = Math.random() * 0.5 + 0.2;
+            }
+
+            update() {
+                this.y += this.speed;
+                if (this.y > canvas.height) this.reset();
             }
 
             draw() {
-                // Body
-                ctx.fillStyle = this.type.color;
-                ctx.fillRect(this.x, this.y, 50, 30);
-                
-                // Head
+                ctx.fillStyle = '#fff5e6';
                 ctx.beginPath();
-                ctx.arc(this.x + 60, this.y + 15, 15, 0, Math.PI * 2);
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fill();
-                
-                // Legs
-                ctx.fillRect(this.x + 10, this.y + 30, 5, 20);
-                ctx.fillRect(this.x + 35, this.y + 30, 5, 20);
-                
-                // Wings
+            }
+        }
+
+        class Cow {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height + 50;
+                this.speed = Math.random() * 3 + 2;
+                this.angle = 0;
+                this.wingPhase = 0;
+                this.alive = true;
+            }
+
+            update() {
+                if (this.alive) {
+                    this.y -= this.speed;
+                    this.angle = Math.sin(Date.now() * 0.005) * 0.5;
+                    this.wingPhase = Math.sin(Date.now() * 0.01) * 0.5 + 0.5;
+                } else {
+                    this.y += 5;
+                    this.angle += 0.1;
+                }
+            }
+
+            draw() {
                 ctx.save();
-                ctx.translate(this.x + 25, this.y);
-                ctx.rotate(Math.sin(this.angle * 2) * 0.5);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                ctx.fillRect(-15, 0, 30, 15);
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                // Тело коровы
+                ctx.fillStyle = '#8d6e63';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 30, 20, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Крылья
+                ctx.fillStyle = '#6d4c4180';
+                ctx.beginPath();
+                ctx.ellipse(-20, -10 * this.wingPhase, 15, 8, 0, 0, Math.PI * 2);
+                ctx.ellipse(20, -10 * this.wingPhase, 15, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Голова
+                ctx.fillStyle = '#5d4037';
+                ctx.beginPath();
+                ctx.arc(0, -25, 10, 0, Math.PI * 2);
+                ctx.fill();
+
                 ctx.restore();
             }
         }
 
-        function gameLoop() {
-            ctx.fillStyle = 'rgba(28, 28, 51, 0.2)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        class Bullet {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.speed = 10;
+            }
 
-            // Draw stars
-            for(let i = 0; i < 50; i++) {
-                ctx.fillStyle = `hsl(${Math.random() * 360}, 100%, 80%)`;
-                ctx.fillRect(
-                    Math.random() * canvas.width,
-                    Math.random() * canvas.height,
-                    2, 2
-                );
+            update() {
+                this.y -= this.speed;
+            }
+
+            draw() {
+                ctx.fillStyle = '#d32f2f';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function checkCollisions() {
+            bullets.forEach((bullet, bIndex) => {
+                cows.forEach((cow, cIndex) => {
+                    if (cow.alive && Math.hypot(bullet.x - cow.x, bullet.y - cow.y) < 30) {
+                        hitSound.play();
+                        cow.alive = false;
+                        score += 100;
+                        scoreElement.textContent = `Score: ${score}`;
+                        bullets.splice(bIndex, 1);
+                    }
+                });
+            });
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Звездное небо
+            stars.forEach(star => {
+                star.update();
+                star.draw();
+            });
+
+            // Коровы
+            if (Date.now() - lastSpawn > 1500) {
+                cows.push(new Cow());
+                lastSpawn = Date.now();
             }
 
             cows.forEach((cow, index) => {
                 cow.update();
                 cow.draw();
+                if (cow.y < -50 || cow.y > canvas.height + 50) {
+                    cows.splice(index, 1);
+                }
             });
 
-            requestAnimationFrame(gameLoop);
-        }
+            // Пули
+            bullets.forEach((bullet, index) => {
+                bullet.update();
+                bullet.draw();
+                if (bullet.y < 0) bullets.splice(index, 1);
+            });
 
-        function spawnCow() {
-            cows.push(new CosmicCow());
-            if(gameTime > 0) setTimeout(spawnCow, Math.random() * 1500 + 500);
+            checkCollisions();
+            animationFrameId = requestAnimationFrame(gameLoop);
         }
 
         function startGame() {
+            mainMenu.style.display = 'none';
             score = 0;
-            gameTime = 60;
-            ammo = 5;
-            hits = 0;
-            miss = 0;
-            lives = 3;
-            cows = [];
-            isReloading = false;
+            scoreElement.textContent = `Score: ${score}`;
+            gameStarted = true;
+
+            // Инициализация звезд
+            stars = Array(100).fill().map(() => new Star());
             
-            updateHUD();
-            spawnCow();
+            resizeCanvas();
             gameLoop();
+        }
+
+        function handleClick(e) {
+            if (!gameStarted) return;
             
-            const timer = setInterval(() => {
-                gameTime--;
-                updateHUD();
-                if(gameTime <= 0) {
-                    clearInterval(timer);
-                    endGame();
-                }
-            }, 1000);
-        }
-
-        function updateHUD() {
-            document.getElementById('score').textContent = score;
-            document.getElementById('time').textContent = gameTime;
-            document.getElementById('ammo').textContent = ammo;
-            document.getElementById('hits').textContent = hits;
-            document.getElementById('miss').textContent = miss;
-            document.getElementById('hearts').innerHTML = '❤️'.repeat(lives);
-        }
-
-        function endGame() {
-            showScreen('mainMenu');
-            cows = [];
-            if(score > 0 && (leaderboard.length < 5 || score > leaderboard[4].score)) {
-                const name = prompt('New high score! Enter your name:');
-                if(name) {
-                    leaderboard.push({ name, score });
-                    leaderboard.sort((a,b) => b.score - a.score);
-                    leaderboard = leaderboard.slice(0,5);
-                    localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
-                }
-            }
-        }
-
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
             
-            if(screenId === 'game') {
-                startGame();
-            } else if(screenId === 'leaderboard') {
-                const list = document.getElementById('highscores');
-                list.innerHTML = leaderboard
-                    .sort((a,b) => b.score - a.score)
-                    .slice(0,5)
-                    .map((entry, i) => 
-                        `<li>${i+1}. ${entry.name} - ${entry.score}</li>`
-                    ).join('');
-            }
+            bullets.push(new Bullet(x, y));
+            shootSound.play();
         }
 
-        canvas.addEventListener('click', (e) => {
-            if(!document.getElementById('game').classList.contains('active') || 
-               isReloading || 
-               ammo <= 0) return;
-
-            if(ammo > 0 && !isReloading) {
-                ammo--;
-                const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
-                let hit = false;
-                cows.forEach((cow, index) => {
-                    if(x > cow.x && x < cow.x + 70 && 
-                       y > cow.y && y < cow.y + 50) {
-                        cows.splice(index, 1);
-                        score += cow.type.score;
-                        hits++;
-                        hit = true;
-                    }
-                });
-
-                if(!hit) {
-                    miss++;
-                    lives = Math.max(lives - 1, 0);
-                    if(lives === 0) endGame();
-                }
-
-                updateHUD();
-                
-                if(ammo === 0) {
-                    isReloading = true;
-                    canvas.style.cursor = 'progress';
-                    setTimeout(() => {
-                        ammo = 5;
-                        isReloading = false;
-                        canvas.style.cursor = 'crosshair';
-                        updateHUD();
-                    }, 2000);
-                }
-            }
+        // Инициализация
+        window.addEventListener('resize', resizeCanvas);
+        canvas.addEventListener('click', handleClick);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleClick(e.touches[0]);
         });
-
-        // Init Telegram WebApp
-        Telegram.WebApp.ready();
-        Telegram.WebApp.expand();
+        resizeCanvas();
     </script>
 </body>
 </html>
