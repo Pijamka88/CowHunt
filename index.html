@@ -101,7 +101,7 @@
     <div id="mainMenu" class="menu">
         <h1>Cosmo Cows</h1>
         <p>Защитите космос от коров в скафандрах!</p>
-        <button onclick="startGame()">Запуск</button>
+        <button id="startButton">Запуск</button>
     </div>
 
     <div id="gameOverMenu" class="menu" style="display: none;">
@@ -110,7 +110,7 @@
         <p>Промахов: <span id="finalMisses">0</span></p>
         <p>Точность: <span id="finalAccuracy">0</span>%</p>
         <p>Счет: <span id="finalScore">0</span></p>
-        <button onclick="startGame()">Повторить миссию</button>
+        <button id="restartButton">Повторить миссию</button>
     </div>
 
     <div id="hud">
@@ -123,9 +123,12 @@
     <canvas id="gameCanvas"></canvas>
 
     <script>
+        // Инициализация элементов
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const starsContainer = document.getElementById('stars');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
         
         // Создаем звездное поле
         for (let i = 0; i < 200; i++) {
@@ -139,6 +142,7 @@
             starsContainer.appendChild(star);
         }
 
+        // Игровые переменные
         let gameActive = false;
         let cows = [];
         let shots = [];
@@ -151,6 +155,7 @@
         let isReloading = false;
         let gameTimer;
 
+        // Конфигурация игры
         const config = {
             cowSpeed: 1.8,
             spawnInterval: 1500,
@@ -162,6 +167,7 @@
             wingSize: 20
         };
 
+        // Класс космической коровы
         class SpaceCow {
             constructor() {
                 this.width = config.cowWidth;
@@ -172,7 +178,6 @@
             }
 
             reset() {
-                // Начинаем с левой или правой стороны
                 this.fromLeft = Math.random() > 0.5;
                 
                 if (this.fromLeft) {
@@ -196,13 +201,11 @@
                 this.y += this.vy;
                 this.legAngle += this.legSpeed;
                 
-                // Если корова улетела за экран - респавн
                 if ((this.fromLeft && this.x > canvas.width + this.width*2) || 
                     (!this.fromLeft && this.x < -this.width*2)) {
                     this.reset();
                 }
                 
-                // Не даем улететь слишком высоко или низко
                 if (this.y < 50 || this.y > canvas.height - 50) {
                     this.vy = -this.vy;
                 }
@@ -228,23 +231,19 @@
                 ctx.arc(this.x, this.y - this.height/2 - this.headRadius/2, this.headRadius*0.7, 0, Math.PI);
                 ctx.fill();
                 
-                // Ножки (анимированные)
+                // Ножки
                 const legY = this.y + this.height/2 - 5;
                 const legOffset = Math.sin(this.legAngle) * 5;
                 
-                // Передние ножки
                 ctx.fillStyle = this.color;
                 ctx.fillRect(this.x - this.width/4 - 3, legY, 6, 10 + legOffset);
                 ctx.fillRect(this.x + this.width/4 - 3, legY, 6, 10 - legOffset);
-                
-                // Задние ножки
                 ctx.fillRect(this.x - this.width/2 - 3, legY, 6, 15 - legOffset);
                 ctx.fillRect(this.x + this.width/2 - 3, legY, 6, 15 + legOffset);
                 
                 // Крылья Пегаса
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
                 
-                // Левое крыло
                 ctx.beginPath();
                 ctx.moveTo(this.x - this.width/2, this.y - 5);
                 ctx.lineTo(this.x - this.width/2 - this.wingSize, this.y - this.wingSize);
@@ -252,7 +251,6 @@
                 ctx.closePath();
                 ctx.fill();
                 
-                // Правое крыло
                 ctx.beginPath();
                 ctx.moveTo(this.x + this.width/2, this.y - 5);
                 ctx.lineTo(this.x + this.width/2 + this.wingSize, this.y - this.wingSize);
@@ -262,6 +260,7 @@
             }
         }
 
+        // Класс выстрела
         class Shot {
             constructor(x, y) {
                 this.x = x;
@@ -278,7 +277,6 @@
                 ctx.fillStyle = `rgba(255, 100, 100, ${this.alpha})`;
                 ctx.fill();
                 
-                // Эффект плазмы
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI*2);
                 ctx.strokeStyle = `rgba(255, 200, 100, ${this.alpha * 0.5})`;
@@ -294,6 +292,7 @@
             }
         }
 
+        // Функция запуска игры
         function startGame() {
             gameActive = true;
             document.getElementById('mainMenu').style.display = 'none';
@@ -323,6 +322,7 @@
             gameLoop();
         }
 
+        // Функция завершения игры
         function endGame() {
             gameActive = false;
             clearInterval(gameTimer);
@@ -331,10 +331,11 @@
             document.getElementById('finalMisses').textContent = misses;
             document.getElementById('finalScore').textContent = score;
             
-            const accuracy = hits > 0 ? Math.round((hits / (hits + misses)) * 100 : 0;
+            const accuracy = hits > 0 ? Math.round((hits / (hits + misses)) * 100) : 0;
             document.getElementById('finalAccuracy').textContent = accuracy;
         }
 
+        // Обновление интерфейса
         function updateHUD() {
             document.getElementById('lives').textContent = `Жизни: ${'♥'.repeat(lives)}`;
             document.getElementById('timer').textContent = `Время: ${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2, '0')}`;
@@ -343,6 +344,7 @@
             document.getElementById('stats').textContent = `Попадания: ${hits} | Промахи: ${misses}`;
         }
 
+        // Создание новой коровы
         function spawnCow() {
             if (!gameActive) return;
             if (cows.length < config.maxCows) {
@@ -351,6 +353,7 @@
             setTimeout(spawnCow, config.spawnInterval);
         }
 
+        // Проверка попадания
         function checkHit(x, y) {
             let hit = false;
             cows.forEach((cow, index) => {
@@ -367,7 +370,6 @@
                     shots.push(new Shot(x, y));
                     hit = true;
                     
-                    // Маленький взрыв при попадании
                     for (let i = 0; i < 5; i++) {
                         setTimeout(() => {
                             const explosion = new Shot(x + (Math.random() - 0.5) * 20, 
@@ -384,14 +386,13 @@
             }
         }
 
+        // Главный игровой цикл
         function gameLoop() {
             if (!gameActive) return;
             
-            // Очистка с прозрачностью для эффекта шлейфа
             ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Рисуем звезды на фоне
             drawStars();
             
             cows.forEach(cow => {
@@ -408,6 +409,7 @@
             requestAnimationFrame(gameLoop);
         }
 
+        // Отрисовка звезд
         function drawStars() {
             const stars = starsContainer.querySelectorAll('.star');
             stars.forEach(star => {
@@ -422,11 +424,13 @@
             });
         }
 
+        // Изменение размера холста
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         }
 
+        // Обработчик клика
         canvas.addEventListener('pointerdown', (e) => {
             if (!gameActive) return;
             
@@ -454,6 +458,11 @@
             updateHUD();
         });
 
+        // Обработчики кнопок
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+
+        // Обработчик изменения размера окна
         window.addEventListener('resize', resizeCanvas);
         
         // Инициализация для Telegram Web App
@@ -461,6 +470,9 @@
             Telegram.WebApp.ready();
             Telegram.WebApp.expand();
         }
+
+        // Первоначальная настройка
+        resizeCanvas();
     </script>
 </body>
 </html>
