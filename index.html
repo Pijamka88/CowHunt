@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Cosmic Cow Hunt</title>
+    <title>Space Cow Hunt</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body {
@@ -91,14 +91,6 @@
         .heart {
             color: #d32f2f;
         }
-        .life-bonus {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23d32f2f' d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E") no-repeat center;
-            background-size: contain;
-            z-index: 100;
-        }
         #reloadingText {
             position: fixed;
             top: 50%;
@@ -109,7 +101,7 @@
             font-weight: bold;
             text-shadow: 0 0 5px rgba(0,0,0,0.5);
             background-color: rgba(211, 47, 47, 0.3);
-            padding: 20px 40px;
+            padding: 10px 20px;
             border-radius: 10px;
             opacity: 0;
             transition: opacity 0.3s;
@@ -119,7 +111,7 @@
 </head>
 <body>
     <div id="mainMenu" class="menu">
-        <h1>Cosmic Cow Hunt</h1>
+        <h1>Space Cow Hunt</h1>
         <p>Охота на космических коров!</p>
         <button onclick="startGame()">Начать игру</button>
     </div>
@@ -201,7 +193,7 @@
             headRadius: 20,
             reloadTime: 2000,
             starCount: 50,
-            nebulaCount: 2,
+            nebulaCount: 3,
             lifeBonusChance: 0.15,
             missPenalty: 3,
             wingSpeed: 0.1
@@ -225,8 +217,8 @@
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
                     size: Math.random() * 1.5 + 0.5,
-                    alpha: Math.random() * 0.6 + 0.4,
-                    speed: Math.random() * 0.1 + 0.05
+                    alpha: Math.random() * 0.8 + 0.2,
+                    speed: Math.random() * 0.2 + 0.1
                 });
             }
         }
@@ -238,9 +230,9 @@
                 nebulas.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
-                    radius: Math.random() * 200 + 150,
+                    radius: Math.random() * 300 + 200,
                     color: `hsla(${200 + Math.random() * 40}, 80%, 60%, ${Math.random() * 0.1 + 0.05})`,
-                    speed: Math.random() * 0.05 + 0.03
+                    speed: Math.random() * 0.1 + 0.05
                 });
             }
         }
@@ -280,6 +272,7 @@
                 this.alive = true;
                 this.deathAnimation = 0;
                 this.rotation = 0;
+                this.wingAngle = 0;
             }
 
             die() {
@@ -295,7 +288,8 @@
                         x: this.x,
                         y: this.y,
                         radius: 15,
-                        collected: false
+                        collected: false,
+                        alpha: 1
                     });
                 }
             }
@@ -348,7 +342,7 @@
                     // Helmet
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.beginPath();
-                    ctx.arc(0, 0, this.headRadius + 2, 0, Math.PI * 2);
+                    ctx.arc(0, 0, this.headRadius, 0, Math.PI * 2);
                     ctx.fill();
                     
                     // Horns
@@ -368,52 +362,42 @@
                     ctx.fill();
                     
                     // Eyes (bigger)
-                    ctx.fillStyle = 'white';
+                    ctx.fillStyle = 'black';
                     ctx.beginPath();
                     ctx.arc(-this.headRadius/3, -this.headRadius/4, 5, 0, Math.PI * 2);
                     ctx.fill();
-                    
                     ctx.beginPath();
                     ctx.arc(this.headRadius/3, -this.headRadius/4, 5, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    ctx.fillStyle = 'black';
-                    ctx.beginPath();
-                    ctx.arc(-this.headRadius/3, -this.headRadius/4, 2, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    ctx.beginPath();
-                    ctx.arc(this.headRadius/3, -this.headRadius/4, 2, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Wings (thick lines)
+                    // Wings (thick animated lines)
                     ctx.strokeStyle = this.color;
-                    ctx.lineWidth = 4;
+                    ctx.lineWidth = 6;
+                    ctx.lineCap = 'round';
+                    
+                    // Left wing
                     ctx.beginPath();
                     ctx.moveTo(-this.width/2, 0);
-                    ctx.lineTo(-this.width/2 - 20, Math.sin(this.wingAngle) * 15 - 10);
+                    ctx.lineTo(
+                        -this.width/2 - 20 - Math.sin(this.wingAngle) * 15,
+                        Math.cos(this.wingAngle) * 15
+                    );
                     ctx.stroke();
                     
-                    ctx.beginPath();
-                    ctx.moveTo(-this.width/2, 0);
-                    ctx.lineTo(-this.width/2 - 20, Math.sin(this.wingAngle) * 15 + 10);
-                    ctx.stroke();
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(this.width/2, 0);
-                    ctx.lineTo(this.width/2 + 20, Math.sin(this.wingAngle) * 15 - 10);
-                    ctx.stroke();
-                    
+                    // Right wing
                     ctx.beginPath();
                     ctx.moveTo(this.width/2, 0);
-                    ctx.lineTo(this.width/2 + 20, Math.sin(this.wingAngle) * 15 + 10);
+                    ctx.lineTo(
+                        this.width/2 + 20 + Math.sin(this.wingAngle) * 15,
+                        Math.cos(this.wingAngle) * 15
+                    );
                     ctx.stroke();
                     
-                    // Udder (5x bigger for female cows)
+                    // Udder (if cow is female - 5x bigger)
                     if (this.isFemale) {
                         ctx.fillStyle = '#F5F5F5';
                         ctx.beginPath();
-                        ctx.ellipse(0, this.height/3, 15, 10, 0, 0, Math.PI * 2);
+                        ctx.ellipse(0, this.height/3, 15, 8, 0, 0, Math.PI * 2);
                         ctx.fill();
                     }
                 } else {
@@ -421,21 +405,21 @@
                     ctx.rotate(this.rotation);
                     ctx.globalAlpha = this.deathAnimation;
                     
-                    // Draw dead cow with broken helmet
+                    // Draw dead cow
                     ctx.fillStyle = this.color;
                     ctx.beginPath();
                     ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
                     ctx.fill();
                     
                     // Broken helmet
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.beginPath();
-                    ctx.arc(0, 0, this.headRadius + 2, 0, Math.PI * 1.5);
+                    ctx.arc(0, 0, this.headRadius, 0, Math.PI * 2);
                     ctx.fill();
                     
                     // X eyes
                     ctx.strokeStyle = 'black';
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.moveTo(-this.headRadius/3 - 3, -this.headRadius/4 - 3);
                     ctx.lineTo(-this.headRadius/3 + 3, -this.headRadius/4 + 3);
@@ -465,13 +449,13 @@
                 this.color = color;
                 
                 // Create particles
-                for (let i = 0; i < 20; i++) {
+                for (let i = 0; i < 25; i++) {
                     this.particles.push({
                         x: 0,
                         y: 0,
                         vx: (Math.random() - 0.5) * 6,
                         vy: (Math.random() - 0.5) * 6,
-                        size: Math.random() * 5 + 2,
+                        size: Math.random() * 6 + 3,
                         alpha: 1,
                         life: Math.random() * 0.5 + 0.5
                     });
@@ -605,12 +589,10 @@
                 const bodyBottom = cow.y + cow.height/2;
                 
                 // Check head hit
-                const headX = cow.x;
-                const headY = cow.y;
-                const headDist = Math.sqrt((x - headX) ** 2 + (y - headY) ** 2);
+                const headDist = Math.sqrt((x - cow.x) ** 2 + (y - cow.y) ** 2);
                 
                 if ((x >= bodyLeft && x <= bodyRight && y >= bodyTop && y <= bodyBottom) || 
-                    headDist <= cow.headRadius + 2) {
+                    headDist <= cow.headRadius) {
                     
                     // Create explosion
                     const color = this.getColorValues(cow.color);
@@ -628,7 +610,7 @@
                 }
             }
             
-            // Check life bonuses
+            // Check life bonuses (now as hearts)
             for (let i = 0; i < lifeBonuses.length; i++) {
                 const bonus = lifeBonuses[i];
                 if (bonus.collected) continue;
@@ -670,11 +652,11 @@
         }
 
         function drawBackground() {
-            // Draw space background
+            // Draw space background (bright blue)
             ctx.fillStyle = '#0a1a3a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Draw nebulas
+            // Draw nebulas (blue tones)
             nebulas.forEach(nebula => {
                 const gradient = ctx.createRadialGradient(
                     nebula.x, nebula.y, 0,
@@ -696,7 +678,7 @@
                 }
             });
             
-            // Draw stars
+            // Draw stars (smaller and fewer)
             stars.forEach(star => {
                 ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
                 ctx.beginPath();
@@ -714,22 +696,30 @@
 
         function drawLifeBonuses() {
             lifeBonuses.forEach((bonus, index) => {
-                if (bonus.collected) {
-                    lifeBonuses.splice(index, 1);
-                    return;
-                }
+                if (bonus.collected) return;
                 
-                // Draw heart SVG
-                const img = new Image();
-                img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23d32f2f' d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E";
-                ctx.drawImage(img, bonus.x - 15, bonus.y - 15, 30, 30);
+                // Draw heart shape
+                ctx.save();
+                ctx.translate(bonus.x, bonus.y);
+                ctx.scale(bonus.radius / 15, bonus.radius / 15);
+                ctx.fillStyle = `rgba(255, 82, 82, ${bonus.alpha})`;
+                ctx.beginPath();
+                ctx.moveTo(0, 5);
+                ctx.bezierCurveTo(0, -5, -15, -10, -15, 0);
+                ctx.bezierCurveTo(-15, 10, 0, 15, 0, 25);
+                ctx.bezierCurveTo(0, 15, 15, 10, 15, 0);
+                ctx.bezierCurveTo(15, -10, 0, -5, 0, 5);
+                ctx.fill();
+                ctx.restore();
                 
-                // Move down
-                bonus.y += 1;
+                // Pulse animation
+                bonus.alpha = 0.7 + Math.sin(Date.now() / 200) * 0.3;
                 
                 // Remove if out of screen
-                if (bonus.y > canvas.height + 30) {
+                if (bonus.y > canvas.height + bonus.radius * 2) {
                     lifeBonuses.splice(index, 1);
+                } else {
+                    bonus.y += 1;
                 }
             });
         }
@@ -770,7 +760,7 @@
                 }
             });
             
-            // Draw life bonuses
+            // Draw life bonuses (hearts)
             drawLifeBonuses();
             
             requestAnimationFrame(gameLoop);
