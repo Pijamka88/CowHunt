@@ -4,15 +4,17 @@
     <title>Cosmic Cow Hunt</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        
         body {
             margin: 0;
             overflow: hidden;
             touch-action: none;
-            background: #000;
-            font-family: 'Arial', sans-serif;
+            background: #0a0a1a;
+            font-family: 'Orbitron', sans-serif;
         }
         #gameCanvas {
-            background: #000;
+            background: linear-gradient(to bottom, #000428, #004e92);
             display: block;
         }
         .menu {
@@ -20,88 +22,113 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(10, 10, 30, 0.9);
             padding: 30px;
-            color: white;
+            color: #00f3ff;
             text-align: center;
             border-radius: 15px;
-            border: 2px solid #9b59b6;
+            border: 2px solid #00f3ff;
+            box-shadow: 0 0 20px #00f3ff;
             z-index: 1000;
             max-width: 80%;
         }
         .menu h1 {
-            color: #9b59b6;
+            color: #00f3ff;
             margin-bottom: 20px;
-            text-shadow: 0 0 10px #9b59b6;
+            text-shadow: 0 0 10px #00f3ff;
+            font-size: 2rem;
+        }
+        .menu p {
+            margin-bottom: 20px;
         }
         .menu button {
             padding: 12px 25px;
             font-size: 18px;
             margin-top: 20px;
             cursor: pointer;
-            background: linear-gradient(to bottom, #3498db, #2980b9);
+            background: linear-gradient(to bottom, #00f3ff, #008cff);
             border: none;
-            color: white;
+            color: #0a0a1a;
             border-radius: 8px;
             transition: all 0.3s;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
         }
         .menu button:hover {
-            background: linear-gradient(to bottom, #3cb0fd, #3498db);
+            background: linear-gradient(to bottom, #00ffff, #00a2ff);
             transform: scale(1.05);
+            box-shadow: 0 0 15px #00f3ff;
         }
         #hud {
             position: fixed;
             top: 15px;
-            left: 15px;
-            right: 15px;
-            color: white;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 10px 15px;
-            border-radius: 10px;
+            width: 100%;
             display: flex;
             justify-content: space-between;
-            font-size: 18px;
-            border: 1px solid #9b59b6;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+        .hud-section {
+            background: rgba(10, 10, 30, 0.7);
+            border: 1px solid #00f3ff;
+            border-radius: 10px;
+            padding: 10px 15px;
+            color: #00f3ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
         }
         .hearts {
             display: flex;
             gap: 8px;
         }
         .heart {
-            color: #ff0000;
+            color: #ff3366;
             font-size: 24px;
-            text-shadow: 0 0 5px #ff0000;
+            text-shadow: 0 0 5px #ff3366;
         }
         #score {
+            font-size: 1.2rem;
             font-weight: bold;
-            color: #f1c40f;
-            text-shadow: 0 0 5px #f1c40f;
+        }
+        #ammo {
+            font-size: 1.2rem;
+        }
+        #ammo.reloading {
+            color: #ffcc00;
         }
     </style>
 </head>
 <body>
     <div id="mainMenu" class="menu">
-        <h1>Cosmic Cow Hunt</h1>
-        <p>Уничтожьте космических коров!</p>
-        <button onclick="startGame()">Начать игру</button>
+        <h1>COSMIC COW HUNT</h1>
+        <p>Defend the galaxy from space cows!</p>
+        <button onclick="startGame()">LAUNCH MISSION</button>
     </div>
 
     <div id="gameOverMenu" class="menu" style="display: none;">
-        <h1>Миссия завершена!</h1>
-        <p>Попаданий: <span id="finalHits">0</span></p>
-        <p>Промахов: <span id="finalMisses">0</span></p>
-        <p>Счет: <span id="finalScore">0</span></p>
-        <button onclick="startGame()">Попробовать снова</button>
+        <h1>MISSION COMPLETE</h1>
+        <p>HITS: <span id="finalHits">0</span></p>
+        <p>MISSES: <span id="finalMisses">0</span></p>
+        <p>SCORE: <span id="finalScore">0</span></p>
+        <button onclick="startGame()">RETRY MISSION</button>
     </div>
 
     <div id="hud">
-        <div class="hearts" id="lives">
-            <span class="heart">♥</span>
-            <span class="heart">♥</span>
-            <span class="heart">♥</span>
+        <div class="hud-section">
+            <div class="hearts" id="lives">
+                <span class="heart">♥</span>
+                <span class="heart">♥</span>
+                <span class="heart">♥</span>
+            </div>
         </div>
-        <div id="timer">1:00</div>
-        <div id="score">0</div>
+        <div class="hud-section" id="score-display">
+            SCORE: <span id="score">0</span>
+        </div>
+        <div class="hud-section" id="ammo-display">
+            AMMO: <span id="ammo">5</span>
+        </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -117,6 +144,7 @@
         let shots = [];
         let explosions = [];
         let nebula = null;
+        let planets = [];
         let score = 0;
         let lives = 3;
         let timeLeft = 60;
@@ -126,61 +154,73 @@
         let isReloading = false;
         let gameTimer;
         let lastTime = 0;
+        let blinkTimer = 0;
+        let eyeCloseTimer = 0;
+        let eyeCloseDuration = 0;
 
         // Configuration
         const config = {
-            cowSpeed: 2.0,
+            cowSpeed: 1.8,
             spawnInterval: 2000,
             maxCows: 3,
             cowWidth: 60,
             cowHeight: 40,
             headRadius: 15,
             reloadTime: 2000,
-            eyeBlinkInterval: 2000
+            blinkInterval: 3000,
+            eyeCloseMin: 100,
+            eyeCloseMax: 300
         };
 
         // Cow types
         const cowTypes = [
-            { color: '#8e44ad', score: 100, wingColor: '#9b59b6' }, // Purple
-            { color: '#e74c3c', score: 150, wingColor: '#f39c12' }, // Red
-            { color: '#3498db', score: 200, wingColor: '#1abc9c' }, // Blue
-            { color: '#f1c40f', score: 250, wingColor: '#e67e22' }  // Yellow
+            { color: '#00f3ff', score: 100, wingColor: '#008cff' }, // Blue
+            { color: '#ff3366', score: 150, wingColor: '#ff00aa' }, // Pink
+            { color: '#00ff88', score: 200, wingColor: '#00cc66' }, // Green
+            { color: '#ffcc00', score: 250, wingColor: '#ff9900' }  // Yellow
         ];
 
-        // Nebula
-        class Nebula {
-            constructor() {
-                this.points = [];
-                this.radius = Math.max(canvas.width, canvas.height) * 0.8;
-                this.centerX = canvas.width / 2;
-                this.centerY = canvas.height / 2;
-                
-                // Create nebula points
-                for (let i = 0; i < 50; i++) {
-                    this.points.push({
-                        x: this.centerX + (Math.random() - 0.5) * this.radius,
-                        y: this.centerY + (Math.random() - 0.5) * this.radius,
-                        size: Math.random() * 100 + 50,
-                        alpha: Math.random() * 0.1 + 0.05,
-                        hue: 270 + Math.random() * 30
-                    });
+        // Initialize planets
+        function initPlanets() {
+            planets = [
+                {
+                    x: canvas.width * 0.2,
+                    y: canvas.height * 0.7,
+                    radius: 40,
+                    color: '#8e44ad',
+                    rings: true
+                },
+                {
+                    x: canvas.width * 0.8,
+                    y: canvas.height * 0.3,
+                    radius: 30,
+                    color: '#e74c3c',
+                    rings: false
                 }
-            }
+            ];
+        }
+
+        // Draw planet with optional rings
+        function drawPlanet(planet) {
+            // Planet
+            ctx.beginPath();
+            ctx.arc(planet.x, planet.y, planet.radius, 0, Math.PI * 2);
+            ctx.fillStyle = planet.color;
+            ctx.fill();
             
-            draw() {
-                this.points.forEach(point => {
-                    const gradient = ctx.createRadialGradient(
-                        point.x, point.y, 0,
-                        point.x, point.y, point.size
-                    );
-                    gradient.addColorStop(0, `hsla(${point.hue}, 80%, 60%, ${point.alpha})`);
-                    gradient.addColorStop(1, 'hsla(270, 80%, 60%, 0)');
-                    
-                    ctx.fillStyle = gradient;
-                    ctx.beginPath();
-                    ctx.arc(point.x, point.y, point.size, 0, Math.PI * 2);
-                    ctx.fill();
-                });
+            // Rings
+            if (planet.rings) {
+                ctx.beginPath();
+                ctx.ellipse(planet.x, planet.y, planet.radius * 1.5, planet.radius * 0.3, Math.PI / 4, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(200, 200, 255, 0.5)';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.ellipse(planet.x, planet.y, planet.radius * 1.8, planet.radius * 0.5, Math.PI / 4, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(200, 200, 255, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
             }
         }
 
@@ -195,8 +235,7 @@
                 this.wingPhase = Math.random() * Math.PI * 2;
                 this.wingSpeed = Math.random() * 0.05 + 0.05;
                 this.eyeClosed = false;
-                this.lastBlink = Date.now();
-                this.blinkDuration = 200;
+                this.nextBlink = Math.random() * config.blinkInterval + config.blinkInterval;
             }
 
             reset() {
@@ -205,13 +244,13 @@
                 
                 if (this.direction === 1) {
                     // Left to right
-                    this.x = -this.width;
+                    this.x = -this.width - this.headRadius;
                     this.y = Math.random() * (canvas.height - 100) + 50;
                     this.vx = Math.random() * config.cowSpeed + config.cowSpeed * 0.5;
                     this.vy = (Math.random() - 0.5) * config.cowSpeed * 0.5;
                 } else {
                     // Right to left
-                    this.x = canvas.width + this.width;
+                    this.x = canvas.width + this.width + this.headRadius;
                     this.y = Math.random() * (canvas.height - 100) + 50;
                     this.vx = -(Math.random() * config.cowSpeed + config.cowSpeed * 0.5);
                     this.vy = (Math.random() - 0.5) * config.cowSpeed * 0.5;
@@ -222,6 +261,8 @@
                 this.score = cowTypes[this.type].score;
                 this.alive = true;
                 this.rotation = 0;
+                this.eyeClosed = false;
+                this.nextBlink = Math.random() * config.blinkInterval + config.blinkInterval;
             }
 
             die() {
@@ -231,20 +272,27 @@
                 this.rotationSpeed = (Math.random() - 0.5) * 0.2;
             }
 
-            update() {
-                // Handle blinking
-                const now = Date.now();
-                if (now - this.lastBlink > config.eyeBlinkInterval) {
-                    this.eyeClosed = true;
-                    this.lastBlink = now;
-                } else if (this.eyeClosed && now - this.lastBlink > this.blinkDuration) {
-                    this.eyeClosed = false;
-                }
-
+            update(deltaTime) {
                 if (this.alive) {
+                    // Update position
                     this.x += this.vx;
                     this.y += this.vy;
                     this.wingPhase += this.wingSpeed;
+                    
+                    // Update blinking
+                    this.nextBlink -= deltaTime;
+                    if (this.nextBlink <= 0) {
+                        this.eyeClosed = true;
+                        eyeCloseDuration = Math.random() * (config.eyeCloseMax - config.eyeCloseMin) + config.eyeCloseMin;
+                        this.nextBlink = Math.random() * config.blinkInterval + config.blinkInterval;
+                    }
+                    
+                    if (this.eyeClosed) {
+                        eyeCloseDuration -= deltaTime;
+                        if (eyeCloseDuration <= 0) {
+                            this.eyeClosed = false;
+                        }
+                    }
                     
                     // Reset if out of bounds
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
@@ -253,7 +301,7 @@
                     }
                     
                     // Bounce on top/bottom
-                    if (this.y < this.height/2 || this.y > canvas.height - this.height/2) {
+                    if (this.y < this.height/2 + this.headRadius || this.y > canvas.height - this.height/2 - this.headRadius) {
                         this.vy *= -1;
                     }
                 } else {
@@ -279,89 +327,108 @@
                 // Draw body (outline only)
                 ctx.strokeStyle = this.color;
                 ctx.lineWidth = 2;
-                ctx.strokeRect(-this.width/2, -this.height/2 + this.headRadius/2, this.width, this.height - this.headRadius/2);
+                ctx.strokeRect(-this.width/2, -this.height/2 + this.headRadius/2, this.width, this.height);
                 
                 if (this.alive) {
-                    // Draw head (white circle)
-                    ctx.fillStyle = 'white';
+                    // Draw head (helmet)
                     ctx.beginPath();
                     ctx.arc(0, -this.height/2 + this.headRadius/2, this.headRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(200, 230, 255, 0.8)';
                     ctx.fill();
-                    ctx.stroke();
-                    
-                    // Draw helmet
                     ctx.strokeStyle = this.color;
-                    ctx.beginPath();
-                    ctx.arc(0, -this.height/2 + this.headRadius/2, this.headRadius - 2, 0, Math.PI * 2);
+                    ctx.lineWidth = 2;
                     ctx.stroke();
                     
                     // Draw horns
-                    ctx.strokeStyle = this.color;
-                    ctx.lineWidth = 3;
                     ctx.beginPath();
-                    ctx.moveTo(-this.headRadius/2, -this.height/2 - this.headRadius/2);
-                    ctx.lineTo(-this.headRadius, -this.height/2 - this.headRadius);
-                    ctx.moveTo(this.headRadius/2, -this.height/2 - this.headRadius/2);
-                    ctx.lineTo(this.headRadius, -this.height/2 - this.headRadius);
+                    ctx.moveTo(this.headRadius * 0.3, -this.height/2 + this.headRadius/2 - this.headRadius * 0.8);
+                    ctx.lineTo(this.headRadius * 0.7, -this.height/2 + this.headRadius/2 - this.headRadius * 1.2);
+                    ctx.lineTo(this.headRadius * 0.5, -this.height/2 + this.headRadius/2 - this.headRadius * 0.9);
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(-this.headRadius * 0.3, -this.height/2 + this.headRadius/2 - this.headRadius * 0.8);
+                    ctx.lineTo(-this.headRadius * 0.7, -this.height/2 + this.headRadius/2 - this.headRadius * 1.2);
+                    ctx.lineTo(-this.headRadius * 0.5, -this.height/2 + this.headRadius/2 - this.headRadius * 0.9);
                     ctx.stroke();
                     
                     // Draw eyes
                     if (!this.eyeClosed) {
-                        ctx.fillStyle = 'black';
+                        // Big animated eyes
+                        const eyeX = this.direction === 1 ? this.headRadius * 0.3 : -this.headRadius * 0.3;
+                        const pupilOffsetX = (this.direction === 1 ? 1 : -1) * this.headRadius * 0.1;
+                        const pupilOffsetY = Math.sin(this.wingPhase * 2) * this.headRadius * 0.1;
+                        
+                        // Left eye
                         ctx.beginPath();
-                        ctx.arc(-this.headRadius/3, -this.height/2 + this.headRadius/4, 3, 0, Math.PI * 2);
+                        ctx.arc(eyeX, -this.height/2 + this.headRadius/2 - this.headRadius * 0.2, this.headRadius * 0.3, 0, Math.PI * 2);
+                        ctx.fillStyle = 'white';
                         ctx.fill();
+                        ctx.strokeStyle = this.color;
+                        ctx.stroke();
+                        
                         ctx.beginPath();
-                        ctx.arc(this.headRadius/3, -this.height/2 + this.headRadius/4, 3, 0, Math.PI * 2);
+                        ctx.arc(eyeX + pupilOffsetX, -this.height/2 + this.headRadius/2 - this.headRadius * 0.2 + pupilOffsetY, this.headRadius * 0.1, 0, Math.PI * 2);
+                        ctx.fillStyle = 'black';
                         ctx.fill();
                     } else {
                         // Closed eyes
-                        ctx.strokeStyle = 'black';
+                        ctx.beginPath();
+                        ctx.moveTo(-this.headRadius * 0.4, -this.height/2 + this.headRadius/2 - this.headRadius * 0.2);
+                        ctx.lineTo(this.headRadius * 0.4, -this.height/2 + this.headRadius/2 - this.headRadius * 0.2);
+                        ctx.strokeStyle = this.color;
                         ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.moveTo(-this.headRadius/3 - 3, -this.height/2 + this.headRadius/4);
-                        ctx.lineTo(-this.headRadius/3 + 3, -this.height/2 + this.headRadius/4);
-                        ctx.stroke();
-                        ctx.beginPath();
-                        ctx.moveTo(this.headRadius/3 - 3, -this.height/2 + this.headRadius/4);
-                        ctx.lineTo(this.headRadius/3 + 3, -this.height/2 + this.headRadius/4);
                         ctx.stroke();
                     }
                     
                     // Draw wings
-                    const wingYOffset = Math.sin(this.wingPhase) * 5;
+                    const wingYOffset = Math.sin(this.wingPhase) * 10;
                     ctx.fillStyle = this.wingColor;
                     
                     // Left wing
                     ctx.beginPath();
                     ctx.moveTo(-this.width/2, 0);
-                    ctx.lineTo(-this.width/2 - 15, -this.height/2 + wingYOffset);
-                    ctx.lineTo(-this.width/2 - 15, this.height/2 + wingYOffset);
+                    ctx.lineTo(-this.width/2 - 20, -this.height/2 + wingYOffset);
+                    ctx.lineTo(-this.width/2 - 20, this.height/2 + wingYOffset);
                     ctx.closePath();
                     ctx.fill();
+                    ctx.strokeStyle = this.color;
+                    ctx.stroke();
                     
                     // Right wing
                     ctx.beginPath();
                     ctx.moveTo(this.width/2, 0);
-                    ctx.lineTo(this.width/2 + 15, -this.height/2 + wingYOffset);
-                    ctx.lineTo(this.width/2 + 15, this.height/2 + wingYOffset);
+                    ctx.lineTo(this.width/2 + 20, -this.height/2 + wingYOffset);
+                    ctx.lineTo(this.width/2 + 20, this.height/2 + wingYOffset);
                     ctx.closePath();
                     ctx.fill();
+                    ctx.stroke();
                     
                     // Draw legs
                     ctx.strokeStyle = this.color;
-                    ctx.lineWidth = 3;
+                    ctx.lineWidth = 2;
                     for (let i = 0; i < 4; i++) {
+                        const legX = -this.width/2 + 5 + i * (this.width - 10) / 3;
                         ctx.beginPath();
-                        ctx.moveTo(-this.width/2 + 10 + i * 10, this.height/2);
-                        ctx.lineTo(-this.width/2 + 10 + i * 10, this.height/2 + 10);
+                        ctx.moveTo(legX, this.height/2);
+                        ctx.lineTo(legX, this.height/2 + 15);
                         ctx.stroke();
                     }
                 } else {
                     // Dead cow - simpler representation
-                    ctx.strokeStyle = '#333';
+                    ctx.strokeStyle = '#555';
                     ctx.lineWidth = 2;
                     ctx.strokeRect(-this.width/4, -this.height/4, this.width/2, this.height/2);
+                    
+                    // X mark
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width/4, -this.height/4);
+                    ctx.lineTo(this.width/4, this.height/4);
+                    ctx.moveTo(this.width/4, -this.height/4);
+                    ctx.lineTo(-this.width/4, this.height/4);
+                    ctx.stroke();
                 }
                 
                 ctx.restore();
@@ -376,32 +443,34 @@
                 this.color = color;
                 
                 // Create particles
-                for (let i = 0; i < 15; i++) {
+                for (let i = 0; i < 20; i++) {
                     this.particles.push({
                         x: 0,
                         y: 0,
-                        vx: (Math.random() - 0.5) * 5,
-                        vy: (Math.random() - 0.5) * 5,
-                        size: Math.random() * 5 + 2,
-                        alpha: 1
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        size: Math.random() * 6 + 3,
+                        alpha: 1,
+                        life: 1
                     });
                 }
             }
             
-            update() {
+            update(deltaTime) {
                 this.particles.forEach(p => {
                     p.x += p.vx;
                     p.y += p.vy;
-                    p.alpha -= 0.03;
+                    p.life -= deltaTime * 0.01;
                     p.size *= 0.98;
                 });
                 
-                return this.particles[0].alpha > 0;
+                return this.particles[0].life > 0;
             }
             
             draw() {
                 this.particles.forEach(p => {
-                    ctx.fillStyle = `rgba(${this.color}, ${p.alpha})`;
+                    const alpha = p.alpha * p.life;
+                    ctx.fillStyle = `rgba(${this.color}, ${alpha})`;
                     ctx.beginPath();
                     ctx.arc(this.x + p.x, this.y + p.y, p.size, 0, Math.PI * 2);
                     ctx.fill();
@@ -422,6 +491,19 @@
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
                 ctx.fill();
+                
+                // Glow effect
+                const gradient = ctx.createRadialGradient(
+                    this.x, this.y, 0,
+                    this.x, this.y, this.radius * 2
+                );
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${this.alpha * 0.5})`);
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
+                ctx.fill();
             }
 
             update() {
@@ -440,7 +522,6 @@
             deadCows = [];
             shots = [];
             explosions = [];
-            nebula = new Nebula();
             score = 0;
             lives = 3;
             timeLeft = 60;
@@ -449,6 +530,7 @@
             ammo = 5;
             isReloading = false;
             
+            initPlanets();
             updateHUD();
             resizeCanvas();
             
@@ -478,8 +560,9 @@
                 heart.style.visibility = index < lives ? 'visible' : 'hidden';
             });
             
-            document.getElementById('timer').textContent = `${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2, '0')}`;
             document.getElementById('score').textContent = score;
+            document.getElementById('ammo').textContent = ammo;
+            document.getElementById('ammo').className = isReloading ? 'reloading' : '';
         }
 
         function spawnCow() {
@@ -504,15 +587,15 @@
                 
                 if (!cow.alive) continue;
                 
-                // Simplified hit detection for profile view
-                const cowLeft = cow.x - cow.width/2;
-                const cowRight = cow.x + cow.width/2;
-                const cowTop = cow.y - cow.height/2 - cow.headRadius;
-                const cowBottom = cow.y + cow.height/2;
+                // Simple rectangular hit detection
+                const left = cow.x - cow.width/2;
+                const right = cow.x + cow.width/2;
+                const top = cow.y - cow.height/2 - cow.headRadius;
+                const bottom = cow.y + cow.height/2;
                 
-                if (x >= cowLeft && x <= cowRight && y >= cowTop && y <= cowBottom) {
-                    // Create green explosion
-                    const color = '100, 255, 100';
+                if (x >= left && x <= right && y >= top && y <= bottom) {
+                    // Create explosion with cow's color
+                    const color = cowTypes[cow.type].color.replace('#', '');
                     explosions.push(new Explosion(cow.x, cow.y, color));
                     
                     cow.die();
@@ -535,11 +618,27 @@
 
         function drawBackground() {
             // Draw space background
-            ctx.fillStyle = '#000';
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#000428');
+            gradient.addColorStop(1, '#004e92');
+            ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Draw nebula
-            nebula.draw();
+            // Draw distant stars (fixed)
+            ctx.fillStyle = 'white';
+            for (let i = 0; i < 100; i++) {
+                const x = (Math.sin(i * 100) * canvas.width/2) + canvas.width/2;
+                const y = (Math.cos(i * 100) * canvas.height/2) + canvas.height/2;
+                const size = Math.random() * 1.5;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw planets
+            planets.forEach(planet => {
+                drawPlanet(planet);
+            });
         }
 
         function gameLoop(timestamp) {
@@ -552,13 +651,13 @@
             
             // Update and draw cows
             cows.forEach(cow => {
-                cow.update();
+                cow.update(deltaTime);
                 cow.draw();
             });
             
             // Update and draw dead cows
             deadCows.forEach(cow => {
-                cow.update();
+                cow.update(deltaTime);
                 cow.draw();
             });
             
@@ -571,7 +670,7 @@
             
             // Update and draw explosions
             explosions.forEach((explosion, index) => {
-                if (!explosion.update()) {
+                if (!explosion.update(deltaTime)) {
                     explosions.splice(index, 1);
                 } else {
                     explosion.draw();
@@ -584,9 +683,7 @@
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            if (nebula) {
-                nebula = new Nebula();
-            }
+            initPlanets();
         }
 
         canvas.addEventListener('pointerdown', (e) => {
@@ -623,6 +720,9 @@
             Telegram.WebApp.ready();
             Telegram.WebApp.expand();
         }
+
+        // Initial setup
+        resizeCanvas();
     </script>
 </body>
 </html>
