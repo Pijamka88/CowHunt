@@ -225,53 +225,52 @@
             }
         }
 
-        // Initialize planets with non-overlapping positions
+        // Initialize planets with no overlap
         function initPlanets() {
             planets = [];
-            const minDistance = 200; // Minimum distance between planets
+            const minDistance = 150; // Minimum distance between planets
             
             for (let i = 0; i < config.planetCount; i++) {
-                let x, y, validPosition;
-                let attempts = 0;
+                let x, y, radius, validPosition;
                 const maxAttempts = 100;
+                let attempts = 0;
                 
                 do {
                     validPosition = true;
-                    x = Math.random() * canvas.width;
-                    y = Math.random() * canvas.height;
+                    radius = Math.random() * 40 + 30;
+                    x = Math.random() * (canvas.width - radius * 2) + radius;
+                    y = Math.random() * (canvas.height - radius * 2) + radius;
                     
                     // Check distance to other planets
                     for (const planet of planets) {
-                        const dx = x - planet.x;
-                        const dy = y - planet.y;
+                        const dx = planet.x - x;
+                        const dy = planet.y - y;
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         
-                        if (distance < minDistance) {
+                        if (distance < planet.radius + radius + minDistance) {
                             validPosition = false;
                             break;
                         }
                     }
                     
                     attempts++;
-                    if (attempts >= maxAttempts) {
-                        // Give up after too many attempts
-                        validPosition = true;
-                    }
-                } while (!validPosition);
+                    if (attempts >= maxAttempts) break;
+                } while (!validPosition && attempts < maxAttempts);
                 
-                const size = Math.random() * 40 + 40;
-                const isBlue = Math.random() > 0.5;
-                
-                planets.push({
-                    x: x,
-                    y: y,
-                    radius: size,
-                    color: isBlue ? '#3a6bc8' : '#FFC107',
-                    landColor: isBlue ? '#2a5bbf' : '#FFA000',
-                    speed: Math.random() * 0.05 + 0.02,
-                    rotation: 0,
-                    rotationSpeed: (Math.random() - 0.5) * 0.005
-                });
+                if (validPosition || attempts >= maxAttempts) {
+                    const isBlue = Math.random() > 0.5;
+                    
+                    planets.push({
+                        x: x,
+                        y: y,
+                        radius: radius,
+                        color: isBlue ? '#3a6bc8' : '#FFC107',
+                        landColor: isBlue ? '#2a5bbf' : '#FFA000',
+                        speed: Math.random() * 0.05 + 0.02,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.005
+                    });
+                }
             }
         }
 
@@ -283,8 +282,8 @@
                 this.color = cowColors[Math.floor(Math.random() * cowColors.length)];
                 this.reset();
                 this.alive = true;
-                this.wingPhase = 0;
-                this.wingSpeed = Math.random() * 0.03 + 0.05;
+                this.wingPhase = Math.random() * Math.PI * 2;
+                this.wingSpeed = Math.random() * 0.05 + 0.05;
                 this.deathAnimation = 0;
                 this.rotation = 0;
             }
@@ -326,7 +325,9 @@
                         y: this.y,
                         radius: 15,
                         collected: false,
-                        alpha: 1
+                        alpha: 1,
+                        pulseSpeed: Math.random() * 0.02 + 0.01,
+                        pulsePhase: 0
                     });
                 }
             }
@@ -376,80 +377,66 @@
                     ctx.ellipse(0, 0, this.width/2, this.height/3, 0, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Head position depends on direction
+                    // Head position based on direction
                     const headX = this.direction === 1 ? this.width/2 : -this.width/2;
                     
-                    // Helmet (white bubble)
+                    // Helmet (white and more visible)
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
                     ctx.beginPath();
                     ctx.arc(headX, 0, this.headRadius, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Helmet outline
-                    ctx.strokeStyle = 'rgba(200, 200, 200, 0.8)';
-                    ctx.lineWidth = 2;
+                    // Helmet glass (blue tint)
+                    ctx.fillStyle = 'rgba(100, 180, 255, 0.3)';
                     ctx.beginPath();
-                    ctx.arc(headX, 0, this.headRadius, 0, Math.PI * 2);
-                    ctx.stroke();
+                    ctx.arc(headX, 0, this.headRadius * 0.9, 0, Math.PI * 2);
+                    ctx.fill();
                     
-                    // Horns (curved)
+                    // Small horns
                     ctx.fillStyle = this.color;
-                    ctx.beginPath();
-                    ctx.arc(headX + (this.direction === 1 ? 10 : -10), -this.headRadius + 5, 8, 0, Math.PI);
-                    ctx.fill();
+                    for (let i = -1; i <= 1; i += 2) {
+                        ctx.beginPath();
+                        ctx.moveTo(headX + i * 5, -this.headRadius + 5);
+                        ctx.lineTo(headX + i * 10, -this.headRadius - 5);
+                        ctx.lineTo(headX + i * 5, -this.headRadius + 15);
+                        ctx.fill();
+                    }
                     
-                    ctx.beginPath();
-                    ctx.arc(headX + (this.direction === 1 ? 10 : -10), this.headRadius - 5, 8, Math.PI, 0, true);
-                    ctx.fill();
-                    
-                    // Eyes with pupils
+                    // Big eyes with pupils
                     const eyeX = headX + (this.direction === 1 ? -8 : 8);
+                    const pupilOffset = this.direction === 1 ? -2 : 2;
                     
-                    // Left eye
-                    ctx.fillStyle = 'white';
-                    ctx.beginPath();
-                    ctx.arc(eyeX, -8, 6, 0, Math.PI * 2);
-                    ctx.fill();
+                    for (let i = -1; i <= 1; i += 2) {
+                        // Eye white
+                        ctx.fillStyle = 'white';
+                        ctx.beginPath();
+                        ctx.arc(eyeX, i * 8, 6, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Pupil
+                        ctx.fillStyle = 'black';
+                        ctx.beginPath();
+                        ctx.arc(eyeX + pupilOffset, i * 8, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                     
-                    ctx.fillStyle = 'black';
-                    ctx.beginPath();
-                    ctx.arc(eyeX + (this.direction === 1 ? -2 : 2), -8, 3, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Right eye
-                    ctx.fillStyle = 'white';
-                    ctx.beginPath();
-                    ctx.arc(eyeX, 8, 6, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    ctx.fillStyle = 'black';
-                    ctx.beginPath();
-                    ctx.arc(eyeX + (this.direction === 1 ? -2 : 2), 8, 3, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Wings (white, from center, one forward, one backward)
+                    // Animated wings (white, from center)
                     ctx.strokeStyle = 'white';
                     ctx.lineWidth = 6;
                     ctx.lineCap = 'round';
                     
-                    const wingAngle = Math.sin(this.wingPhase) * Math.PI/4;
+                    const wingOffset = Math.sin(this.wingPhase) * 15;
                     
-                    // Forward wing
+                    // Front wing (direction dependent)
                     ctx.beginPath();
-                    ctx.moveTo(10, 0);
-                    ctx.lineTo(
-                        10 + Math.cos(wingAngle) * 30,
-                        Math.sin(wingAngle) * 30
-                    );
+                    ctx.moveTo(this.width/4, 0);
+                    ctx.lineTo(this.width/2 + wingOffset, -15);
                     ctx.stroke();
                     
-                    // Backward wing
+                    // Back wing (direction dependent)
                     ctx.beginPath();
-                    ctx.moveTo(-10, 0);
-                    ctx.lineTo(
-                        -10 + Math.cos(wingAngle + Math.PI) * 30,
-                        Math.sin(wingAngle + Math.PI) * 30
-                    );
+                    ctx.moveTo(-this.width/4, 0);
+                    ctx.lineTo(-this.width/2 - wingOffset, -15);
                     ctx.stroke();
                     
                     // Legs (simple static)
@@ -468,24 +455,19 @@
                     ctx.fill();
                     
                     // X eyes
+                    ctx.strokeStyle = 'black';
+                    ctx.lineWidth = 3;
                     const headX = this.direction === 1 ? this.width/2 : -this.width/2;
                     const eyeX = headX + (this.direction === 1 ? -8 : 8);
                     
-                    ctx.strokeStyle = 'black';
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    ctx.moveTo(eyeX - 5, -8 - 5);
-                    ctx.lineTo(eyeX + 5, -8 + 5);
-                    ctx.moveTo(eyeX - 5, -8 + 5);
-                    ctx.lineTo(eyeX + 5, -8 - 5);
-                    ctx.stroke();
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(eyeX - 5, 8 - 5);
-                    ctx.lineTo(eyeX + 5, 8 + 5);
-                    ctx.moveTo(eyeX - 5, 8 + 5);
-                    ctx.lineTo(eyeX + 5, 8 - 5);
-                    ctx.stroke();
+                    for (let i = -1; i <= 1; i += 2) {
+                        ctx.beginPath();
+                        ctx.moveTo(eyeX - 5, i * 8 - 5);
+                        ctx.lineTo(eyeX + 5, i * 8 + 5);
+                        ctx.moveTo(eyeX - 5, i * 8 + 5);
+                        ctx.lineTo(eyeX + 5, i * 8 - 5);
+                        ctx.stroke();
+                    }
                     
                     ctx.globalAlpha = 1;
                 }
@@ -642,7 +624,7 @@
                 const bodyBottom = cow.y + cow.height/3;
                 
                 // Check head hit
-                const headX = cow.direction === 1 ? cow.x + cow.width/2 : cow.x - cow.width/2;
+                const headX = cow.x + (cow.direction === 1 ? cow.width/2 : -cow.width/2);
                 const headY = cow.y;
                 const headDist = Math.sqrt((x - headX) ** 2 + (y - headY) ** 2);
                 
@@ -714,26 +696,26 @@
             // Draw stars (behind planets)
             stars.forEach(star => {
                 star.twinklePhase += star.twinkleSpeed;
-                const twinkle = Math.sin(star.twinklePhase) * 0.2 + 0.8;
+                const currentAlpha = star.alpha * (0.7 + Math.sin(star.twinklePhase) * 0.3);
                 
-                ctx.save();
-                ctx.translate(star.x, star.y);
+                ctx.fillStyle = star.color;
+                ctx.globalAlpha = currentAlpha;
                 
                 // Draw + shaped star
-                ctx.fillStyle = star.color;
-                ctx.globalAlpha = star.alpha * twinkle;
+                ctx.beginPath();
+                ctx.moveTo(star.x - star.size, star.y);
+                ctx.lineTo(star.x + star.size, star.y);
+                ctx.moveTo(star.x, star.y - star.size);
+                ctx.lineTo(star.x, star.y + star.size);
+                ctx.lineWidth = 2;
+                ctx.stroke();
                 
-                // Horizontal line
-                ctx.fillRect(-star.size, -star.size/3, star.size*2, star.size*2/3);
-                // Vertical line
-                ctx.fillRect(-star.size/3, -star.size, star.size*2/3, star.size*2);
-                
-                ctx.restore();
+                ctx.globalAlpha = 1;
                 
                 // Move stars
                 star.x += star.speed;
-                if (star.x > canvas.width) {
-                    star.x = 0;
+                if (star.x > canvas.width + star.size) {
+                    star.x = -star.size;
                     star.y = Math.random() * canvas.height;
                 }
             });
@@ -787,32 +769,24 @@
             lifeBonuses.forEach((bonus, index) => {
                 if (bonus.collected) return;
                 
+                bonus.pulsePhase += bonus.pulseSpeed;
+                const scale = 0.8 + Math.sin(bonus.pulsePhase) * 0.2;
+                
                 // Draw stylized heart
                 ctx.save();
                 ctx.translate(bonus.x, bonus.y);
-                
+                ctx.scale(scale, scale);
                 ctx.fillStyle = `rgba(255, 51, 102, ${bonus.alpha})`;
+                
                 ctx.beginPath();
-                
-                // Top curves
-                ctx.moveTo(0, -5);
-                ctx.bezierCurveTo(5, -10, 10, -5, 0, 5);
-                ctx.bezierCurveTo(-10, -5, -5, -10, 0, -5);
-                
-                // Bottom point
-                ctx.lineTo(0, 8);
-                
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(-10, -15, -20, -10, -20, 0);
+                ctx.bezierCurveTo(-20, 10, 0, 20, 0, 30);
+                ctx.bezierCurveTo(0, 20, 20, 10, 20, 0);
+                ctx.bezierCurveTo(20, -10, 10, -15, 0, 0);
                 ctx.fill();
                 
-                // Heart outline
-                ctx.strokeStyle = 'rgba(200, 0, 50, 0.8)';
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-                
                 ctx.restore();
-                
-                // Pulse animation
-                bonus.alpha = 0.7 + Math.sin(Date.now() / 200) * 0.3;
                 
                 // Remove if out of screen
                 if (bonus.y > canvas.height + 30) {
