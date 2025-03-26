@@ -9,10 +9,8 @@
             overflow: hidden;
             touch-action: none;
             background: #000;
-            font-family: 'Orbitron', sans-serif;
+            font-family: 'Arial', sans-serif;
         }
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-        
         #gameCanvas {
             background: #000;
             display: block;
@@ -22,13 +20,12 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.8);
             padding: 30px;
             color: white;
             text-align: center;
             border-radius: 15px;
-            border: 2px solid #6a0dad;
-            box-shadow: 0 0 20px #6a0dad;
+            border: 2px solid #9b59b6;
             z-index: 1000;
             max-width: 80%;
         }
@@ -36,76 +33,63 @@
             color: #9b59b6;
             margin-bottom: 20px;
             text-shadow: 0 0 10px #9b59b6;
-            font-size: 2rem;
         }
         .menu button {
             padding: 12px 25px;
             font-size: 18px;
             margin-top: 20px;
             cursor: pointer;
-            background: linear-gradient(to bottom, #6a0dad, #4b0082);
+            background: linear-gradient(to bottom, #3498db, #2980b9);
             border: none;
             color: white;
             border-radius: 8px;
             transition: all 0.3s;
-            font-family: 'Orbitron', sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 1px;
         }
         .menu button:hover {
-            background: linear-gradient(to bottom, #8a2be2, #6a0dad);
+            background: linear-gradient(to bottom, #3cb0fd, #3498db);
             transform: scale(1.05);
-            box-shadow: 0 0 15px #6a0dad;
         }
         #hud {
             position: fixed;
             top: 15px;
             left: 15px;
             color: white;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.5);
             padding: 10px 15px;
             border-radius: 10px;
             display: flex;
             gap: 20px;
             font-size: 18px;
-            border: 1px solid #6a0dad;
-            box-shadow: 0 0 10px rgba(106, 13, 173, 0.5);
-            font-family: 'Orbitron', sans-serif;
+            border: 1px solid #9b59b6;
         }
         .hearts {
             display: flex;
             gap: 8px;
         }
         .heart {
-            color: #ff3366;
+            color: #ff0000;
             font-size: 24px;
-            text-shadow: 0 0 5px #ff3366;
+            text-shadow: 0 0 5px #ff0000;
         }
         #stats {
             display: flex;
             gap: 15px;
-        }
-        #ammo {
-            color: #00ffcc;
-        }
-        #timer {
-            color: #ffcc00;
         }
     </style>
 </head>
 <body>
     <div id="mainMenu" class="menu">
         <h1>Galactic Cow Hunt</h1>
-        <p>Shoot the cosmic cows before time runs out!</p>
-        <button onclick="startGame()">Start Mission</button>
+        <p>Уничтожьте инопланетных коров!</p>
+        <button onclick="startGame()">Начать игру</button>
     </div>
 
     <div id="gameOverMenu" class="menu" style="display: none;">
-        <h1>Mission Complete</h1>
-        <p>Hits: <span id="finalHits">0</span></p>
-        <p>Misses: <span id="finalMisses">0</span></p>
-        <p>Score: <span id="finalScore">0</span></p>
-        <button onclick="startGame()">New Mission</button>
+        <h1>Миссия завершена!</h1>
+        <p>Попаданий: <span id="finalHits">0</span></p>
+        <p>Промахов: <span id="finalMisses">0</span></p>
+        <p>Счет: <span id="finalScore">0</span></p>
+        <button onclick="startGame()">Попробовать снова</button>
     </div>
 
     <div id="hud">
@@ -115,7 +99,6 @@
             <span class="heart">♥</span>
         </div>
         <div id="timer">1:00</div>
-        <div id="ammo">5</div>
         <div id="stats">
             <span id="hits">0</span> | <span id="misses">0</span>
         </div>
@@ -133,9 +116,6 @@
         let deadCows = [];
         let shots = [];
         let explosions = [];
-        let stars = [];
-        let nebulae = [];
-        let planets = [];
         let score = 0;
         let lives = 3;
         let timeLeft = 60;
@@ -145,109 +125,51 @@
         let isReloading = false;
         let gameTimer;
         let lastTime = 0;
-        let spawnInterval;
 
         // Configuration
         const config = {
-            cowSpeed: 1.8,
+            cowSpeed: 2.5,
             spawnInterval: 1500,
             maxCows: 3,
-            cowWidth: 50,
+            cowWidth: 60,
             cowHeight: 40,
             reloadTime: 2000,
-            starCount: 200,
-            nebulaCount: 5,
-            planetCount: 3
+            gravity: 0.5
         };
 
         // Cow types
         const cowTypes = [
-            { color: '#8e44ad', score: 100, pattern: '#6c3483' }, // Purple
-            { color: '#e74c3c', score: 150, pattern: '#c0392b' }, // Red
-            { color: '#3498db', score: 200, pattern: '#2980b9' }, // Blue
-            { color: '#f1c40f', score: 250, pattern: '#f39c12' }  // Yellow
+            { 
+                color: '#8e44ad',
+                highlight: '#9b59b6',
+                score: 100,
+                pattern: [1,1,1,1,1,1,1,1,1,1]
+            }, // Purple
+            { 
+                color: '#e74c3c',
+                highlight: '#f39c12',
+                score: 150,
+                pattern: [1,0,1,0,1,0,1,0,1,0]
+            }, // Red
+            { 
+                color: '#3498db',
+                highlight: '#2980b9',
+                score: 200,
+                pattern: [1,1,0,0,1,1,0,0,1,1]
+            }  // Blue
         ];
 
-        // Trajectory patterns
-        const trajectories = [
-            // Sine wave
-            (cow, time) => {
-                cow.x += cow.vx;
-                cow.y = cow.startY + Math.sin(time * 0.01) * 100;
-            },
-            // Zigzag
-            (cow, time) => {
-                cow.x += cow.vx;
-                cow.y = cow.startY + Math.sin(time * 0.03) * 80;
-            },
-            // Spiral
-            (cow, time) => {
-                const angle = time * 0.02;
-                const radius = 50;
-                cow.x += cow.vx * 0.7;
-                cow.y = cow.startY + Math.sin(angle) * radius * (1 + time * 0.001);
-            },
-            // Diagonal with bounce
-            (cow, time) => {
-                cow.x += cow.vx;
-                cow.y += cow.vy;
-                if (cow.y < 50 || cow.y > canvas.height - 50) {
-                    cow.vy *= -1;
-                }
-            },
-            // Circular
-            (cow, time) => {
-                const angle = time * 0.015;
-                const radius = 70;
-                cow.x += cow.vx * 0.5;
-                cow.y = cow.startY + Math.sin(angle) * radius;
-            }
-        ];
-
-        // Initialize stars
-        function initStars() {
-            stars = [];
-            for (let i = 0; i < config.starCount; i++) {
-                stars.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    size: Math.random() * 3,
-                    alpha: Math.random() * 0.8 + 0.2,
-                    speed: Math.random() * 0.2
-                });
-            }
-        }
-
-        // Initialize nebulae
-        function initNebulae() {
-            nebulae = [];
-            for (let i = 0; i < config.nebulaCount; i++) {
-                nebulae.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    radius: Math.random() * 400 + 200,
-                    color: `hsla(${Math.floor(Math.random() * 60) + 260}, 80%, 60%, ${Math.random() * 0.1 + 0.05})`,
-                    rotation: Math.random() * Math.PI * 2,
-                    rotationSpeed: (Math.random() - 0.5) * 0.001
-                });
-            }
-        }
-
-        // Initialize planets
-        function initPlanets() {
-            planets = [];
-            for (let i = 0; i < config.planetCount; i++) {
-                planets.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    radius: Math.random() * 100 + 50,
-                    color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`,
-                    rotation: 0,
-                    rotationSpeed: (Math.random() - 0.5) * 0.005,
-                    rings: Math.random() > 0.7,
-                    ringColor: `hsl(${Math.floor(Math.random() * 360)}, 80%, 70%)`
-                });
-            }
+        // Nebula gradient
+        let nebulaGradient;
+        function createNebulaGradient() {
+            const gradient = ctx.createRadialGradient(
+                canvas.width/2, canvas.height/2, 0,
+                canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height)
+            );
+            gradient.addColorStop(0, 'rgba(155, 89, 182, 0.3)');
+            gradient.addColorStop(0.5, 'rgba(142, 68, 173, 0.1)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            return gradient;
         }
 
         class Cow {
@@ -255,9 +177,10 @@
                 this.width = config.cowWidth;
                 this.height = config.cowHeight;
                 this.type = Math.floor(Math.random() * cowTypes.length);
-                this.trajectory = Math.floor(Math.random() * trajectories.length);
                 this.reset();
-                this.spawnTime = performance.now();
+                this.alive = true;
+                this.rotation = 0;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.1;
             }
 
             reset() {
@@ -267,37 +190,43 @@
                 if (this.direction === 1) {
                     // Left to right
                     this.x = -this.width;
-                    this.startY = Math.random() * (canvas.height - 100) + 50;
-                    this.y = this.startY;
+                    this.y = Math.random() * (canvas.height - 100) + 50;
                     this.vx = Math.random() * config.cowSpeed + config.cowSpeed * 0.5;
-                    this.vy = (Math.random() - 0.5) * config.cowSpeed * 0.5;
+                    this.vy = (Math.random() - 0.5) * config.cowSpeed * 0.3;
                 } else {
                     // Right to left
                     this.x = canvas.width + this.width;
-                    this.startY = Math.random() * (canvas.height - 100) + 50;
-                    this.y = this.startY;
+                    this.y = Math.random() * (canvas.height - 100) + 50;
                     this.vx = -(Math.random() * config.cowSpeed + config.cowSpeed * 0.5);
-                    this.vy = (Math.random() - 0.5) * config.cowSpeed * 0.5;
+                    this.vy = (Math.random() - 0.5) * config.cowSpeed * 0.3;
                 }
                 
                 this.color = cowTypes[this.type].color;
-                this.pattern = cowTypes[this.type].pattern;
+                this.highlight = cowTypes[this.type].highlight;
                 this.score = cowTypes[this.type].score;
+                this.pattern = cowTypes[this.type].pattern;
                 this.wingPhase = Math.random() * Math.PI * 2;
                 this.wingSpeed = Math.random() * 0.05 + 0.05;
                 this.alive = true;
                 this.rotation = 0;
             }
 
+            die() {
+                this.alive = false;
+                this.vy = -5;
+                this.vx *= 0.3;
+            }
+
             update() {
                 if (this.alive) {
-                    const currentTime = performance.now();
-                    const elapsedTime = currentTime - this.spawnTime;
-                    
-                    // Use selected trajectory pattern
-                    trajectories[this.trajectory](this, elapsedTime);
-                    
+                    this.x += this.vx;
+                    this.y += this.vy;
                     this.wingPhase += this.wingSpeed;
+                    
+                    // Bounce on top/bottom
+                    if (this.y < this.height/2 || this.y > canvas.height - this.height/2) {
+                        this.vy *= -1;
+                    }
                     
                     // Reset if out of bounds
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
@@ -306,16 +235,15 @@
                     }
                 } else {
                     // Dead cow falls down
-                    this.vy += 0.2;
+                    this.x += this.vx;
                     this.y += this.vy;
-                    this.rotation += 0.05;
+                    this.vy += config.gravity;
+                    this.rotation += this.rotationSpeed;
                     
                     // Remove if out of screen
-                    if (this.y > canvas.height + this.height) {
+                    if (this.y > canvas.height + this.height*2) {
                         const index = deadCows.indexOf(this);
-                        if (index > -1) {
-                            deadCows.splice(index, 1);
-                        }
+                        if (index !== -1) deadCows.splice(index, 1);
                     }
                 }
             }
@@ -330,94 +258,76 @@
                 ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
                 
                 // Pattern
-                ctx.fillStyle = this.pattern;
-                for (let i = 0; i < 3; i++) {
-                    ctx.fillRect(
-                        -this.width/2 + 5 + i * 15, 
-                        -this.height/2 + 10, 
-                        10, 
-                        5
-                    );
+                ctx.fillStyle = this.highlight;
+                const patternSize = 6;
+                for (let i = 0; i < this.pattern.length; i++) {
+                    if (this.pattern[i]) {
+                        const px = -this.width/2 + (i % 5) * patternSize + 5;
+                        const py = -this.height/2 + Math.floor(i / 5) * patternSize + 5;
+                        ctx.fillRect(px, py, patternSize-2, patternSize-2);
+                    }
                 }
                 
                 // Head
                 ctx.fillStyle = '#ecf0f1';
                 ctx.fillRect(
-                    this.direction === 1 ? -this.width/2 : this.width/2 - 10, 
+                    this.direction === 1 ? -this.width/2 : this.width/2 - 15, 
                     -this.height/4, 
-                    10, 
+                    15, 
                     10
                 );
                 
                 // Eyes
                 ctx.fillStyle = 'black';
                 ctx.fillRect(
-                    this.direction === 1 ? -this.width/2 + 2 : this.width/2 - 4, 
-                    -this.height/4 + 2, 
-                    3, 
-                    3
+                    this.direction === 1 ? -this.width/2 + 3 : this.width/2 - 6, 
+                    -this.height/4 + 3, 
+                    4, 
+                    4
                 );
                 
                 if (this.alive) {
-                    // Wings
-                    const wingYOffset = Math.sin(this.wingPhase) * 5;
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    // Wings animation
+                    const wingYOffset = Math.sin(this.wingPhase) * 8;
                     
-                    // Left wing
+                    // Wings
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
                     ctx.beginPath();
                     ctx.moveTo(-this.width/2, 0);
-                    ctx.lineTo(-this.width/2 - 15, -this.height/2 + wingYOffset);
-                    ctx.lineTo(-this.width/2 - 15, this.height/2 + wingYOffset);
+                    ctx.lineTo(-this.width/2 - 20, -this.height/2 + wingYOffset);
+                    ctx.lineTo(-this.width/2 - 20, this.height/2 + wingYOffset);
                     ctx.closePath();
                     ctx.fill();
                     
-                    // Right wing
                     ctx.beginPath();
                     ctx.moveTo(this.width/2, 0);
-                    ctx.lineTo(this.width/2 + 15, -this.height/2 + wingYOffset);
-                    ctx.lineTo(this.width/2 + 15, this.height/2 + wingYOffset);
+                    ctx.lineTo(this.width/2 + 20, -this.height/2 + wingYOffset);
+                    ctx.lineTo(this.width/2 + 20, this.height/2 + wingYOffset);
                     ctx.closePath();
                     ctx.fill();
-                }
-                
-                // Legs
-                ctx.fillStyle = this.color;
-                for (let i = 0; i < 4; i++) {
-                    ctx.fillRect(
-                        -this.width/2 + 5 + i * 10, 
-                        this.height/2 - 5, 
-                        5, 
-                        10
-                    );
                 }
                 
                 ctx.restore();
             }
-            
-            die() {
-                this.alive = false;
-                this.vy = 0;
-                deadCows.push(this);
-            }
         }
 
         class Explosion {
-            constructor(x, y, color) {
+            constructor(x, y) {
                 this.x = x;
                 this.y = y;
                 this.particles = [];
-                this.color = color;
                 
-                // Create particles
+                // Create green liquid particles
                 for (let i = 0; i < 20; i++) {
                     this.particles.push({
                         x: 0,
                         y: 0,
                         vx: (Math.random() - 0.5) * 6,
                         vy: (Math.random() - 0.5) * 6,
-                        size: Math.random() * 6 + 3,
+                        size: Math.random() * 8 + 4,
                         alpha: 1,
-                        life: Math.random() * 0.5 + 0.5
+                        life: 1,
+                        decay: Math.random() * 0.03 + 0.02
                     });
                 }
             }
@@ -426,19 +336,18 @@
                 this.particles.forEach(p => {
                     p.x += p.vx;
                     p.y += p.vy;
-                    p.vy += 0.1;
-                    p.alpha -= 0.02;
-                    p.size *= 0.97;
+                    p.vy += 0.1; // Gravity for particles
+                    p.life -= p.decay;
                 });
                 
-                return this.particles[0].alpha > 0;
+                return this.particles[0].life > 0;
             }
             
             draw() {
                 this.particles.forEach(p => {
-                    ctx.fillStyle = `rgba(${this.color}, ${p.alpha})`;
+                    ctx.fillStyle = `rgba(100, 255, 100, ${p.life})`;
                     ctx.beginPath();
-                    ctx.arc(this.x + p.x, this.y + p.y, p.size, 0, Math.PI * 2);
+                    ctx.arc(this.x + p.x, this.y + p.y, p.size * p.life, 0, Math.PI * 2);
                     ctx.fill();
                 });
             }
@@ -483,9 +392,7 @@
             ammo = 5;
             isReloading = false;
             
-            initStars();
-            initNebulae();
-            initPlanets();
+            nebulaGradient = createNebulaGradient();
             updateHUD();
             resizeCanvas();
             
@@ -503,7 +410,6 @@
         function endGame() {
             gameActive = false;
             clearInterval(gameTimer);
-            clearInterval(spawnInterval);
             document.getElementById('gameOverMenu').style.display = 'block';
             document.getElementById('finalHits').textContent = hits;
             document.getElementById('finalMisses').textContent = misses;
@@ -519,18 +425,14 @@
             document.getElementById('timer').textContent = `${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2, '0')}`;
             document.getElementById('hits').textContent = hits;
             document.getElementById('misses').textContent = misses;
-            document.getElementById('ammo').textContent = ammo;
-            document.getElementById('ammo').style.color = isReloading ? '#ff3366' : '#00ffcc';
         }
 
         function spawnCow() {
-            if (!gameActive || cows.length >= config.maxCows) return;
-            
-            cows.push(new Cow());
-            
-            // Randomize next spawn time slightly
-            const nextSpawn = config.spawnInterval + (Math.random() - 0.5) * 1000;
-            spawnInterval = setTimeout(spawnCow, nextSpawn);
+            if (!gameActive) return;
+            if (cows.length < config.maxCows) {
+                cows.push(new Cow());
+            }
+            setTimeout(spawnCow, config.spawnInterval);
         }
 
         function checkHit(x, y) {
@@ -543,11 +445,11 @@
                 
                 if (x >= left && x <= right && y >= top && y <= bottom) {
                     // Create green explosion
-                    const color = '100, 255, 100';
-                    explosions.push(new Explosion(cow.x, cow.y, color));
+                    explosions.push(new Explosion(cow.x, cow.y));
                     
-                    // Kill the cow
+                    // Kill cow
                     cow.die();
+                    deadCows.push(cow);
                     cows.splice(index, 1);
                     
                     score += cow.score;
@@ -555,11 +457,6 @@
                     updateHUD();
                     shots.push(new Shot(x, y));
                     hit = true;
-                    
-                    // Spawn a new cow immediately to maintain count
-                    if (cows.length < config.maxCows) {
-                        setTimeout(spawnCow, 500);
-                    }
                 }
             });
             
@@ -574,64 +471,11 @@
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Draw stars
-            stars.forEach(star => {
-                ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
-                ctx.beginPath();
-                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Move stars for parallax effect
-                star.x -= star.speed;
-                if (star.x < -star.size) {
-                    star.x = canvas.width + star.size;
-                    star.y = Math.random() * canvas.height;
-                }
-            });
-            
-            // Draw nebulae
-            nebulae.forEach(nebula => {
-                ctx.save();
-                ctx.translate(nebula.x, nebula.y);
-                ctx.rotate(nebula.rotation);
-                
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, nebula.radius);
-                gradient.addColorStop(0, nebula.color);
-                gradient.addColorStop(1, 'rgba(0,0,0,0)');
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.ellipse(0, 0, nebula.radius, nebula.radius * 0.6, 0, 0, Math.PI * 2);
-                ctx.fill();
-                
-                nebula.rotation += nebula.rotationSpeed;
-                ctx.restore();
-            });
-            
-            // Draw planets
-            planets.forEach(planet => {
-                ctx.save();
-                ctx.translate(planet.x, planet.y);
-                ctx.rotate(planet.rotation);
-                
-                // Planet
-                ctx.fillStyle = planet.color;
-                ctx.beginPath();
-                ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Rings
-                if (planet.rings) {
-                    ctx.strokeStyle = planet.ringColor;
-                    ctx.lineWidth = 5;
-                    ctx.beginPath();
-                    ctx.ellipse(0, 0, planet.radius * 1.5, planet.radius * 0.3, 0, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
-                
-                planet.rotation += planet.rotationSpeed;
-                ctx.restore();
-            });
+            // Draw nebula
+            ctx.fillStyle = nebulaGradient;
+            ctx.beginPath();
+            ctx.arc(canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height), 0, Math.PI * 2);
+            ctx.fill();
         }
 
         function gameLoop(timestamp) {
@@ -676,9 +520,7 @@
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            initStars();
-            initNebulae();
-            initPlanets();
+            nebulaGradient = createNebulaGradient();
         }
 
         canvas.addEventListener('pointerdown', (e) => {
@@ -715,9 +557,6 @@
             Telegram.WebApp.ready();
             Telegram.WebApp.expand();
         }
-        
-        // Initial setup
-        resizeCanvas();
     </script>
 </body>
 </html>
