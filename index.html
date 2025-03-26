@@ -192,7 +192,7 @@
             cowHeight: 50,
             headRadius: 20,
             reloadTime: 2000,
-            starCount: 60,
+            starCount: 80,
             planetCount: 5,
             lifeBonusChance: 0.15,
             missPenalty: 3
@@ -215,7 +215,7 @@
                 stars.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
-                    size: Math.random() * 2 + 1.5,
+                    size: Math.random() * 3 + 2,
                     color: Math.random() > 0.5 ? '#3a6bc8' : '#FFC107',
                     alpha: Math.random() * 0.8 + 0.2,
                     speed: Math.random() * 0.1 + 0.05,
@@ -363,7 +363,8 @@
                         y: this.y,
                         radius: 15,
                         collected: false,
-                        alpha: 1
+                        alpha: 1,
+                        pulsePhase: 0
                     });
                 }
             }
@@ -441,13 +442,13 @@
                     ctx.lineTo(this.direction === 1 ? -this.width/2 - 5 : this.width/2 + 5, this.headRadius - 15);
                     ctx.fill();
                     
-                    // Big eyes
+                    // Big eyes with pupils
                     ctx.fillStyle = 'black';
                     ctx.beginPath();
                     ctx.arc(
                         this.direction === 1 ? -this.width/2 + 8 : this.width/2 - 8, 
                         -8, 
-                        5, 
+                        6, 
                         0, 
                         Math.PI * 2
                     );
@@ -457,7 +458,29 @@
                     ctx.arc(
                         this.direction === 1 ? -this.width/2 + 8 : this.width/2 - 8, 
                         8, 
-                        5, 
+                        6, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    
+                    // Pupils
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.arc(
+                        this.direction === 1 ? -this.width/2 + 10 : this.width/2 - 10, 
+                        -8, 
+                        2, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.arc(
+                        this.direction === 1 ? -this.width/2 + 10 : this.width/2 - 10, 
+                        8, 
+                        2, 
                         0, 
                         Math.PI * 2
                     );
@@ -483,8 +506,8 @@
                     ctx.lineTo(this.width/2 + 10, -20 + wingYOffset);
                     ctx.stroke();
                     
-                    // Small tail
-                    ctx.fillStyle = this.color;
+                    // Brown tail
+                    ctx.fillStyle = '#8B4513';
                     ctx.beginPath();
                     ctx.moveTo(this.width/2, 0);
                     ctx.lineTo(this.width/2 + 10, -5);
@@ -493,10 +516,10 @@
                     ctx.closePath();
                     ctx.fill();
                     
-                    // Legs (simple static)
+                    // Legs (hidden behind body)
                     ctx.fillStyle = '#5D4037';
-                    ctx.fillRect(-this.width/3, this.height/4, 8, 20);
-                    ctx.fillRect(this.width/6, this.height/4, 8, 20);
+                    ctx.fillRect(-this.width/3, this.height/4 - 10, 8, 20);
+                    ctx.fillRect(this.width/6, this.height/4 - 10, 8, 20);
                 } else {
                     // Death animation
                     ctx.rotate(this.rotation);
@@ -766,15 +789,21 @@
             ctx.fillStyle = '#0a1a3a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Draw stars (behind planets)
+            // Draw stars (behind planets) as plus signs
             stars.forEach(star => {
                 star.pulsePhase += star.pulseSpeed;
                 const currentAlpha = star.alpha + Math.sin(star.pulsePhase) * 0.2;
                 
+                ctx.save();
+                ctx.translate(star.x, star.y);
+                ctx.rotate(Math.PI/4);
                 ctx.fillStyle = `${star.color}${Math.floor(currentAlpha * 255).toString(16).padStart(2, '0')}`;
-                ctx.beginPath();
-                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-                ctx.fill();
+                
+                // Draw plus sign
+                ctx.fillRect(-star.size/2, -star.size/6, star.size, star.size/3);
+                ctx.fillRect(-star.size/6, -star.size/2, star.size/3, star.size);
+                
+                ctx.restore();
                 
                 // Move stars
                 star.x += star.speed;
@@ -811,24 +840,30 @@
             lifeBonuses.forEach((bonus, index) => {
                 if (bonus.collected) return;
                 
-                // Draw heart shape
+                bonus.pulsePhase += 0.05;
+                const pulse = Math.sin(bonus.pulsePhase) * 0.2 + 0.8;
+                
+                // Draw stylized heart
                 ctx.save();
                 ctx.translate(bonus.x, bonus.y);
-                ctx.scale(0.7, 0.7);
+                ctx.scale(pulse, pulse);
                 ctx.fillStyle = `rgba(255, 51, 102, ${bonus.alpha})`;
+                
+                // Heart shape
                 ctx.beginPath();
                 ctx.moveTo(0, 0);
-                ctx.bezierCurveTo(0, -10, -10, -15, -15, -15);
-                ctx.bezierCurveTo(-25, -15, -25, 0, -15, 10);
-                ctx.bezierCurveTo(0, 20, 15, 10, 15, -15);
-                ctx.bezierCurveTo(15, -25, 0, -25, 0, -15);
-                ctx.bezierCurveTo(0, -25, -15, -25, -15, -15);
-                ctx.bezierCurveTo(-15, 0, 0, 0, 0, 0);
+                ctx.bezierCurveTo(0, -15, -20, -25, 0, -40);
+                ctx.bezierCurveTo(20, -25, 0, -15, 0, 0);
+                ctx.closePath();
                 ctx.fill();
-                ctx.restore();
                 
-                // Pulse animation
-                bonus.alpha = 0.7 + Math.sin(Date.now() / 200) * 0.3;
+                // Heart shine
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.beginPath();
+                ctx.arc(-8, -20, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
                 
                 // Remove if out of screen
                 if (bonus.y > canvas.height + 30) {
