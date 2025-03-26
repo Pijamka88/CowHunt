@@ -91,18 +91,26 @@
         .heart {
             color: #d32f2f;
         }
-        #reloadingText {
+        #reloadingOverlay {
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #d32f2f;
-            font-size: 36px;
-            font-weight: bold;
-            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(211, 47, 47, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 500;
             opacity: 0;
             transition: opacity 0.3s;
             pointer-events: none;
+        }
+        #reloadingText {
+            color: white;
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0,0,0,0.7);
         }
     </style>
 </head>
@@ -151,14 +159,16 @@
         </div>
     </div>
 
-    <div id="reloadingText">Reloading</div>
+    <div id="reloadingOverlay">
+        <div id="reloadingText">Reloading</div>
+    </div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const reloadingText = document.getElementById('reloadingText');
+        const reloadingOverlay = document.getElementById('reloadingOverlay');
         
         // Game state
         let gameActive = false;
@@ -187,12 +197,13 @@
             maxCows: 4,
             cowWidth: 60,
             cowHeight: 40,
-            headRadius: 15,
+            headRadius: 18,
             reloadTime: 2000,
-            starCount: 50,  // Уменьшено количество звезд
+            starCount: 50,
             nebulaCount: 3,
             lifeBonusChance: 0.15,
-            missPenalty: 3
+            missPenalty: 3,
+            wingSpeed: 0.1
         };
 
         // Cow colors
@@ -212,9 +223,9 @@
                 stars.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
-                    size: Math.random() * 1 + 0.5,  // Уменьшен размер звезд
-                    alpha: Math.random() * 0.5 + 0.3,
-                    speed: Math.random() * 0.1 + 0.05
+                    size: Math.random() * 1.5 + 0.5,
+                    alpha: Math.random() * 0.6 + 0.4,
+                    speed: Math.random() * 0.15 + 0.05
                 });
             }
         }
@@ -241,12 +252,12 @@
                 this.color = cowColors[Math.floor(Math.random() * cowColors.length)];
                 this.reset();
                 this.alive = true;
+                this.wingPhase = 0;
                 this.deathAnimation = 0;
                 this.rotation = 0;
                 this.tailAngle = 0;
                 this.tailSpeed = Math.random() * 0.05 + 0.03;
                 this.isFemale = Math.random() > 0.5;
-                this.helmetColor = '#795548';
             }
 
             reset() {
@@ -284,10 +295,10 @@
                     lifeBonuses.push({
                         x: this.x,
                         y: this.y,
-                        radius: 15,
+                        radius: 20,
                         collected: false,
                         alpha: 1,
-                        color: '#ff3366'
+                        pulseSpeed: Math.random() * 0.05 + 0.05
                     });
                 }
             }
@@ -296,6 +307,7 @@
                 if (this.alive) {
                     this.x += this.vx;
                     this.y += this.vy;
+                    this.wingPhase += config.wingSpeed;
                     this.tailAngle += this.tailSpeed;
                     
                     // Reset if out of bounds
@@ -337,12 +349,10 @@
                     ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Legs (без анимации)
+                    // Legs (static)
                     ctx.fillStyle = '#5D4037';
-                    // Front legs
                     ctx.fillRect(-this.width/3, this.height/4, 8, this.height/2);
                     ctx.fillRect(-this.width/6, this.height/4, 8, this.height/2);
-                    // Back legs
                     ctx.fillRect(this.width/6, this.height/4, 8, this.height/2);
                     ctx.fillRect(this.width/3, this.height/4, 8, this.height/2);
                     
@@ -358,59 +368,59 @@
                     );
                     ctx.fill();
                     
-                    // Космический шлем с рожками
-                    ctx.strokeStyle = this.helmetColor;
-                    ctx.lineWidth = 3;
+                    // Helmet
+                    ctx.fillStyle = 'white';
                     ctx.beginPath();
                     ctx.arc(
                         this.direction === 1 ? -this.width/2 : this.width/2, 
                         0, 
-                        this.headRadius + 3, 
+                        this.headRadius * 0.9, 
                         0, 
                         Math.PI * 2
                     );
-                    ctx.stroke();
+                    ctx.fill();
                     
-                    // Рожки
-                    ctx.fillStyle = this.helmetColor;
+                    // Horns
+                    ctx.fillStyle = '#FFEB3B';
                     ctx.beginPath();
                     ctx.moveTo(
                         this.direction === 1 ? -this.width/2 - 5 : this.width/2 + 5, 
-                        -this.headRadius - 5
+                        -this.headRadius * 0.7
                     );
                     ctx.lineTo(
                         this.direction === 1 ? -this.width/2 - 15 : this.width/2 + 15, 
-                        -this.headRadius - 15
+                        -this.headRadius * 0.9
                     );
                     ctx.lineTo(
-                        this.direction === 1 ? -this.width/2 : this.width/2, 
-                        -this.headRadius - 10
+                        this.direction === 1 ? -this.width/2 - 5 : this.width/2 + 5, 
+                        -this.headRadius * 0.5
                     );
+                    ctx.closePath();
                     ctx.fill();
                     
-                    // Второй рожок
                     ctx.beginPath();
                     ctx.moveTo(
                         this.direction === 1 ? -this.width/2 - 5 : this.width/2 + 5, 
-                        -this.headRadius + 5
+                        this.headRadius * 0.7
                     );
                     ctx.lineTo(
                         this.direction === 1 ? -this.width/2 - 15 : this.width/2 + 15, 
-                        -this.headRadius + 15
+                        this.headRadius * 0.9
                     );
                     ctx.lineTo(
-                        this.direction === 1 ? -this.width/2 : this.width/2, 
-                        -this.headRadius + 10
+                        this.direction === 1 ? -this.width/2 - 5 : this.width/2 + 5, 
+                        this.headRadius * 0.5
                     );
+                    ctx.closePath();
                     ctx.fill();
                     
-                    // Глаза (увеличенные)
+                    // Eyes
                     ctx.fillStyle = 'white';
                     ctx.beginPath();
                     ctx.arc(
                         this.direction === 1 ? -this.width/2 + 5 : this.width/2 - 5, 
-                        -3, 
-                        5,  // Увеличен размер глаз
+                        -5, 
+                        6, 
                         0, 
                         Math.PI * 2
                     );
@@ -419,31 +429,75 @@
                     ctx.fillStyle = 'black';
                     ctx.beginPath();
                     ctx.arc(
-                        this.direction === 1 ? -this.width/2 + 5 : this.width/2 - 5, 
-                        -3, 
-                        3,  // Увеличен размер зрачков
+                        this.direction === 1 ? -this.width/2 + 7 : this.width/2 - 7, 
+                        -5, 
+                        3, 
                         0, 
                         Math.PI * 2
                     );
                     ctx.fill();
                     
-                    // Хвост
+                    // Wings
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    const wingY = Math.sin(this.wingPhase) * 10;
+                    
+                    // Left wing
+                    ctx.beginPath();
+                    ctx.ellipse(
+                        -this.width/2 - 10, 
+                        wingY, 
+                        15, 
+                        25, 
+                        0, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    
+                    // Right wing
+                    ctx.beginPath();
+                    ctx.ellipse(
+                        this.width/2 + 10, 
+                        wingY, 
+                        15, 
+                        25, 
+                        0, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    
+                    // Tail
                     ctx.strokeStyle = '#5D4037';
                     ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.moveTo(this.width/2, 0);
                     ctx.lineTo(
-                        this.width/2 + Math.cos(this.tailAngle) * 15,
-                        Math.sin(this.tailAngle) * 15
+                        this.width/2 + Math.cos(this.tailAngle) * 20,
+                        Math.sin(this.tailAngle) * 20
                     );
                     ctx.stroke();
                     
-                    // Вымя (только у женских особей)
+                    // Udder (if cow is female)
                     if (this.isFemale) {
-                        ctx.fillStyle = '#FFB6C1';  // Розовый цвет
+                        ctx.fillStyle = '#FF80AB';
                         ctx.beginPath();
-                        ctx.ellipse(0, this.height/3, 5, 3, 0, 0, Math.PI * 2);
+                        ctx.ellipse(0, this.height/3, 8, 5, 0, 0, Math.PI * 2);
                         ctx.fill();
+                        
+                        // Teats
+                        ctx.fillStyle = '#F8BBD0';
+                        for (let i = 0; i < 4; i++) {
+                            ctx.beginPath();
+                            ctx.arc(
+                                -10 + i * 7, 
+                                this.height/3 + 5, 
+                                2, 
+                                0, 
+                                Math.PI * 2
+                            );
+                            ctx.fill();
+                        }
                     }
                 } else {
                     // Death animation
@@ -457,11 +511,12 @@
                     ctx.fill();
                     
                     // Head
+                    ctx.fillStyle = 'white';
                     ctx.beginPath();
                     ctx.arc(
                         this.direction === 1 ? -this.width/2 : this.width/2, 
                         0, 
-                        this.headRadius, 
+                        this.headRadius * 0.9, 
                         0, 
                         Math.PI * 2
                     );
@@ -472,20 +527,20 @@
                     ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.moveTo(
-                        this.direction === 1 ? -this.width/2 : this.width/2 - 10, 
-                        -5
+                        this.direction === 1 ? -this.width/2 + 2 : this.width/2 - 2, 
+                        -8
                     );
                     ctx.lineTo(
-                        this.direction === 1 ? -this.width/2 + 10 : this.width/2, 
-                        5
+                        this.direction === 1 ? -this.width/2 + 8 : this.width/2 - 8, 
+                        -2
                     );
                     ctx.moveTo(
-                        this.direction === 1 ? -this.width/2 : this.width/2 - 10, 
-                        5
+                        this.direction === 1 ? -this.width/2 + 2 : this.width/2 - 2, 
+                        -2
                     );
                     ctx.lineTo(
-                        this.direction === 1 ? -this.width/2 + 10 : this.width/2, 
-                        -5
+                        this.direction === 1 ? -this.width/2 + 8 : this.width/2 - 8, 
+                        -8
                     );
                     ctx.stroke();
                     
@@ -673,13 +728,13 @@
                 if (bonus.collected) continue;
                 
                 const dist = Math.sqrt((x - bonus.x) ** 2 + (y - bonus.y) ** 2);
-                if (dist <= bonus.radius) {
+                if (dist <= bonus.radius + 10) {
                     bonus.collected = true;
                     lives = Math.min(3, lives + 1);
                     updateHUD();
                     
                     // Create heart explosion
-                    explosions.push(new Explosion(bonus.x, bonus.y, '255, 51, 102'));
+                    explosions.push(new Explosion(bonus.x, bonus.y, '255, 0, 0'));
                     hit = true;
                     break;
                 }
@@ -735,7 +790,7 @@
                 }
             });
             
-            // Draw stars (уменьшенное количество и размер)
+            // Draw stars
             stars.forEach(star => {
                 ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
                 ctx.beginPath();
@@ -755,28 +810,30 @@
             lifeBonuses.forEach((bonus, index) => {
                 if (bonus.collected) return;
                 
+                const pulse = Math.sin(Date.now() * bonus.pulseSpeed) * 0.3 + 0.7;
+                
+                // Draw heart
                 ctx.save();
                 ctx.translate(bonus.x, bonus.y);
+                ctx.scale(pulse, pulse);
+                ctx.fillStyle = `rgba(255, 0, 0, ${bonus.alpha})`;
                 
-                // Draw heart shape
-                ctx.fillStyle = `rgba(${bonus.color}, ${bonus.alpha})`;
                 ctx.beginPath();
                 ctx.moveTo(0, 0);
-                ctx.bezierCurveTo(5, -10, 15, -10, 0, -20);
-                ctx.bezierCurveTo(-15, -10, -5, -10, 0, 0);
+                ctx.bezierCurveTo(0, -10, -10, -15, -15, -10);
+                ctx.bezierCurveTo(-20, -5, -15, 5, 0, 15);
+                ctx.bezierCurveTo(15, 5, 20, -5, 15, -10);
+                ctx.bezierCurveTo(10, -15, 0, -10, 0, 0);
                 ctx.fill();
                 
-                // Pulse animation
-                bonus.alpha = 0.7 + Math.sin(Date.now() / 200) * 0.3;
+                ctx.restore();
                 
                 // Remove if out of screen
-                if (bonus.y > canvas.height + 20) {
+                if (bonus.y > canvas.height + bonus.radius * 2) {
                     lifeBonuses.splice(index, 1);
                 } else {
                     bonus.y += 1;
                 }
-                
-                ctx.restore();
             });
         }
 
@@ -816,7 +873,7 @@
                 }
             });
             
-            // Draw life bonuses (сердечки)
+            // Draw life bonuses
             drawLifeBonuses();
             
             requestAnimationFrame(gameLoop);
@@ -852,12 +909,12 @@
 
         function startReloading() {
             isReloading = true;
-            reloadingText.style.opacity = 1;
+            reloadingOverlay.style.opacity = 1;
             
             setTimeout(() => {
                 ammo = 5;
                 isReloading = false;
-                reloadingText.style.opacity = 0;
+                reloadingOverlay.style.opacity = 0;
                 updateHUD();
             }, config.reloadTime);
         }
