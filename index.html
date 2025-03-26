@@ -53,12 +53,13 @@
             position: fixed;
             top: 15px;
             left: 15px;
+            right: 15px;
             color: white;
             background: rgba(0, 0, 0, 0.5);
             padding: 10px 15px;
             border-radius: 10px;
             display: flex;
-            gap: 20px;
+            justify-content: space-between;
             font-size: 18px;
             border: 1px solid #9b59b6;
         }
@@ -71,9 +72,9 @@
             font-size: 24px;
             text-shadow: 0 0 5px #ff0000;
         }
-        #stats {
-            display: flex;
-            gap: 15px;
+        #score {
+            font-weight: bold;
+            color: #f1c40f;
         }
     </style>
 </head>
@@ -86,9 +87,7 @@
 
     <div id="gameOverMenu" class="menu" style="display: none;">
         <h1>Миссия завершена!</h1>
-        <p>Попаданий: <span id="finalHits">0</span></p>
-        <p>Промахов: <span id="finalMisses">0</span></p>
-        <p>Счет: <span id="finalScore">0</span></p>
+        <p>Ваш счет: <span id="finalScore">0</span></p>
         <button onclick="startGame()">Попробовать снова</button>
     </div>
 
@@ -99,9 +98,7 @@
             <span class="heart">♥</span>
         </div>
         <div id="timer">1:00</div>
-        <div id="stats">
-            <span id="hits">0</span> | <span id="misses">0</span>
-        </div>
+        <div id="score">0</div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -120,8 +117,6 @@
         let score = 0;
         let lives = 3;
         let timeLeft = 60;
-        let hits = 0;
-        let misses = 0;
         let ammo = 5;
         let isReloading = false;
         let gameTimer;
@@ -132,8 +127,9 @@
             cowSpeed: 1.8,
             spawnInterval: 2000,
             maxCows: 3,
-            cowWidth: 50,
+            cowWidth: 60,
             cowHeight: 40,
+            headRadius: 12,
             reloadTime: 2000
         };
 
@@ -186,6 +182,7 @@
             constructor() {
                 this.width = config.cowWidth;
                 this.height = config.cowHeight;
+                this.headRadius = config.headRadius;
                 this.type = Math.floor(Math.random() * cowTypes.length);
                 this.reset();
                 this.alive = true;
@@ -261,28 +258,35 @@
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.rotation);
                 
-                // Body
-                ctx.fillStyle = this.color;
-                ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
-                
                 if (this.alive) {
-                    // Head
-                    ctx.fillStyle = '#ecf0f1';
-                    ctx.fillRect(
-                        this.direction === 1 ? -this.width/2 : this.width/2 - 10, 
-                        -this.height/4, 
-                        10, 
-                        10
-                    );
+                    // Body (rectangle without fill)
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(-this.width/2, -this.height/2, this.width, this.height);
+                    
+                    // Head (white circle)
+                    const headX = this.direction === 1 ? -this.width/2 : this.width/2;
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.arc(headX, 0, this.headRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
                     
                     // Eyes
+                    const eyeX = this.direction === 1 ? 
+                        -this.width/2 + this.headRadius/2 : 
+                        this.width/2 - this.headRadius/2;
+                    
                     ctx.fillStyle = 'black';
-                    ctx.fillRect(
-                        this.direction === 1 ? -this.width/2 + 2 : this.width/2 - 4, 
-                        -this.height/4 + 2, 
-                        3, 
-                        3
-                    );
+                    ctx.beginPath();
+                    ctx.arc(eyeX, -this.headRadius/3, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.arc(eyeX, this.headRadius/3, 3, 0, Math.PI * 2);
+                    ctx.fill();
                     
                     // Wings
                     const wingYOffset = Math.sin(this.wingPhase) * 5;
@@ -305,19 +309,19 @@
                     ctx.fill();
                     
                     // Legs
-                    ctx.fillStyle = this.color;
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 3;
                     for (let i = 0; i < 4; i++) {
-                        ctx.fillRect(
-                            -this.width/2 + 5 + i * 10, 
-                            this.height/2 - 5, 
-                            5, 
-                            10
-                        );
+                        ctx.beginPath();
+                        ctx.moveTo(-this.width/2 + 10 + i * 15, this.height/2);
+                        ctx.lineTo(-this.width/2 + 10 + i * 15, this.height/2 + 10);
+                        ctx.stroke();
                     }
                 } else {
                     // Dead cow - simpler representation
-                    ctx.fillStyle = '#333';
-                    ctx.fillRect(-this.width/4, -this.height/4, this.width/2, this.height/2);
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(-this.width/4, -this.height/4, this.width/2, this.height/2);
                 }
                 
                 ctx.restore();
@@ -400,8 +404,6 @@
             score = 0;
             lives = 3;
             timeLeft = 60;
-            hits = 0;
-            misses = 0;
             ammo = 5;
             isReloading = false;
             
@@ -423,8 +425,6 @@
             gameActive = false;
             clearInterval(gameTimer);
             document.getElementById('gameOverMenu').style.display = 'block';
-            document.getElementById('finalHits').textContent = hits;
-            document.getElementById('finalMisses').textContent = misses;
             document.getElementById('finalScore').textContent = score;
         }
 
@@ -435,8 +435,7 @@
             });
             
             document.getElementById('timer').textContent = `${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2, '0')}`;
-            document.getElementById('hits').textContent = hits;
-            document.getElementById('misses').textContent = misses;
+            document.getElementById('score').textContent = score;
         }
 
         function spawnCow() {
@@ -475,7 +474,6 @@
                     deadCows.push(cow);
                     
                     score += cow.score;
-                    hits++;
                     updateHUD();
                     shots.push(new Shot(x, y));
                     hit = true;
@@ -484,7 +482,17 @@
             }
             
             if (!hit && ammo > 0) {
-                misses++;
+                ammo--;
+                if (ammo <= 0) {
+                    lives--;
+                    if (lives <= 0) endGame();
+                    isReloading = true;
+                    setTimeout(() => {
+                        ammo = 5;
+                        isReloading = false;
+                        updateHUD();
+                    }, config.reloadTime);
+                }
                 updateHUD();
             }
         }
@@ -554,22 +562,7 @@
             
             if (isReloading) return;
             
-            if (ammo > 0) {
-                ammo--;
-                checkHit(x, y);
-                shots.push(new Shot(x, y));
-            } else {
-                misses++;
-                lives--;
-                if (lives <= 0) endGame();
-                isReloading = true;
-                setTimeout(() => {
-                    ammo = 5;
-                    isReloading = false;
-                    updateHUD();
-                }, config.reloadTime);
-            }
-            updateHUD();
+            checkHit(x, y);
         });
 
         window.addEventListener('resize', resizeCanvas);
