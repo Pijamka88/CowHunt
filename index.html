@@ -250,12 +250,10 @@
                 this.color = cowColors[Math.floor(Math.random() * cowColors.length)];
                 this.reset();
                 this.alive = true;
-                this.legPhase = Math.random() * Math.PI * 2;
-                this.legSpeed = Math.random() * 0.05 + 0.05;
+                this.wingPhase = Math.random() * Math.PI * 2;
+                this.wingSpeed = Math.random() * 0.05 + 0.05;
                 this.deathAnimation = 0;
                 this.rotation = 0;
-                this.tailAngle = 0;
-                this.tailSpeed = Math.random() * 0.05 + 0.03;
             }
 
             reset() {
@@ -304,8 +302,7 @@
                 if (this.alive) {
                     this.x += this.vx;
                     this.y += this.vy;
-                    this.legPhase += this.legSpeed;
-                    this.tailAngle += this.tailSpeed;
+                    this.wingPhase += this.wingSpeed;
                     
                     // Reset if out of bounds
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
@@ -340,26 +337,12 @@
                 if (this.alive) {
                     ctx.rotate(this.rotation);
                     
-                    // Body
-                    ctx.fillStyle = this.color;
-                    ctx.beginPath();
-                    ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
-                    ctx.fill();
+                    // Body (rectangle without fill)
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(-this.width/2, -this.height/2, this.width, this.height);
                     
-                    // Legs
-                    const legOffset = Math.sin(this.legPhase) * 5;
-                    ctx.fillStyle = '#5D4037';
-                    
-                    // Front legs
-                    ctx.fillRect(-this.width/3, this.height/4, 8, this.height/2 + legOffset);
-                    ctx.fillRect(-this.width/6, this.height/4, 8, this.height/2 - legOffset);
-                    
-                    // Back legs
-                    ctx.fillRect(this.width/6, this.height/4, 8, this.height/2 - legOffset);
-                    ctx.fillRect(this.width/3, this.height/4, 8, this.height/2 + legOffset);
-                    
-                    // Head
-                    ctx.fillStyle = this.color;
+                    // Head with helmet
                     ctx.beginPath();
                     ctx.arc(
                         this.direction === 1 ? -this.width/2 : this.width/2, 
@@ -368,7 +351,38 @@
                         0, 
                         Math.PI * 2
                     );
-                    ctx.fill();
+                    ctx.stroke();
+                    
+                    // Helmet
+                    ctx.beginPath();
+                    ctx.arc(
+                        this.direction === 1 ? -this.width/2 : this.width/2, 
+                        0, 
+                        this.headRadius - 3, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.stroke();
+                    
+                    // Horns
+                    ctx.beginPath();
+                    ctx.moveTo(
+                        this.direction === 1 ? -this.width/2 - 5 : this.width/2 + 5, 
+                        -this.headRadius + 5
+                    );
+                    ctx.lineTo(
+                        this.direction === 1 ? -this.width/2 - 15 : this.width/2 + 15, 
+                        -this.headRadius - 5
+                    );
+                    ctx.moveTo(
+                        this.direction === 1 ? -this.width/2 - 5 : this.width/2 + 5, 
+                        this.headRadius - 5
+                    );
+                    ctx.lineTo(
+                        this.direction === 1 ? -this.width/2 - 15 : this.width/2 + 15, 
+                        this.headRadius + 5
+                    );
+                    ctx.stroke();
                     
                     // Eyes
                     ctx.fillStyle = 'white';
@@ -393,64 +407,77 @@
                     );
                     ctx.fill();
                     
-                    // Tail
-                    ctx.strokeStyle = '#5D4037';
-                    ctx.lineWidth = 3;
+                    // Wings (mechanical style)
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 2;
+                    
+                    // Left wing
                     ctx.beginPath();
-                    ctx.moveTo(this.width/2, 0);
-                    ctx.lineTo(
-                        this.width/2 + Math.cos(this.tailAngle) * 15,
-                        Math.sin(this.tailAngle) * 15
-                    );
+                    ctx.moveTo(-this.width/2, 0);
+                    ctx.lineTo(-this.width/2 - 20, -10);
+                    ctx.lineTo(-this.width/2 - 25, 0);
+                    ctx.lineTo(-this.width/2 - 20, 10);
+                    ctx.closePath();
                     ctx.stroke();
                     
-                    // Udder (if cow is female - 50% chance)
-                    if (Math.random() > 0.5) {
-                        ctx.fillStyle = '#F5F5F5';
+                    // Right wing
+                    ctx.beginPath();
+                    ctx.moveTo(this.width/2, 0);
+                    ctx.lineTo(this.width/2 + 20, -10);
+                    ctx.lineTo(this.width/2 + 25, 0);
+                    ctx.lineTo(this.width/2 + 20, 10);
+                    ctx.closePath();
+                    ctx.stroke();
+                    
+                    // Legs (simple static)
+                    ctx.strokeStyle = this.color;
+                    for (let i = 0; i < 4; i++) {
                         ctx.beginPath();
-                        ctx.ellipse(0, this.height/3, 5, 3, 0, 0, Math.PI * 2);
-                        ctx.fill();
+                        ctx.moveTo(-this.width/2 + 10 + i * 15, this.height/2);
+                        ctx.lineTo(-this.width/2 + 10 + i * 15, this.height/2 + 15);
+                        ctx.stroke();
                     }
                 } else {
                     // Death animation
                     ctx.rotate(this.rotation);
                     ctx.globalAlpha = this.deathAnimation;
                     
-                    // Draw dead cow
-                    ctx.fillStyle = this.color;
-                    ctx.beginPath();
-                    ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
-                    ctx.fill();
+                    // Draw dead cow parts
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 3;
+                    
+                    // Body
+                    ctx.strokeRect(-this.width/4, -this.height/4, this.width/2, this.height/2);
                     
                     // Head
                     ctx.beginPath();
                     ctx.arc(
-                        this.direction === 1 ? -this.width/2 : this.width/2, 
+                        this.direction === 1 ? -this.width/4 : this.width/4, 
                         0, 
-                        this.headRadius, 
+                        this.headRadius/2, 
                         0, 
                         Math.PI * 2
                     );
-                    ctx.fill();
+                    ctx.stroke();
                     
                     // X eyes
                     ctx.strokeStyle = 'black';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.moveTo(
-                        this.direction === 1 ? -this.width/2 + 2 : this.width/2 - 2, 
+                        this.direction === 1 ? -this.width/4 + 2 : this.width/4 - 2, 
                         -5
                     );
                     ctx.lineTo(
-                        this.direction === 1 ? -this.width/2 + 8 : this.width/2 - 8, 
+                        this.direction === 1 ? -this.width/4 + 8 : this.width/4 - 8, 
                         1
                     );
                     ctx.moveTo(
-                        this.direction === 1 ? -this.width/2 + 2 : this.width/2 - 2, 
+                        this.direction === 1 ? -this.width/4 + 2 : this.width/4 - 2, 
                         1
                     );
                     ctx.lineTo(
-                        this.direction === 1 ? -this.width/2 + 8 : this.width/2 - 8, 
+                        this.direction === 1 ? -this.width/4 + 8 : this.width/4 - 8, 
                         -5
                     );
                     ctx.stroke();
