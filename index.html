@@ -8,11 +8,12 @@
             margin: 0;
             overflow: hidden;
             touch-action: none;
-            background: #F5F5DC;
+            background: #000;
             font-family: 'Arial', sans-serif;
+            color: white;
         }
         #gameCanvas {
-            background: #F5F5DC;
+            background: #000;
             display: block;
         }
         .menu {
@@ -20,35 +21,36 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(245, 245, 220, 0.9);
+            background: rgba(40, 0, 60, 0.9);
             padding: 30px;
-            color: #5C4033;
+            color: white;
             text-align: center;
             border-radius: 15px;
-            border: 2px solid #8B4513;
+            border: 2px solid #9b59b6;
             z-index: 1000;
             max-width: 80%;
-            box-shadow: 0 0 20px rgba(139, 69, 19, 0.5);
+            box-shadow: 0 0 20px #9b59b6;
         }
         .menu h1 {
-            color: #8B4513;
+            color: #9b59b6;
             margin-bottom: 20px;
-            text-shadow: 1px 1px 2px #CD853F;
+            text-shadow: 0 0 10px #9b59b6;
+            font-size: 28px;
         }
         .menu button {
             padding: 12px 25px;
             font-size: 18px;
             margin-top: 20px;
             cursor: pointer;
-            background: linear-gradient(to bottom, #D2B48C, #BC8F8F);
+            background: linear-gradient(to bottom, #8e44ad, #9b59b6);
             border: none;
-            color: #5C4033;
+            color: white;
             border-radius: 8px;
             transition: all 0.3s;
-            font-weight: bold;
+            box-shadow: 0 0 10px #8e44ad;
         }
         .menu button:hover {
-            background: linear-gradient(to bottom, #BC8F8F, #D2B48C);
+            background: linear-gradient(to bottom, #9b59b6, #8e44ad);
             transform: scale(1.05);
         }
         #topHUD {
@@ -57,10 +59,10 @@
             left: 0;
             right: 0;
             display: flex;
-            justify-content: space-around;
-            background: rgba(210, 180, 140, 0.7);
-            padding: 10px;
-            border-bottom: 2px solid #8B4513;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: rgba(40, 0, 60, 0.7);
+            border-bottom: 1px solid #9b59b6;
         }
         #bottomHUD {
             position: fixed;
@@ -68,42 +70,56 @@
             left: 0;
             right: 0;
             display: flex;
-            justify-content: space-around;
-            background: rgba(210, 180, 140, 0.7);
-            padding: 10px;
-            border-top: 2px solid #8B4513;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: rgba(40, 0, 60, 0.7);
+            border-top: 1px solid #9b59b6;
         }
         .hud-item {
-            color: #5C4033;
-            font-weight: bold;
-            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
-        .heart {
-            color: #B22222;
-            font-size: 20px;
-            margin: 0 2px;
+        .life {
+            width: 20px;
+            height: 20px;
+            background: #ff0000;
+            border-radius: 50%;
+            box-shadow: 0 0 5px #ff0000;
+        }
+        .health-bonus {
+            width: 15px;
+            height: 15px;
+            background: #00ff00;
+            border-radius: 50%;
+            box-shadow: 0 0 5px #00ff00;
+            position: absolute;
         }
     </style>
 </head>
 <body>
     <div id="mainMenu" class="menu">
         <h1>Starfield Cow Hunt</h1>
-        <p>Стреляйте в космических коров и собирайте бонусы!</p>
+        <p>Стреляйте в космических коров!</p>
         <button onclick="startGame()">Начать игру</button>
     </div>
 
     <div id="gameOverMenu" class="menu" style="display: none;">
-        <h1>Миссия завершена!</h1>
+        <h1>Игра окончена!</h1>
         <p>Счет: <span id="finalScore">0</span></p>
         <p>Попаданий: <span id="finalHits">0</span></p>
         <p>Промахов: <span id="finalMisses">0</span></p>
-        <button onclick="startGame()">Попробовать снова</button>
+        <button onclick="startGame()">Играть снова</button>
     </div>
 
     <div id="topHUD">
-        <div class="hud-item" id="score">Счет: 0</div>
-        <div class="hud-item" id="timer">Время: 1:00</div>
-        <div class="hud-item" id="lives">Жизни: <span class="heart">♥</span><span class="heart">♥</span><span class="heart">♥</span></div>
+        <div class="hud-item" id="score">Score: 0</div>
+        <div class="hud-item" id="timer">1:00</div>
+        <div class="hud-item" id="lives-container">
+            <div class="life"></div>
+            <div class="life"></div>
+            <div class="life"></div>
+        </div>
     </div>
 
     <div id="bottomHUD">
@@ -123,49 +139,51 @@
         let deadCows = [];
         let shots = [];
         let explosions = [];
-        let healthPacks = [];
+        let healthBonuses = [];
+        let stars = [];
         let score = 0;
         let lives = 3;
         let timeLeft = 60;
         let hits = 0;
         let misses = 0;
         let ammo = 5;
-        let maxAmmo = 5;
+        let consecutiveMisses = 0;
         let isReloading = false;
         let gameTimer;
         let lastTime = 0;
-        let missCount = 0;
 
         // Configuration
         const config = {
             cowSpeed: 1.8,
             spawnInterval: 1500,
-            maxCows: 3,
-            cowWidth: 60,
-            cowHeight: 40,
+            maxCows: 5,
+            cowWidth: 40,
+            cowHeight: 30,
+            headRadius: 10,
             reloadTime: 2000,
-            healthPackChance: 0.02,
-            healthPackDuration: 5000
+            healthBonusChance: 0.1,
+            missPenalty: 3
         };
 
-        // Cow types
-        const cowTypes = [
-            { color: '#8B4513', score: 100, wingColor: '#A0522D' }, // Brown
-            { color: '#696969', score: 150, wingColor: '#808080' }, // Gray
-            { color: '#556B2F', score: 200, wingColor: '#6B8E23' }, // Olive
-            { color: '#483D8B', score: 250, wingColor: '#6A5ACD' }  // SlateBlue
+        // Cow colors
+        const cowColors = [
+            '#8e44ad', // Purple
+            '#e74c3c', // Red
+            '#3498db', // Blue
+            '#f1c40f', // Yellow
+            '#2ecc71', // Green
+            '#e84393'  // Pink
         ];
 
-        // Background stars
-        let stars = [];
+        // Initialize stars
         function initStars() {
             stars = [];
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < 200; i++) {
                 stars.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
                     size: Math.random() * 2 + 1,
-                    alpha: Math.random() * 0.5 + 0.5,
+                    alpha: Math.random() * 0.8 + 0.2,
                     speed: Math.random() * 0.2 + 0.1
                 });
             }
@@ -175,48 +193,52 @@
             constructor() {
                 this.width = config.cowWidth;
                 this.height = config.cowHeight;
-                this.type = Math.floor(Math.random() * cowTypes.length);
+                this.headRadius = config.headRadius;
+                this.color = cowColors[Math.floor(Math.random() * cowColors.length)];
                 this.reset();
                 this.alive = true;
                 this.wingPhase = Math.random() * Math.PI * 2;
                 this.wingSpeed = Math.random() * 0.05 + 0.05;
-                this.rotation = 0;
-                this.scale = 1;
+                this.wingColor = this.color;
+                this.score = 100 + Math.floor(Math.random() * 5) * 50;
             }
 
             reset() {
-                // Random direction (left to right or right to left)
                 this.direction = Math.random() > 0.5 ? 1 : -1;
                 
                 if (this.direction === 1) {
-                    // Left to right
                     this.x = -this.width;
                     this.y = Math.random() * (canvas.height - 100) + 50;
                     this.vx = Math.random() * config.cowSpeed + config.cowSpeed * 0.5;
                     this.vy = (Math.random() - 0.5) * config.cowSpeed * 0.5;
                 } else {
-                    // Right to left
                     this.x = canvas.width + this.width;
                     this.y = Math.random() * (canvas.height - 100) + 50;
                     this.vx = -(Math.random() * config.cowSpeed + config.cowSpeed * 0.5);
                     this.vy = (Math.random() - 0.5) * config.cowSpeed * 0.5;
                 }
                 
-                this.color = cowTypes[this.type].color;
-                this.wingColor = cowTypes[this.type].wingColor;
-                this.score = cowTypes[this.type].score;
                 this.alive = true;
+                this.deathAnimation = 0;
                 this.rotation = 0;
-                this.scale = 1;
-                this.deathTimer = 0;
             }
 
             die() {
                 this.alive = false;
-                this.vy = 1; // Start falling
+                this.deathAnimation = 1;
+                this.vy = 1;
                 this.vx = (Math.random() - 0.5) * 2;
                 this.rotationSpeed = (Math.random() - 0.5) * 0.1;
-                this.deathTimer = 60; // 60 frames of death animation
+                
+                // Chance to spawn health bonus
+                if (Math.random() < config.healthBonusChance && lives < 3) {
+                    healthBonuses.push({
+                        x: this.x,
+                        y: this.y,
+                        radius: 8,
+                        collected: false
+                    });
+                }
             }
 
             update() {
@@ -225,27 +247,22 @@
                     this.y += this.vy;
                     this.wingPhase += this.wingSpeed;
                     
-                    // Reset if out of bounds
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
                         (this.direction === -1 && this.x < -this.width*2)) {
                         this.reset();
                     }
                     
-                    // Bounce on top/bottom
                     if (this.y < this.height/2 || this.y > canvas.height - this.height/2) {
                         this.vy *= -1;
                     }
                 } else {
-                    // Dead cow animation
-                    this.x += this.vx;
+                    this.deathAnimation -= 0.02;
                     this.y += this.vy;
-                    this.vy *= 1.05; // Accelerate
+                    this.x += this.vx;
+                    this.vy *= 1.02;
                     this.rotation += this.rotationSpeed;
-                    this.scale = Math.max(0, this.deathTimer / 60);
-                    this.deathTimer--;
                     
-                    // Remove if animation complete or out of screen
-                    if (this.deathTimer <= 0 || this.y > canvas.height + this.height*2) {
+                    if (this.y > canvas.height + this.height*2 || this.deathAnimation <= 0) {
                         const index = deadCows.indexOf(this);
                         if (index !== -1) deadCows.splice(index, 1);
                     }
@@ -256,130 +273,82 @@
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.rotation);
-                ctx.scale(this.scale, this.scale);
-                
-                // Body
-                ctx.fillStyle = this.color;
-                ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
                 
                 if (this.alive) {
-                    // Head
-                    ctx.fillStyle = '#F5F5DC';
-                    ctx.fillRect(
-                        this.direction === 1 ? -this.width/2 : this.width/2 - 12, 
-                        -this.height/4, 
-                        12, 
-                        12
-                    );
+                    // Body (outline only)
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-this.width/2, -this.height/2, this.width, this.height);
                     
-                    // Eyes
-                    ctx.fillStyle = '#000';
-                    ctx.fillRect(
-                        this.direction === 1 ? -this.width/2 + 3 : this.width/2 - 5, 
-                        -this.height/4 + 3, 
-                        4, 
-                        4
+                    // Head (circle)
+                    ctx.beginPath();
+                    ctx.arc(
+                        this.direction === 1 ? -this.width/2 + this.headRadius : this.width/2 - this.headRadius, 
+                        0, 
+                        this.headRadius, 
+                        0, 
+                        Math.PI * 2
                     );
+                    ctx.stroke();
+                    
+                    // Eye
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.arc(
+                        this.direction === 1 ? -this.width/2 + this.headRadius : this.width/2 - this.headRadius, 
+                        -this.headRadius/2, 
+                        2, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
                     
                     // Wings
                     const wingYOffset = Math.sin(this.wingPhase) * 8;
-                    ctx.fillStyle = this.wingColor;
+                    ctx.strokeStyle = this.wingColor;
                     
                     // Left wing
                     ctx.beginPath();
                     ctx.moveTo(-this.width/2, 0);
-                    ctx.lineTo(-this.width/2 - 20, -this.height/2 + wingYOffset);
-                    ctx.lineTo(-this.width/2 - 20, this.height/2 + wingYOffset);
+                    ctx.lineTo(-this.width/2 - 15, -this.height/2 + wingYOffset);
+                    ctx.lineTo(-this.width/2 - 15, this.height/2 + wingYOffset);
                     ctx.closePath();
-                    ctx.fill();
+                    ctx.stroke();
                     
                     // Right wing
                     ctx.beginPath();
                     ctx.moveTo(this.width/2, 0);
-                    ctx.lineTo(this.width/2 + 20, -this.height/2 + wingYOffset);
-                    ctx.lineTo(this.width/2 + 20, this.height/2 + wingYOffset);
+                    ctx.lineTo(this.width/2 + 15, -this.height/2 + wingYOffset);
+                    ctx.lineTo(this.width/2 + 15, this.height/2 + wingYOffset);
                     ctx.closePath();
-                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    // Death animation
+                    ctx.globalAlpha = this.deathAnimation;
                     
-                    // Legs
-                    ctx.fillStyle = this.color;
-                    for (let i = 0; i < 4; i++) {
-                        ctx.fillRect(
-                            -this.width/2 + 5 + i * 12, 
-                            this.height/2 - 5, 
-                            6, 
-                            12
+                    // Broken body parts
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 2;
+                    
+                    // Body parts flying apart
+                    for (let i = 0; i < 3; i++) {
+                        ctx.save();
+                        ctx.translate(
+                            (Math.random() - 0.5) * 20 * (1 - this.deathAnimation),
+                            (Math.random() - 0.5) * 20 * (1 - this.deathAnimation)
                         );
+                        ctx.rotate(this.rotation * (i + 1));
+                        ctx.strokeRect(
+                            -this.width/2 + i * 10, 
+                            -this.height/2, 
+                            this.width/3, 
+                            this.height/2
+                        );
+                        ctx.restore();
                     }
                     
-                    // Spots
-                    ctx.fillStyle = '#5C4033';
-                    const spots = [
-                        { x: -10, y: -10, w: 8, h: 8 },
-                        { x: 5, y: 5, w: 6, h: 6 },
-                        { x: -15, y: 10, w: 7, h: 7 }
-                    ];
-                    spots.forEach(spot => {
-                        ctx.fillRect(spot.x, spot.y, spot.w, spot.h);
-                    });
-                } else {
-                    // Dead cow
-                    ctx.fillStyle = '#5C4033';
-                    ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
-                    
-                    // Cross eyes
-                    ctx.strokeStyle = '#F5F5DC';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(-10, -5);
-                    ctx.lineTo(-5, -10);
-                    ctx.moveTo(-5, -5);
-                    ctx.lineTo(-10, -10);
-                    ctx.stroke();
+                    ctx.globalAlpha = 1;
                 }
-                
-                ctx.restore();
-            }
-        }
-
-        class HealthPack {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.radius = 15;
-                this.alpha = 1;
-                this.creationTime = Date.now();
-            }
-            
-            update() {
-                return Date.now() - this.creationTime < config.healthPackDuration;
-            }
-            
-            draw() {
-                ctx.save();
-                ctx.globalAlpha = this.alpha;
-                
-                // Outer circle
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = '#B22222';
-                ctx.fill();
-                
-                // Inner heart
-                ctx.fillStyle = '#FFF';
-                ctx.beginPath();
-                ctx.moveTo(this.x, this.y - 5);
-                ctx.bezierCurveTo(
-                    this.x + 5, this.y - 10,
-                    this.x + 10, this.y,
-                    this.x, this.y + 8
-                );
-                ctx.bezierCurveTo(
-                    this.x - 10, this.y,
-                    this.x - 5, this.y - 10,
-                    this.x, this.y - 5
-                );
-                ctx.fill();
                 
                 ctx.restore();
             }
@@ -392,7 +361,6 @@
                 this.particles = [];
                 this.color = color;
                 
-                // Create particles
                 for (let i = 0; i < 20; i++) {
                     this.particles.push({
                         x: 0,
@@ -401,7 +369,7 @@
                         vy: (Math.random() - 0.5) * 6,
                         size: Math.random() * 6 + 3,
                         alpha: 1,
-                        life: Math.random() * 30 + 30
+                        life: 1
                     });
                 }
             }
@@ -410,9 +378,9 @@
                 this.particles.forEach(p => {
                     p.x += p.vx;
                     p.y += p.vy;
-                    p.life--;
-                    p.alpha = p.life / 60;
-                    p.size *= 0.98;
+                    p.alpha -= 0.02;
+                    p.life -= 0.02;
+                    p.size *= 0.97;
                 });
                 
                 return this.particles[0].life > 0;
@@ -439,7 +407,7 @@
             draw() {
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(139, 69, 19, ${this.alpha})`;
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
                 ctx.fill();
             }
 
@@ -459,14 +427,14 @@
             deadCows = [];
             shots = [];
             explosions = [];
-            healthPacks = [];
+            healthBonuses = [];
             score = 0;
             lives = 3;
             timeLeft = 60;
             hits = 0;
             misses = 0;
+            consecutiveMisses = 0;
             ammo = 5;
-            missCount = 0;
             isReloading = false;
             
             initStars();
@@ -494,41 +462,34 @@
         }
 
         function updateHUD() {
-            // Update top HUD
-            document.getElementById('score').textContent = `Счет: ${score}`;
-            document.getElementById('timer').textContent = `Время: ${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2, '0')}`;
+            document.getElementById('score').textContent = `Score: ${score}`;
+            document.getElementById('timer').textContent = `${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2, '0')}`;
             
-            // Update lives
-            const hearts = document.querySelectorAll('.heart');
-            hearts.forEach((heart, index) => {
-                heart.style.display = index < lives ? 'inline' : 'none';
-            });
+            const livesContainer = document.getElementById('lives-container');
+            livesContainer.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                const life = document.createElement('div');
+                life.className = 'life';
+                life.style.opacity = i < lives ? '1' : '0.3';
+                livesContainer.appendChild(life);
+            }
             
-            // Update bottom HUD
-            document.getElementById('ammo').textContent = `Патроны: ${ammo}/${maxAmmo}`;
+            document.getElementById('ammo').textContent = `Патроны: ${ammo}/5`;
             document.getElementById('stats').textContent = `Попадания: ${hits} | Промахи: ${misses}`;
         }
 
         function spawnCow() {
-            if (!gameActive || timeLeft <= 0) return;
+            if (!gameActive) return;
             
-            // Count only alive cows
             const aliveCows = cows.filter(cow => cow.alive);
             
             if (aliveCows.length < config.maxCows) {
-                const cow = new Cow();
-                cows.push(cow);
+                cows.push(new Cow());
             }
             
-            // Random chance to spawn health pack
-            if (Math.random() < config.healthPackChance && healthPacks.length === 0) {
-                healthPacks.push(new HealthPack(
-                    Math.random() * (canvas.width - 100) + 50,
-                    Math.random() * (canvas.height - 100) + 50
-                ));
+            if (timeLeft > 0) {
+                setTimeout(spawnCow, config.spawnInterval);
             }
-            
-            setTimeout(spawnCow, config.spawnInterval);
         }
 
         function checkHit(x, y) {
@@ -540,6 +501,7 @@
                 
                 if (!cow.alive) continue;
                 
+                // Simple rectangular hit detection
                 const left = cow.x - cow.width/2;
                 const right = cow.x + cow.width/2;
                 const top = cow.y - cow.height/2;
@@ -547,7 +509,7 @@
                 
                 if (x >= left && x <= right && y >= top && y <= bottom) {
                     // Create explosion
-                    const color = '139, 69, 19';
+                    const color = `${Math.floor(Math.random() * 155) + 100}, ${Math.floor(Math.random() * 155) + 100}, 255`;
                     explosions.push(new Explosion(cow.x, cow.y, color));
                     
                     cow.die();
@@ -555,52 +517,42 @@
                     
                     score += cow.score;
                     hits++;
+                    consecutiveMisses = 0;
                     updateHUD();
                     shots.push(new Shot(x, y));
                     hit = true;
-                    
-                    // 20% chance to spawn health pack on hit
-                    if (Math.random() < 0.2) {
-                        healthPacks.push(new HealthPack(cow.x, cow.y));
-                    }
                     break;
                 }
             }
             
-            // Check health packs if no cow was hit
-            if (!hit) {
-                for (let i = 0; i < healthPacks.length; i++) {
-                    const hp = healthPacks[i];
-                    const dx = x - hp.x;
-                    const dy = y - hp.y;
-                    const distance = Math.sqrt(dx*dx + dy*dy);
-                    
-                    if (distance < hp.radius) {
-                        // Collect health pack
-                        lives = Math.min(3, lives + 1);
-                        healthPacks.splice(i, 1);
-                        hits++;
+            // Check health bonuses
+            for (let i = 0; i < healthBonuses.length; i++) {
+                const bonus = healthBonuses[i];
+                if (bonus.collected) continue;
+                
+                const dx = x - bonus.x;
+                const dy = y - bonus.y;
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                
+                if (distance < bonus.radius) {
+                    bonus.collected = true;
+                    if (lives < 3) {
+                        lives++;
                         updateHUD();
-                        shots.push(new Shot(x, y));
-                        
-                        // Create special explosion
-                        const color = '255, 255, 255';
-                        explosions.push(new Explosion(hp.x, hp.y, color));
-                        
-                        hit = true;
-                        break;
                     }
+                    hit = true;
+                    break;
                 }
             }
             
             if (!hit && ammo > 0) {
                 misses++;
-                missCount++;
+                consecutiveMisses++;
                 
-                // Lose life every 3 misses
-                if (missCount >= 3) {
+                // Lose life after 3 consecutive misses
+                if (consecutiveMisses >= config.missPenalty) {
+                    consecutiveMisses = 0;
                     lives--;
-                    missCount = 0;
                     if (lives <= 0) endGame();
                 }
                 
@@ -609,24 +561,44 @@
         }
 
         function drawBackground() {
-            // Draw beige background
-            ctx.fillStyle = '#F5F5DC';
+            // Dark purple gradient background
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#120a1f');
+            gradient.addColorStop(1, '#2d0b3d');
+            ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             // Draw stars
             stars.forEach(star => {
-                ctx.fillStyle = `rgba(139, 69, 19, ${star.alpha})`;
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
                 ctx.beginPath();
                 ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Move stars
+                // Move stars for parallax effect
                 star.y += star.speed;
                 if (star.y > canvas.height) {
                     star.y = 0;
                     star.x = Math.random() * canvas.width;
                 }
             });
+            
+            // Draw nebula effect
+            ctx.fillStyle = 'rgba(100, 50, 150, 0.1)';
+            for (let i = 0; i < 5; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const radius = Math.random() * 300 + 200;
+                
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, `rgba(150, 100, 200, ${Math.random() * 0.1 + 0.05})`);
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
 
         function gameLoop(timestamp) {
@@ -644,9 +616,12 @@
             });
             
             // Update and draw dead cows
-            deadCows.forEach(cow => {
+            deadCows.forEach((cow, index) => {
                 cow.update();
                 cow.draw();
+                if (cow.y > canvas.height + cow.height*2 || cow.deathAnimation <= 0) {
+                    deadCows.splice(index, 1);
+                }
             });
             
             // Update and draw shots
@@ -665,12 +640,27 @@
                 }
             });
             
-            // Update and draw health packs
-            healthPacks.forEach((hp, index) => {
-                if (!hp.update()) {
-                    healthPacks.splice(index, 1);
+            // Update and draw health bonuses
+            healthBonuses.forEach((bonus, index) => {
+                if (bonus.collected) {
+                    healthBonuses.splice(index, 1);
                 } else {
-                    hp.draw();
+                    // Draw pulsing health bonus
+                    const pulse = Math.sin(Date.now() / 200) * 0.2 + 0.8;
+                    ctx.fillStyle = `rgba(0, 255, 0, ${pulse})`;
+                    ctx.beginPath();
+                    ctx.arc(bonus.x, bonus.y, bonus.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Draw plus sign
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(bonus.x - bonus.radius/2, bonus.y);
+                    ctx.lineTo(bonus.x + bonus.radius/2, bonus.y);
+                    ctx.moveTo(bonus.x, bonus.y - bonus.radius/2);
+                    ctx.lineTo(bonus.x, bonus.y + bonus.radius/2);
+                    ctx.stroke();
                 }
             });
             
@@ -698,18 +688,17 @@
                 shots.push(new Shot(x, y));
             } else {
                 misses++;
-                missCount++;
+                consecutiveMisses++;
                 
-                // Lose life every 3 misses
-                if (missCount >= 3) {
+                if (consecutiveMisses >= config.missPenalty) {
+                    consecutiveMisses = 0;
                     lives--;
-                    missCount = 0;
                     if (lives <= 0) endGame();
                 }
                 
                 isReloading = true;
                 setTimeout(() => {
-                    ammo = maxAmmo;
+                    ammo = 5;
                     isReloading = false;
                     updateHUD();
                 }, config.reloadTime);
