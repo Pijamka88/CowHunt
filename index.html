@@ -13,7 +13,7 @@
             color: white;
         }
         #gameCanvas {
-            background: #0066ff;
+            background: #0a0416;
             display: block;
         }
         .menu {
@@ -137,8 +137,6 @@
         <button onclick="startGame()">Играть снова</button>
     </div>
 
-    <div id="reloading" class="reloading" style="display: none;">Reloading...</div>
-
     <div id="topHUD">
         <div class="hud-item">
             <div class="hud-label">SCORE</div>
@@ -169,6 +167,8 @@
         </div>
     </div>
 
+    <div id="reloading" class="reloading" style="display: none;">Reloading...</div>
+
     <canvas id="gameCanvas"></canvas>
 
     <script>
@@ -182,7 +182,7 @@
         let shots = [];
         let explosions = [];
         let stars = [];
-        let planets = [];
+        let nebulas = [];
         let lifeBonuses = [];
         let score = 0;
         let lives = 3;
@@ -204,9 +204,8 @@
             cowHeight: 40,
             headRadius: 15,
             reloadTime: 2000,
-            starCount: 80,
-            planetCount: 5,
-            nebulaCount: 3,
+            starCount: 100,
+            nebulaCount: 4,
             lifeBonusChance: 0.1,
             missPenalty: 3
         };
@@ -218,7 +217,7 @@
                 stars.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
-                    size: Math.random() * 4 + 3, // Увеличенный размер звезд
+                    size: Math.random() * 2 + 1,
                     alpha: Math.random() * 0.8 + 0.2,
                     speed: Math.random() * 0.2 + 0.1,
                     color: Math.random() > 0.7 ? '#ffff00' : '#3399ff',
@@ -227,62 +226,17 @@
             }
         }
 
-        // Initialize planets
-        function initPlanets() {
-            planets = [];
-            const planetColors = ['#3399ff', '#33ccff', '#ffff00', '#ffcc00'];
-            
-            for (let i = 0; i < config.planetCount; i++) {
-                let validPosition = false;
-                let attempts = 0;
-                let x, y, radius;
-                
-                // Пытаемся найти позицию, где планета не пересекается с другими
-                while (!validPosition && attempts < 100) {
-                    radius = Math.random() * 60 + 40;
-                    x = Math.random() * (canvas.width - radius * 2) + radius;
-                    y = Math.random() * (canvas.height - radius * 2) + radius;
-                    
-                    validPosition = true;
-                    
-                    // Проверяем пересечение с другими планетами
-                    for (const planet of planets) {
-                        const dist = Math.sqrt((x - planet.x) ** 2 + (y - planet.y) ** 2);
-                        if (dist < radius + planet.radius) {
-                            validPosition = false;
-                            break;
-                        }
-                    }
-                    
-                    attempts++;
-                }
-                
-                if (validPosition) {
-                    planets.push({
-                        x,
-                        y,
-                        radius,
-                        color: planetColors[Math.floor(Math.random() * planetColors.length)],
-                        rotation: Math.random() * Math.PI * 2,
-                        rotationSpeed: (Math.random() - 0.5) * 0.01,
-                        landColor: '#8B4513',
-                        landPatches: []
-                    });
-                    
-                    // Создаем участки земли для планеты
-                    const patchCount = Math.floor(Math.random() * 4) + 3;
-                    for (let j = 0; j < patchCount; j++) {
-                        const angle = Math.random() * Math.PI * 2;
-                        const distance = Math.random() * radius * 0.7;
-                        const patchRadius = Math.random() * radius * 0.3 + radius * 0.1;
-                        
-                        planets[i].landPatches.push({
-                            x: Math.cos(angle) * distance,
-                            y: Math.sin(angle) * distance,
-                            radius: patchRadius
-                        });
-                    }
-                }
+        // Initialize nebulas
+        function initNebulas() {
+            nebulas = [];
+            for (let i = 0; i < config.nebulaCount; i++) {
+                nebulas.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 300 + 200,
+                    color: `hsla(${270 + Math.random() * 30}, 80%, 60%, ${Math.random() * 0.1 + 0.05})`,
+                    speed: Math.random() * 0.1 + 0.05
+                });
             }
         }
 
@@ -298,13 +252,12 @@
                 this.deathAnimation = 0;
                 this.spots = [];
                 
-                // Create random brown spots
-                for (let i = 0; i < 5; i++) {
+                // Create random spots
+                for (let i = 0; i < 10; i++) {
                     this.spots.push({
                         x: Math.random() * this.width - this.width/2,
                         y: Math.random() * this.height - this.height/2,
-                        width: Math.random() * 15 + 10,
-                        height: Math.random() * 10 + 5
+                        radius: Math.random() * 3 + 2
                     });
                 }
             }
@@ -397,11 +350,11 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
-                    // Brown spots
+                    // Spots
                     ctx.fillStyle = '#8B4513';
                     this.spots.forEach(spot => {
                         ctx.beginPath();
-                        ctx.ellipse(spot.x, spot.y, spot.width/2, spot.height/2, 0, 0, Math.PI * 2);
+                        ctx.arc(spot.x, spot.y, spot.radius, 0, Math.PI * 2);
                         ctx.fill();
                     });
                     
@@ -418,59 +371,28 @@
                     ctx.fill();
                     ctx.stroke();
                     
-                    // Helmet glass (более заметный)
-                    ctx.fillStyle = 'rgba(100, 200, 255, 0.5)';
+                    // Helmet glass
+                    ctx.fillStyle = 'rgba(100, 200, 255, 0.3)';
                     ctx.beginPath();
                     ctx.arc(
                         this.direction === 1 ? -this.width/2 + this.headRadius/2 : this.width/2 - this.headRadius/2, 
                         0, 
-                        this.headRadius - 3, 
+                        this.headRadius - 2, 
                         0, 
                         Math.PI * 2
                     );
                     ctx.fill();
-                    ctx.strokeStyle = '#3399ff';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
                     
-                    // Horns (маленькие рожки)
-                    ctx.fillStyle = '#8B4513';
-                    ctx.beginPath();
-                    ctx.moveTo(
-                        this.direction === 1 ? -this.width/2 + this.headRadius/2 - 5 : this.width/2 - this.headRadius/2 + 5, 
-                        -this.headRadius + 5
-                    );
-                    ctx.lineTo(
-                        this.direction === 1 ? -this.width/2 + this.headRadius/2 - 10 : this.width/2 - this.headRadius/2 + 10, 
-                        -this.headRadius - 5
-                    );
-                    ctx.lineTo(
-                        this.direction === 1 ? -this.width/2 + this.headRadius/2 - 5 : this.width/2 - this.headRadius/2 + 5, 
-                        -this.headRadius - 10
-                    );
-                    ctx.fill();
-                    
-                    // Eyes (два глаза со зрачками)
-                    const eyeX = this.direction === 1 ? -this.width/2 + this.headRadius/2 + 5 : this.width/2 - this.headRadius/2 - 5;
-                    
-                    // Левый глаз
-                    ctx.fillStyle = 'white';
-                    ctx.beginPath();
-                    ctx.arc(eyeX, -3, 4, 0, Math.PI * 2);
-                    ctx.fill();
+                    // Eyes
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.arc(eyeX, -3, 2, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Правый глаз
-                    ctx.fillStyle = 'white';
-                    ctx.beginPath();
-                    ctx.arc(eyeX, 3, 4, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = '#333';
-                    ctx.beginPath();
-                    ctx.arc(eyeX, 3, 2, 0, Math.PI * 2);
+                    ctx.arc(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 + 5 : this.width/2 - this.headRadius/2 - 5, 
+                        -3, 
+                        3, 
+                        0, 
+                        Math.PI * 2
+                    );
                     ctx.fill();
                     
                     // Wings (butterfly style)
@@ -592,6 +514,27 @@
             }
         }
 
+        class Shot {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 5;
+                this.alpha = 1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
+                ctx.fill();
+            }
+
+            update() {
+                this.radius += 1;
+                this.alpha -= 0.1;
+            }
+        }
+
         function startGame() {
             gameActive = true;
             document.getElementById('mainMenu').style.display = 'none';
@@ -614,7 +557,7 @@
             isReloading = false;
             
             initStars();
-            initPlanets();
+            initNebulas();
             updateHUD();
             resizeCanvas();
             
@@ -740,10 +683,32 @@
 
         function drawBackground() {
             // Draw space background
-            ctx.fillStyle = '#0066ff'; // Ярко-синий фон
+            ctx.fillStyle = '#0a0416';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Draw stars (behind planets)
+            // Draw nebulas
+            nebulas.forEach(nebula => {
+                const gradient = ctx.createRadialGradient(
+                    nebula.x, nebula.y, 0,
+                    nebula.x, nebula.y, nebula.radius
+                );
+                gradient.addColorStop(0, nebula.color);
+                gradient.addColorStop(1, 'rgba(10, 4, 22, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(nebula.x, nebula.y, nebula.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Move nebula
+                nebula.x += nebula.speed;
+                if (nebula.x > canvas.width + nebula.radius) {
+                    nebula.x = -nebula.radius;
+                    nebula.y = Math.random() * canvas.height;
+                }
+            });
+            
+            // Draw stars
             const time = Date.now() / 1000;
             stars.forEach(star => {
                 // Pulsing effect
@@ -764,39 +729,6 @@
                     star.x = 0;
                     star.y = Math.random() * canvas.height;
                 }
-            });
-            
-            // Draw planets
-            planets.forEach(planet => {
-                // Planet body
-                ctx.fillStyle = planet.color;
-                ctx.beginPath();
-                ctx.arc(planet.x, planet.y, planet.radius, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Land patches
-                ctx.fillStyle = planet.landColor;
-                planet.landPatches.forEach(patch => {
-                    ctx.beginPath();
-                    ctx.arc(
-                        planet.x + patch.x * Math.cos(planet.rotation) - patch.y * Math.sin(planet.rotation),
-                        planet.y + patch.x * Math.sin(planet.rotation) + patch.y * Math.cos(planet.rotation),
-                        patch.radius,
-                        0,
-                        Math.PI * 2
-                    );
-                    ctx.fill();
-                });
-                
-                // Planet outline
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(planet.x, planet.y, planet.radius, 0, Math.PI * 2);
-                ctx.stroke();
-                
-                // Update rotation
-                planet.rotation += planet.rotationSpeed;
             });
         }
 
@@ -875,7 +807,7 @@
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             initStars();
-            initPlanets();
+            initNebulas();
         }
 
         canvas.addEventListener('pointerdown', (e) => {
