@@ -93,7 +93,7 @@
             text-shadow: 0 0 10px #ff3366;
             font-size: 28px;
             margin: 0 5px;
-            transition: color 0.3s;
+            transition: all 0.3s;
         }
         .heart.burned {
             color: #666;
@@ -203,16 +203,15 @@
 
         // Configuration
         const config = {
-            cowSpeed: 1.8,
+            cowSpeed: 2.0,
             spawnInterval: 1200,
             maxCows: 6,
-            cowWidth: 70,
-            cowHeight: 45,
-            headWidth: 25,
-            headHeight: 20,
+            cowWidth: 60,
+            cowHeight: 40,
+            headRadius: 15,
             reloadTime: 1500,
             starCount: 60,
-            planetCount: 5,
+            planetCount: 4,
             nebulaCount: 3,
             lifeBonusChance: 0.15
         };
@@ -220,31 +219,32 @@
         // Cow types
         const cowTypes = [
             { // Type 0 - Basic
-                bodyColor: '#f0e0d0',
-                spotsColor: '#8B4513',
-                helmetColor: '#cccccc',
-                wingColor: 'rgba(200, 230, 255, 0.7)',
-                score: 100,
+                color: '#ffffff',
+                spotColor: '#8B4513',
                 speed: 1.5,
-                movePattern: 'linear'
+                score: 100,
+                movement: 'linear'
             },
-            { // Type 1 - Fast
-                bodyColor: '#e0d0c0',
-                spotsColor: '#A0522D',
-                helmetColor: '#dddddd',
-                wingColor: 'rgba(180, 220, 255, 0.8)',
+            { // Type 1 - Zigzag
+                color: '#f0f0f0',
+                spotColor: '#A0522D',
+                speed: 2.0,
                 score: 150,
-                speed: 2.2,
-                movePattern: 'wave'
+                movement: 'zigzag'
             },
-            { // Type 2 - Tank
-                bodyColor: '#d0c0b0',
-                spotsColor: '#654321',
-                helmetColor: '#bbbbbb',
-                wingColor: 'rgba(160, 210, 255, 0.6)',
+            { // Type 2 - Circular
+                color: '#e0e0e0',
+                spotColor: '#8B0000',
+                speed: 1.8,
                 score: 200,
-                speed: 1.2,
-                movePattern: 'zigzag'
+                movement: 'circular'
+            },
+            { // Type 3 - Fast
+                color: '#d0d0d0',
+                spotColor: '#556B2F',
+                speed: 2.5,
+                score: 250,
+                movement: 'linear'
             }
         ];
 
@@ -255,10 +255,10 @@
                 stars.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
-                    size: Math.random() * 8 + 4,
+                    size: Math.random() * 8 + 6,
                     alpha: Math.random() * 0.8 + 0.2,
                     speed: Math.random() * 0.2 + 0.1,
-                    color: Math.random() > 0.7 ? '#ffff00' : '#3399ff',
+                    color: Math.random() > 0.5 ? '#3399ff' : '#ffcc00',
                     phase: Math.random() * Math.PI * 2,
                     rotation: Math.random() * Math.PI * 2
                 });
@@ -268,22 +268,16 @@
         // Initialize planets
         function initPlanets() {
             planets = [];
-            const planetColors = [
-                { color: '#3399ff', landColor: '#0066cc' },
-                { color: '#33ccff', landColor: '#0099cc' },
-                { color: '#ffcc00', landColor: '#ff9900' },
-                { color: '#ff9933', landColor: '#cc6600' },
-                { color: '#66ccff', landColor: '#3399ff' }
-            ];
-            
             for (let i = 0; i < config.planetCount; i++) {
-                const colors = planetColors[i % planetColors.length];
+                const isBlue = Math.random() > 0.5;
                 planets.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
                     radius: Math.random() * 50 + 40,
-                    color: colors.color,
-                    landColor: colors.landColor,
+                    color: isBlue ? '#3399ff' : '#ffcc00',
+                    landColor: isBlue ? '#0066cc' : '#ff9900',
+                    rotation: 0,
+                    rotationSpeed: (Math.random() - 0.5) * 0.005,
                     speed: Math.random() * 0.1 + 0.05
                 });
             }
@@ -308,18 +302,18 @@
                 this.type = Math.floor(Math.random() * cowTypes.length);
                 this.width = config.cowWidth;
                 this.height = config.cowHeight;
-                this.headWidth = config.headWidth;
-                this.headHeight = config.headHeight;
+                this.headRadius = config.headRadius;
                 this.reset();
                 this.alive = true;
                 this.wingPhase = Math.random() * Math.PI * 2;
                 this.wingSpeed = Math.random() * 0.05 + 0.05;
                 this.deathAnimation = 0;
                 this.spots = [];
-                this.moveTime = 0;
+                this.movementPhase = 0;
+                this.originalY = 0;
                 
                 // Create random spots
-                for (let i = 0; i < 15; i++) {
+                for (let i = 0; i < 12; i++) {
                     this.spots.push({
                         x: Math.random() * this.width - this.width/2,
                         y: Math.random() * this.height - this.height/2,
@@ -346,29 +340,33 @@
                     this.vy = (Math.random() - 0.5) * cowTypes[this.type].speed * 0.5;
                 }
                 
+                this.originalY = this.y;
                 this.alive = true;
                 this.deathAnimation = 0;
-                this.moveTime = 0;
-                this.deathParticles = [];
+                this.movementPhase = 0;
+            }
+
+            updateMovement() {
+                this.movementPhase += 0.02;
+                
+                switch(cowTypes[this.type].movement) {
+                    case 'zigzag':
+                        this.y = this.originalY + Math.sin(this.movementPhase * 2) * 50;
+                        break;
+                    case 'circular':
+                        this.y = this.originalY + Math.sin(this.movementPhase) * 80;
+                        this.x += Math.cos(this.movementPhase) * 0.5 * this.direction;
+                        break;
+                }
             }
 
             die() {
                 this.alive = false;
                 this.deathAnimation = 1;
-                
-                // Create death particles
-                this.deathParticles = [];
-                for (let i = 0; i < 20; i++) {
-                    this.deathParticles.push({
-                        x: 0,
-                        y: 0,
-                        vx: (Math.random() - 0.5) * 4,
-                        vy: (Math.random() - 0.5) * 4 - 1,
-                        size: Math.random() * 4 + 2,
-                        color: Math.random() > 0.5 ? cowTypes[this.type].bodyColor : cowTypes[this.type].spotsColor,
-                        life: 1
-                    });
-                }
+                this.vx = (Math.random() - 0.5) * 3;
+                this.vy = 1;
+                this.rotation = 0;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.1;
                 
                 // Chance to spawn life bonus
                 if (Math.random() < config.lifeBonusChance) {
@@ -383,24 +381,9 @@
             }
 
             update() {
-                this.moveTime += 0.02;
-                
                 if (this.alive) {
-                    // Update movement based on pattern
-                    switch(cowTypes[this.type].movePattern) {
-                        case 'wave':
-                            this.x += this.vx;
-                            this.y += Math.sin(this.moveTime) * 1.5;
-                            break;
-                        case 'zigzag':
-                            this.x += this.vx;
-                            this.y += Math.sin(this.moveTime * 2) * 2;
-                            break;
-                        default: // linear
-                            this.x += this.vx;
-                            this.y += this.vy;
-                    }
-                    
+                    this.updateMovement();
+                    this.x += this.vx;
                     this.wingPhase += this.wingSpeed;
                     
                     // Reset if out of bounds
@@ -408,25 +391,16 @@
                         (this.direction === -1 && this.x < -this.width*2)) {
                         this.reset();
                     }
-                    
-                    // Bounce on top/bottom
-                    if (this.y < this.height/2 || this.y > canvas.height - this.height/2) {
-                        this.vy *= -1;
-                    }
                 } else {
-                    // Update death animation
-                    this.deathAnimation -= 0.01;
+                    // Death animation
+                    this.deathAnimation -= 0.02;
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.vy *= 1.05;
+                    this.rotation += this.rotationSpeed;
                     
-                    // Update particles
-                    this.deathParticles.forEach(p => {
-                        p.x += p.vx;
-                        p.y += p.vy;
-                        p.vy += 0.1; // Gravity
-                        p.life -= 0.02;
-                    });
-                    
-                    // Remove if animation complete
-                    if (this.deathAnimation <= 0) {
+                    // Remove if animation complete or out of screen
+                    if (this.deathAnimation <= 0 || this.y > canvas.height + this.height*2) {
                         const index = deadCows.indexOf(this);
                         if (index !== -1) deadCows.splice(index, 1);
                     }
@@ -438,143 +412,165 @@
                 ctx.translate(this.x, this.y);
                 
                 if (this.alive) {
-                    // Body (realistic cow shape)
-                    ctx.fillStyle = cowTypes[this.type].bodyColor;
-                    
-                    // Main body
+                    // Body (scafander)
+                    ctx.fillStyle = cowTypes[this.type].color;
                     ctx.beginPath();
                     ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
                     ctx.fill();
+                    ctx.strokeStyle = '#666';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
                     
                     // Spots
-                    ctx.fillStyle = cowTypes[this.type].spotsColor;
+                    ctx.fillStyle = cowTypes[this.type].spotColor;
                     this.spots.forEach(spot => {
                         ctx.beginPath();
                         ctx.arc(spot.x, spot.y, spot.radius, 0, Math.PI * 2);
                         ctx.fill();
                     });
                     
-                    // Head (on correct side based on direction)
-                    const headX = this.direction === 1 ? this.width/2 - 5 : -this.width/2 + 5;
+                    // Head position based on direction
+                    const headX = this.direction === 1 ? this.width/2 - this.headRadius/2 : -this.width/2 + this.headRadius/2;
                     
-                    ctx.fillStyle = cowTypes[this.type].bodyColor;
+                    // Head with helmet
+                    ctx.fillStyle = cowTypes[this.type].color;
                     ctx.beginPath();
-                    ctx.ellipse(
-                        headX, 
-                        0, 
-                        this.headWidth/2, 
-                        this.headHeight/2, 
-                        0, 
-                        0, 
-                        Math.PI * 2
-                    );
+                    ctx.arc(headX, 0, this.headRadius, 0, Math.PI * 2);
                     ctx.fill();
-                    
-                    // Helmet
-                    ctx.strokeStyle = cowTypes[this.type].helmetColor;
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    ctx.ellipse(
-                        headX, 
-                        0, 
-                        this.headWidth/2 - 2, 
-                        this.headHeight/2 - 2, 
-                        0, 
-                        0, 
-                        Math.PI * 2
-                    );
                     ctx.stroke();
                     
-                    // Helmet glass
-                    ctx.fillStyle = 'rgba(100, 200, 255, 0.3)';
-                    ctx.beginPath();
-                    ctx.ellipse(
-                        headX, 
-                        0, 
-                        this.headWidth/2 - 4, 
-                        this.headHeight/2 - 4, 
-                        0, 
-                        0, 
-                        Math.PI * 2
+                    // Helmet glass with reflection
+                    const gradient = ctx.createRadialGradient(
+                        headX, 0, 0,
+                        headX, 0, this.headRadius - 2
                     );
+                    gradient.addColorStop(0, 'rgba(100, 200, 255, 0.7)');
+                    gradient.addColorStop(0.7, 'rgba(100, 200, 255, 0.3)');
+                    gradient.addColorStop(1, 'rgba(100, 200, 255, 0.1)');
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(headX, 0, this.headRadius - 2, 0, Math.PI * 2);
                     ctx.fill();
                     
                     // Eyes with pupils (two eyes)
-                    const eyeX = headX + (this.direction === 1 ? -5 : 5);
+                    const eyeXBase = headX + (this.direction === 1 ? -5 : 5);
                     
                     // Left eye
                     ctx.fillStyle = 'white';
                     ctx.beginPath();
-                    ctx.arc(eyeX, -3, 3, 0, Math.PI * 2);
+                    ctx.arc(eyeXBase, -5, 4, 0, Math.PI * 2);
                     ctx.fill();
                     
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.arc(eyeX + (this.direction === 1 ? -1 : 1), -3, 1.5, 0, Math.PI * 2);
+                    ctx.arc(eyeXBase + (this.direction === 1 ? -1 : 1), -5, 2, 0, Math.PI * 2);
                     ctx.fill();
                     
                     // Right eye
                     ctx.fillStyle = 'white';
                     ctx.beginPath();
-                    ctx.arc(eyeX, 3, 3, 0, Math.PI * 2);
+                    ctx.arc(eyeXBase, 5, 4, 0, Math.PI * 2);
                     ctx.fill();
                     
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.arc(eyeX + (this.direction === 1 ? -1 : 1), 3, 1.5, 0, Math.PI * 2);
+                    ctx.arc(eyeXBase + (this.direction === 1 ? -1 : 1), 5, 2, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Ears
-                    ctx.fillStyle = cowTypes[this.type].bodyColor;
+                    // Horns
+                    ctx.fillStyle = '#ffcc99';
                     ctx.beginPath();
-                    ctx.moveTo(headX + (this.direction === 1 ? -8 : 8), -this.headHeight/2 + 2);
-                    ctx.lineTo(headX + (this.direction === 1 ? -12 : 12), -this.headHeight/2 - 5);
-                    ctx.lineTo(headX + (this.direction === 1 ? -5 : 5), -this.headHeight/2);
+                    ctx.moveTo(headX + (this.direction === 1 ? -5 : 5), -this.headRadius + 5);
+                    ctx.lineTo(headX + (this.direction === 1 ? -10 : 10), -this.headRadius - 5);
+                    ctx.lineTo(headX, -this.headRadius);
                     ctx.closePath();
                     ctx.fill();
                     
                     ctx.beginPath();
-                    ctx.moveTo(headX + (this.direction === 1 ? -8 : 8), this.headHeight/2 - 2);
-                    ctx.lineTo(headX + (this.direction === 1 ? -12 : 12), this.headHeight/2 + 5);
-                    ctx.lineTo(headX + (this.direction === 1 ? -5 : 5), this.headHeight/2);
+                    ctx.moveTo(headX + (this.direction === 1 ? -5 : 5), this.headRadius - 5);
+                    ctx.lineTo(headX + (this.direction === 1 ? -10 : 10), this.headRadius + 5);
+                    ctx.lineTo(headX, this.headRadius);
                     ctx.closePath();
                     ctx.fill();
                     
-                    // Wings (from center)
-                    const wingYOffset = Math.sin(this.wingPhase) * 8;
-                    ctx.fillStyle = cowTypes[this.type].wingColor;
+                    // Wings from center top (new position)
+                    const wingYOffset = Math.sin(this.wingPhase) * 15;
+                    ctx.fillStyle = 'rgba(200, 230, 255, 0.7)';
                     
                     // Right wing
                     ctx.beginPath();
-                    ctx.moveTo(5, 0);
-                    ctx.quadraticCurveTo(25, -15 + wingYOffset, 5, -25 + wingYOffset);
-                    ctx.quadraticCurveTo(15, -10 + wingYOffset/2, 5, 0);
+                    ctx.moveTo(10, -5);
+                    ctx.quadraticCurveTo(
+                        30, 
+                        -20 + wingYOffset, 
+                        10, 
+                        -30 + wingYOffset
+                    );
+                    ctx.quadraticCurveTo(
+                        20, 
+                        -15 + wingYOffset/2, 
+                        10, 
+                        -5
+                    );
                     ctx.fill();
+                    ctx.strokeStyle = '#666';
+                    ctx.stroke();
                     
                     // Left wing
                     ctx.beginPath();
-                    ctx.moveTo(5, 0);
-                    ctx.quadraticCurveTo(25, 15 - wingYOffset, 5, 25 - wingYOffset);
-                    ctx.quadraticCurveTo(15, 10 - wingYOffset/2, 5, 0);
+                    ctx.moveTo(-10, -5);
+                    ctx.quadraticCurveTo(
+                        -30, 
+                        -20 + wingYOffset, 
+                        -10, 
+                        -30 + wingYOffset
+                    );
+                    ctx.quadraticCurveTo(
+                        -20, 
+                        -15 + wingYOffset/2, 
+                        -10, 
+                        -5
+                    );
                     ctx.fill();
+                    ctx.stroke();
                     
-                    // Legs
-                    ctx.fillStyle = cowTypes[this.type].bodyColor;
-                    for (let i = 0; i < 2; i++) {
-                        // Front legs
-                        ctx.fillRect(-this.width/4 + i*15, this.height/4 - 5, 8, 15);
-                        // Back legs
-                        ctx.fillRect(-this.width/4 + i*15 + 5, this.height/2 - 5, 8, 15);
+                    // Legs (scafander details)
+                    ctx.strokeStyle = '#666';
+                    ctx.lineWidth = 3;
+                    for (let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(-this.width/4 + i*10, this.height/2);
+                        ctx.lineTo(-this.width/4 + i*10, this.height/2 + 10);
+                        ctx.stroke();
                     }
                 } else {
-                    // Death animation - draw particles
+                    // Death animation
+                    ctx.rotate(this.rotation);
                     ctx.globalAlpha = this.deathAnimation;
-                    this.deathParticles.forEach(p => {
-                        ctx.fillStyle = p.color;
+                    
+                    // Exploding scafander
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Cracks
+                    ctx.strokeStyle = '#666';
+                    ctx.lineWidth = 2;
+                    for (let i = 0; i < 5; i++) {
                         ctx.beginPath();
-                        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-                        ctx.fill();
-                    });
+                        ctx.moveTo(
+                            (Math.random() - 0.5) * this.width,
+                            (Math.random() - 0.5) * this.height
+                        );
+                        ctx.lineTo(
+                            (Math.random() - 0.5) * this.width,
+                            (Math.random() - 0.5) * this.height
+                        );
+                        ctx.stroke();
+                    }
+                    
                     ctx.globalAlpha = 1;
                 }
                 
@@ -665,11 +661,10 @@
             misses = 0;
             ammo = 5;
             isReloading = false;
-            clearTimeout(reloadTimeout);
             
             // Reset hearts
-            const hearts = document.querySelectorAll('.heart');
-            hearts.forEach(heart => {
+            const heartElements = document.querySelectorAll('.heart');
+            heartElements.forEach(heart => {
                 heart.classList.remove('burned');
             });
             
@@ -703,20 +698,19 @@
         function updateHUD() {
             document.getElementById('scoreDisplay').textContent = score;
             document.getElementById('timer').textContent = `${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2, '0')}`;
-            
-            // Update hearts (lives)
-            const hearts = document.querySelectorAll('.heart');
-            hearts.forEach((heart, index) => {
-                if (index < lives) {
-                    heart.classList.remove('burned');
-                } else {
-                    heart.classList.add('burned');
-                }
-            });
-            
             document.getElementById('ammo').textContent = `${ammo}/5`;
             document.getElementById('hits').textContent = hits;
             document.getElementById('misses').textContent = misses;
+            
+            // Update hearts (burn effect)
+            const heartElements = document.querySelectorAll('.heart');
+            heartElements.forEach((heart, index) => {
+                if (index >= lives) {
+                    heart.classList.add('burned');
+                } else {
+                    heart.classList.remove('burned');
+                }
+            });
         }
 
         function spawnCow() {
@@ -749,20 +743,18 @@
                 const bodyRadiusY = cow.height/2;
                 
                 // Check head hit
-                const headX = cow.direction === 1 ? cow.x + cow.width/2 - 5 : cow.x - cow.width/2 + 5;
+                const headX = cow.direction === 1 ? cow.x + cow.width/2 - cow.headRadius/2 : cow.x - cow.width/2 + cow.headRadius/2;
                 const headY = cow.y;
-                const headRadiusX = cow.headWidth/2;
-                const headRadiusY = cow.headHeight/2;
+                const headRadius = cow.headRadius;
                 
                 // Check if point is in body ellipse
                 const normalizedX = (x - bodyX) / bodyRadiusX;
                 const normalizedY = (y - bodyY) / bodyRadiusY;
                 const inBody = normalizedX * normalizedX + normalizedY * normalizedY <= 1;
                 
-                // Check if point is in head ellipse
-                const headNormX = (x - headX) / headRadiusX;
-                const headNormY = (y - headY) / headRadiusY;
-                const inHead = headNormX * headNormX + headNormY * headNormY <= 1;
+                // Check if point is in head circle
+                const headDist = Math.sqrt((x - headX) ** 2 + (y - headY) ** 2);
+                const inHead = headDist <= headRadius;
                 
                 if (inBody || inHead) {
                     // Create explosion
@@ -800,59 +792,49 @@
             
             if (!hit) {
                 misses++;
+                lives = Math.max(0, lives - 1);
                 updateHUD();
                 
-                // Lose life on every miss
-                if (lives > 0) {
-                    lives--;
-                    if (lives <= 0) endGame();
+                if (lives <= 0) {
+                    endGame();
                 }
             }
+            
+            // Auto reload when ammo is 0
+            if (ammo <= 0 && !isReloading) {
+                startReloading();
+            }
+        }
+
+        function startReloading() {
+            isReloading = true;
+            document.getElementById('reloading').style.display = 'block';
+            reloadTimeout = setTimeout(() => {
+                ammo = 5;
+                isReloading = false;
+                document.getElementById('reloading').style.display = 'none';
+                updateHUD();
+            }, config.reloadTime);
         }
 
         function draw4PointStar(x, y, size, color, rotation) {
             ctx.save();
             ctx.translate(x, y);
             ctx.rotate(rotation);
+            
             ctx.fillStyle = color;
+            ctx.beginPath();
             
             // Draw 4-point star
-            ctx.beginPath();
             for (let i = 0; i < 4; i++) {
-                const angle = i * Math.PI / 2;
+                const angle = Math.PI / 2 * i;
                 ctx.lineTo(Math.cos(angle) * size, Math.sin(angle) * size);
                 ctx.lineTo(Math.cos(angle + Math.PI/4) * size * 0.4, Math.sin(angle + Math.PI/4) * size * 0.4);
             }
+            
             ctx.closePath();
             ctx.fill();
-            
             ctx.restore();
-        }
-
-        function drawPlanet(x, y, radius, color, landColor) {
-            // Base planet
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Land circles
-            ctx.fillStyle = landColor;
-            for (let i = 0; i < 8; i++) {
-                const angle = Math.PI * 2 * i / 8;
-                const dist = radius * (0.2 + Math.random() * 0.6);
-                const size = radius * 0.2;
-                
-                ctx.beginPath();
-                ctx.arc(
-                    x + Math.cos(angle) * dist,
-                    y + Math.sin(angle) * dist,
-                    size * (0.7 + Math.random() * 0.3),
-                    0,
-                    Math.PI * 2
-                );
-                ctx.fill();
-            }
         }
 
         function drawBackground() {
@@ -887,13 +869,14 @@
             stars.forEach(star => {
                 // Pulsing effect
                 const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
+                star.rotation += 0.005;
                 
                 draw4PointStar(
                     star.x, 
                     star.y, 
                     star.size * pulse, 
                     star.color, 
-                    star.rotation + time * 0.1
+                    star.rotation
                 );
                 
                 // Move stars
@@ -906,13 +889,40 @@
             
             // Draw planets
             planets.forEach(planet => {
-                drawPlanet(
-                    planet.x, 
-                    planet.y, 
-                    planet.radius, 
-                    planet.color, 
-                    planet.landColor
-                );
+                ctx.save();
+                ctx.translate(planet.x, planet.y);
+                planet.rotation += planet.rotationSpeed;
+                ctx.rotate(planet.rotation);
+                
+                // Planet body
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, planet.radius);
+                gradient.addColorStop(0, planet.color);
+                gradient.addColorStop(1, planet.landColor);
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Land details
+                ctx.fillStyle = planet.landColor;
+                for (let i = 0; i < 5; i++) {
+                    const angle = Math.PI * 2 * i / 5;
+                    const dist = planet.radius * 0.7;
+                    const size = planet.radius * 0.3;
+                    
+                    ctx.beginPath();
+                    ctx.arc(
+                        Math.cos(angle) * dist,
+                        Math.sin(angle) * dist,
+                        size * (0.7 + Math.random() * 0.3),
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+                
+                ctx.restore();
                 
                 // Move planet
                 planet.x += planet.speed;
@@ -1003,42 +1013,23 @@
         }
 
         canvas.addEventListener('pointerdown', (e) => {
-            if (!gameActive) return;
+            if (!gameActive || isReloading) return;
             
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             
-            if (isReloading) return;
-            
             if (ammo > 0) {
                 ammo--;
                 checkHit(x, y);
                 shots.push(new Shot(x, y));
-                
-                // Auto-reload when ammo is empty
-                if (ammo === 0) {
-                    isReloading = true;
-                    document.getElementById('reloading').style.display = 'block';
-                    reloadTimeout = setTimeout(() => {
-                        ammo = 5;
-                        isReloading = false;
-                        document.getElementById('reloading').style.display = 'none';
-                        updateHUD();
-                    }, config.reloadTime);
-                }
-            } else {
-                misses++;
                 updateHUD();
                 
-                // Lose life on every miss
-                if (lives > 0) {
-                    lives--;
-                    if (lives <= 0) endGame();
+                // Auto reload when ammo is 0
+                if (ammo <= 0) {
+                    startReloading();
                 }
             }
-            
-            updateHUD();
         });
 
         window.addEventListener('resize', resizeCanvas);
