@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Cosmic Cow Hunt</title>
+    <title>Space Cow Hunt</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body {
@@ -26,15 +26,15 @@
             color: #5a3e2b;
             text-align: center;
             border-radius: 15px;
-            border: 2px solid #8b4513;
+            border: 2px solid #8b5a2b;
             z-index: 1000;
             max-width: 80%;
-            box-shadow: 0 0 20px rgba(139, 69, 19, 0.5);
+            box-shadow: 0 0 20px rgba(139, 90, 43, 0.5);
         }
         .menu h1 {
             color: #5a3e2b;
             margin-bottom: 20px;
-            text-shadow: 0 0 5px rgba(139, 69, 19, 0.5);
+            text-shadow: 0 0 5px rgba(139, 90, 43, 0.5);
         }
         .menu button {
             padding: 12px 25px;
@@ -50,7 +50,7 @@
         .menu button:hover {
             background: linear-gradient(to bottom, #bc8f8f, #d2b48c);
             transform: scale(1.05);
-            box-shadow: 0 0 10px rgba(139, 69, 19, 0.5);
+            box-shadow: 0 0 10px rgba(139, 90, 43, 0.5);
         }
         #topHUD {
             position: fixed;
@@ -59,9 +59,9 @@
             right: 0;
             display: flex;
             justify-content: space-around;
-            background: rgba(210, 180, 140, 0.8);
+            background: rgba(210, 180, 140, 0.7);
             padding: 10px;
-            border-bottom: 1px solid #8b4513;
+            border-bottom: 1px solid #8b5a2b;
         }
         #bottomHUD {
             position: fixed;
@@ -70,9 +70,9 @@
             right: 0;
             display: flex;
             justify-content: space-around;
-            background: rgba(210, 180, 140, 0.8);
+            background: rgba(210, 180, 140, 0.7);
             padding: 10px;
-            border-top: 1px solid #8b4513;
+            border-top: 1px solid #8b5a2b;
         }
         .hud-item {
             display: flex;
@@ -81,7 +81,7 @@
         }
         .hud-label {
             font-size: 12px;
-            color: #8b4513;
+            color: #5a3e2b;
             margin-bottom: 3px;
         }
         .hud-value {
@@ -92,40 +92,28 @@
             color: #ff3366;
             text-shadow: 0 0 5px #ff3366;
             font-size: 28px;
+            margin: 0 5px;
         }
-        .reloading-overlay {
+        #reloading {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(255, 0, 0, 0.5);
+            font-size: 36px;
+            font-weight: bold;
             color: white;
+            background: rgba(255, 0, 0, 0.5);
             padding: 15px 30px;
             border-radius: 10px;
-            font-size: 24px;
-            font-weight: bold;
-            z-index: 500;
-            display: none;
-        }
-        .powerup {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
             z-index: 100;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-weight: bold;
-            color: white;
-            text-shadow: 0 0 3px black;
+            display: none;
         }
     </style>
 </head>
 <body>
     <div id="mainMenu" class="menu">
-        <h1>Cosmic Cow Hunt</h1>
-        <p>Охота на коров в скафандрах!</p>
+        <h1>Space Cow Hunt</h1>
+        <p>Охота на космических коров!</p>
         <button onclick="startGame()">Начать игру</button>
     </div>
 
@@ -137,7 +125,7 @@
         <button onclick="startGame()">Играть снова</button>
     </div>
 
-    <div id="reloadingOverlay" class="reloading-overlay">Reloading...</div>
+    <div id="reloading">Reloading</div>
 
     <div id="topHUD">
         <div class="hud-item">
@@ -174,7 +162,7 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const reloadingOverlay = document.getElementById('reloadingOverlay');
+        const reloadingElement = document.getElementById('reloading');
         
         // Game state
         let gameActive = false;
@@ -184,7 +172,7 @@
         let explosions = [];
         let stars = [];
         let nebulas = [];
-        let powerups = [];
+        let lifeBonuses = [];
         let score = 0;
         let lives = 3;
         let timeLeft = 60;
@@ -195,38 +183,37 @@
         let gameTimer;
         let lastTime = 0;
         let missCount = 0;
-        let powerupTimer = 0;
-        let doubleScoreActive = false;
-        let doubleScoreTimer = 0;
 
         // Configuration
         const config = {
             cowSpeed: 1.8,
             spawnInterval: 1500,
             maxCows: 5,
-            cowWidth: 60,
+            cowWidth: 50,
             cowHeight: 40,
-            headRadius: 18,
+            headRadius: 15,
             reloadTime: 2000,
-            starCount: 100,
+            starCount: 80,
             nebulaCount: 3,
-            powerupChance: 0.15,
-            missPenalty: 3,
-            powerupSpawnInterval: 10000
+            lifeBonusChance: 0.1,
+            missPenalty: 3
         };
 
         // Initialize stars
         function initStars() {
             stars = [];
+            const starColors = ['#4169e1', '#ffff00', '#add8e6', '#ffd700'];
+            
             for (let i = 0; i < config.starCount; i++) {
                 stars.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
                     size: Math.random() * 2 + 1,
-                    alpha: Math.random() * 0.5 + 0.5,
+                    alpha: Math.random() * 0.8 + 0.2,
                     speed: Math.random() * 0.2 + 0.1,
-                    color: Math.random() > 0.7 ? '#ffff00' : '#3399ff',
-                    blinkSpeed: Math.random() * 0.02 + 0.01
+                    color: starColors[Math.floor(Math.random() * starColors.length)],
+                    blinkSpeed: Math.random() * 0.02 + 0.01,
+                    blinkPhase: Math.random() * Math.PI * 2
                 });
             }
         }
@@ -258,11 +245,11 @@
                 this.spots = [];
                 
                 // Generate random spots
-                for (let i = 0; i < 15; i++) {
+                for (let i = 0; i < 10; i++) {
                     this.spots.push({
                         x: Math.random() * this.width - this.width/2,
                         y: Math.random() * this.height - this.height/2,
-                        size: Math.random() * 5 + 3
+                        radius: Math.random() * 3 + 2
                     });
                 }
             }
@@ -297,14 +284,12 @@
                 this.rotation = 0;
                 this.rotationSpeed = (Math.random() - 0.5) * 0.1;
                 
-                // Chance to spawn powerup
-                if (Math.random() < config.powerupChance) {
-                    const powerupType = Math.random() > 0.5 ? 'life' : 'double';
-                    powerups.push({
+                // Chance to spawn life bonus
+                if (Math.random() < config.lifeBonusChance) {
+                    lifeBonuses.push({
                         x: this.x,
                         y: this.y,
                         radius: 15,
-                        type: powerupType,
                         collected: false,
                         alpha: 1
                     });
@@ -348,93 +333,101 @@
                 ctx.translate(this.x, this.y);
                 
                 if (this.alive) {
-                    // Body (scafander)
-                    ctx.fillStyle = '#ffffff';
+                    // Body (space suit)
+                    ctx.fillStyle = 'white';
                     ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
                     
                     // Spots
                     ctx.fillStyle = '#8b4513';
                     this.spots.forEach(spot => {
                         ctx.beginPath();
-                        ctx.arc(spot.x, spot.y, spot.size, 0, Math.PI * 2);
+                        ctx.arc(spot.x, spot.y, spot.radius, 0, Math.PI * 2);
                         ctx.fill();
                     });
+                    
+                    // Space suit details
+                    ctx.strokeStyle = '#ccc';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-this.width/2, -this.height/2, this.width, this.height);
                     
                     // Head (front view)
                     ctx.beginPath();
                     ctx.arc(0, 0, this.headRadius, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ffffff';
+                    ctx.fillStyle = 'white';
                     ctx.fill();
-                    ctx.strokeStyle = '#8b4513';
+                    ctx.stroke();
+                    
+                    // Helmet
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.headRadius, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#ccc';
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
-                    // Helmet glass
-                    ctx.beginPath();
-                    ctx.arc(0, 0, this.headRadius - 3, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(100, 200, 255, 0.3)';
-                    ctx.fill();
-                    
                     // Eyes
-                    ctx.fillStyle = '#333333';
+                    ctx.fillStyle = '#333';
                     ctx.beginPath();
                     ctx.arc(-5, -3, 3, 0, Math.PI * 2);
                     ctx.arc(5, -3, 3, 0, Math.PI * 2);
                     ctx.fill();
                     
                     // Legs (moving)
+                    ctx.fillStyle = 'white';
                     const legYOffset = Math.sin(this.legPhase) * 5;
-                    ctx.fillStyle = '#ffffff';
                     for (let i = 0; i < 4; i++) {
                         ctx.fillRect(
-                            -this.width/2 + 5 + i * 12, 
+                            -this.width/2 + 5 + i * 10, 
                             this.height/2 - 5, 
-                            6, 
-                            10 + (i % 2 === 0 ? legYOffset : -legYOffset)
+                            5, 
+                            10 + legYOffset
                         );
                     }
                     
                     // Oxygen tank
-                    ctx.fillStyle = '#cccccc';
-                    ctx.fillRect(this.width/2 - 10, -this.height/4, 8, 20);
-                    
-                    // Scafander details
-                    ctx.strokeStyle = '#8b4513';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(-this.width/2, -this.height/2, this.width, this.height);
+                    ctx.fillStyle = '#ddd';
+                    ctx.fillRect(
+                        this.width/2 - 10, 
+                        -this.height/4, 
+                        8, 
+                        this.height/2
+                    );
                 } else {
                     // Death animation
                     ctx.rotate(this.rotation);
                     ctx.globalAlpha = this.deathAnimation;
                     
-                    // Broken scafander
-                    ctx.fillStyle = '#ffffff';
+                    // Broken suit
+                    ctx.fillStyle = 'white';
                     ctx.fillRect(-this.width/4, -this.height/4, this.width/2, this.height/2);
                     
                     // Spots
                     ctx.fillStyle = '#8b4513';
                     this.spots.forEach(spot => {
-                        if (Math.random() > 0.3) {
-                            ctx.beginPath();
-                            ctx.arc(spot.x * 0.5, spot.y * 0.5, spot.size, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
+                        ctx.beginPath();
+                        ctx.arc(
+                            spot.x * 0.5, 
+                            spot.y * 0.5, 
+                            spot.radius, 
+                            0, 
+                            Math.PI * 2
+                        );
+                        ctx.fill();
                     });
                     
-                    // Broken helmet
-                    ctx.beginPath();
-                    ctx.arc(0, 0, this.headRadius/2, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fill();
-                    ctx.strokeStyle = '#8b4513';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                    
-                    // Crack
-                    ctx.beginPath();
-                    ctx.moveTo(-this.headRadius/3, -this.headRadius/3);
-                    ctx.lineTo(this.headRadius/3, this.headRadius/3);
-                    ctx.stroke();
+                    // Debris
+                    for (let i = 0; i < 3; i++) {
+                        ctx.save();
+                        ctx.translate(
+                            (Math.random() - 0.5) * 30,
+                            (Math.random() - 0.5) * 30
+                        );
+                        ctx.rotate(Math.random() * Math.PI * 2);
+                        
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, Math.random() * 15 + 5, Math.random() * 10 + 5);
+                        
+                        ctx.restore();
+                    }
                     
                     ctx.globalAlpha = 1;
                 }
@@ -511,14 +504,14 @@
             gameActive = true;
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('gameOverMenu').style.display = 'none';
-            reloadingOverlay.style.display = 'none';
+            reloadingElement.style.display = 'none';
             
             // Reset game state
             cows = [];
             deadCows = [];
             shots = [];
             explosions = [];
-            powerups = [];
+            lifeBonuses = [];
             score = 0;
             lives = 3;
             timeLeft = 60;
@@ -527,8 +520,6 @@
             missCount = 0;
             ammo = 5;
             isReloading = false;
-            doubleScoreActive = false;
-            doubleScoreTimer = 0;
             
             initStars();
             initNebulas();
@@ -541,33 +532,14 @@
                 if (timeLeft <= 0) endGame();
             }, 1000);
             
-            // Start powerup spawn timer
-            powerupTimer = setInterval(spawnRandomPowerup, config.powerupSpawnInterval);
-            
             spawnCow();
             lastTime = performance.now();
             gameLoop();
         }
 
-        function spawnRandomPowerup() {
-            if (!gameActive || timeLeft <= 0) return;
-            
-            const powerupType = Math.random() > 0.5 ? 'life' : 'double';
-            powerups.push({
-                x: Math.random() * (canvas.width - 100) + 50,
-                y: -30,
-                radius: 15,
-                type: powerupType,
-                collected: false,
-                alpha: 1,
-                vy: 1
-            });
-        }
-
         function endGame() {
             gameActive = false;
             clearInterval(gameTimer);
-            clearInterval(powerupTimer);
             document.getElementById('gameOverMenu').style.display = 'block';
             document.getElementById('finalScore').textContent = score;
             document.getElementById('finalHits').textContent = hits;
@@ -624,10 +596,7 @@
                     cow.die();
                     deadCows.push(cow);
                     
-                    // Calculate score with possible double bonus
-                    const points = doubleScoreActive ? 200 : 100;
-                    score += points;
-                    
+                    score += 100;
                     hits++;
                     updateHUD();
                     shots.push(new Shot(x, y));
@@ -636,27 +605,19 @@
                 }
             }
             
-            // Check powerups
-            for (let i = 0; i < powerups.length; i++) {
-                const powerup = powerups[i];
-                if (powerup.collected) continue;
+            // Check life bonuses
+            for (let i = 0; i < lifeBonuses.length; i++) {
+                const bonus = lifeBonuses[i];
+                if (bonus.collected) continue;
                 
-                const dist = Math.sqrt((x - powerup.x) ** 2 + (y - powerup.y) ** 2);
-                if (dist <= powerup.radius) {
-                    powerup.collected = true;
-                    
-                    if (powerup.type === 'life') {
-                        lives = Math.min(3, lives + 1);
-                        // Create pink explosion
-                        explosions.push(new Explosion(powerup.x, powerup.y, '255, 51, 102'));
-                    } else {
-                        doubleScoreActive = true;
-                        doubleScoreTimer = Date.now() + 10000; // 10 seconds
-                        // Create gold explosion
-                        explosions.push(new Explosion(powerup.x, powerup.y, '255, 215, 0'));
-                    }
-                    
+                const dist = Math.sqrt((x - bonus.x) ** 2 + (y - bonus.y) ** 2);
+                if (dist <= bonus.radius) {
+                    bonus.collected = true;
+                    lives = Math.min(3, lives + 1);
                     updateHUD();
+                    
+                    // Create pink explosion
+                    explosions.push(new Explosion(bonus.x, bonus.y, '255, 51, 102'));
                     hit = true;
                     break;
                 }
@@ -705,14 +666,11 @@
             
             // Draw stars
             stars.forEach(star => {
-                // Blinking effect
-                star.alpha += star.blinkSpeed;
-                if (star.alpha > 1 || star.alpha < 0.5) {
-                    star.blinkSpeed *= -1;
-                }
+                star.blinkPhase += star.blinkSpeed;
+                const alpha = star.alpha * (0.7 + Math.sin(star.blinkPhase) * 0.3);
                 
                 ctx.fillStyle = star.color;
-                ctx.globalAlpha = star.alpha;
+                ctx.globalAlpha = alpha;
                 
                 // Draw plus-shaped star
                 const size = star.size;
@@ -730,46 +688,23 @@
             });
         }
 
-        function drawPowerups() {
-            const now = Date.now();
-            
-            // Check double score expiration
-            if (doubleScoreActive && now > doubleScoreTimer) {
-                doubleScoreActive = false;
-            }
-            
-            powerups.forEach((powerup, index) => {
-                if (powerup.collected) return;
+        function drawLifeBonuses() {
+            lifeBonuses.forEach((bonus, index) => {
+                if (bonus.collected) return;
                 
-                // Draw powerup
-                ctx.save();
-                ctx.translate(powerup.x, powerup.y);
-                
-                // Background
-                if (powerup.type === 'life') {
-                    ctx.fillStyle = 'rgba(255, 51, 102, 0.7)';
-                } else {
-                    ctx.fillStyle = 'rgba(255, 215, 0, 0.7)';
-                }
+                ctx.fillStyle = `rgba(255, 51, 102, ${bonus.alpha})`;
                 ctx.beginPath();
-                ctx.arc(0, 0, powerup.radius, 0, Math.PI * 2);
+                ctx.arc(bonus.x, bonus.y, bonus.radius, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Symbol
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 16px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(powerup.type === 'life' ? '♥' : '2X', 0, 0);
-                
-                ctx.restore();
-                
-                // Move down
-                powerup.y += powerup.vy;
+                // Pulse animation
+                bonus.alpha = 0.7 + Math.sin(Date.now() / 200) * 0.3;
                 
                 // Remove if out of screen
-                if (powerup.y > canvas.height + powerup.radius) {
-                    powerups.splice(index, 1);
+                if (bonus.y > canvas.height + bonus.radius) {
+                    lifeBonuses.splice(index, 1);
+                } else {
+                    bonus.y += 1;
                 }
             });
         }
@@ -810,17 +745,11 @@
                 }
             });
             
-            // Draw powerups
-            drawPowerups();
+            // Draw life bonuses
+            drawLifeBonuses();
             
-            // Draw double score indicator
-            if (doubleScoreActive) {
-                ctx.fillStyle = 'rgba(255, 215, 0, 0.5)';
-                ctx.fillRect(10, canvas.height - 40, 50, 30);
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 16px Arial';
-                ctx.fillText('2X', 35, canvas.height - 20);
-            }
+            // Show reloading if needed
+            reloadingElement.style.display = isReloading ? 'block' : 'none';
             
             requestAnimationFrame(gameLoop);
         }
@@ -854,11 +783,9 @@
                     if (lives <= 0) endGame();
                 }
                 isReloading = true;
-                reloadingOverlay.style.display = 'block';
                 setTimeout(() => {
                     ammo = 5;
                     isReloading = false;
-                    reloadingOverlay.style.display = 'none';
                     updateHUD();
                 }, config.reloadTime);
             }
