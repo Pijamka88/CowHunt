@@ -8,12 +8,12 @@
             margin: 0;
             overflow: hidden;
             touch-action: none;
-            background: #0a0416;
+            background: #0a1038;
             font-family: 'Arial', sans-serif;
             color: white;
         }
         #gameCanvas {
-            background: #0a0416;
+            background: #0a1038;
             display: block;
         }
         .menu {
@@ -21,36 +21,36 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(58, 12, 163, 0.9);
+            background: rgba(28, 52, 163, 0.9);
             padding: 30px;
             color: white;
             text-align: center;
             border-radius: 15px;
-            border: 2px solid #9b59b6;
+            border: 2px solid #4d79ff;
             z-index: 1000;
             max-width: 80%;
-            box-shadow: 0 0 20px rgba(155, 89, 182, 0.7);
+            box-shadow: 0 0 20px rgba(77, 121, 255, 0.7);
         }
         .menu h1 {
             color: #fff;
             margin-bottom: 20px;
-            text-shadow: 0 0 10px #9b59b6;
+            text-shadow: 0 0 10px #4d79ff;
         }
         .menu button {
             padding: 12px 25px;
             font-size: 18px;
             margin-top: 20px;
             cursor: pointer;
-            background: linear-gradient(to bottom, #9b59b6, #8e44ad);
+            background: linear-gradient(to bottom, #4d79ff, #3a5bd9);
             border: none;
             color: white;
             border-radius: 8px;
             transition: all 0.3s;
         }
         .menu button:hover {
-            background: linear-gradient(to bottom, #8e44ad, #9b59b6);
+            background: linear-gradient(to bottom, #3a5bd9, #4d79ff);
             transform: scale(1.05);
-            box-shadow: 0 0 10px rgba(155, 89, 182, 0.7);
+            box-shadow: 0 0 10px rgba(77, 121, 255, 0.7);
         }
         #topHUD {
             position: fixed;
@@ -59,9 +59,9 @@
             right: 0;
             display: flex;
             justify-content: space-around;
-            background: rgba(58, 12, 163, 0.7);
+            background: rgba(28, 52, 163, 0.7);
             padding: 10px;
-            border-bottom: 1px solid #9b59b6;
+            border-bottom: 1px solid #4d79ff;
         }
         #bottomHUD {
             position: fixed;
@@ -70,9 +70,9 @@
             right: 0;
             display: flex;
             justify-content: space-around;
-            background: rgba(58, 12, 163, 0.7);
+            background: rgba(28, 52, 163, 0.7);
             padding: 10px;
-            border-top: 1px solid #9b59b6;
+            border-top: 1px solid #4d79ff;
         }
         .hud-item {
             display: flex;
@@ -81,7 +81,7 @@
         }
         .hud-label {
             font-size: 12px;
-            color: #d2b3ff;
+            color: #b3c6ff;
             margin-bottom: 3px;
         }
         .hud-value {
@@ -137,6 +137,8 @@
         <button onclick="startGame()">Играть снова</button>
     </div>
 
+    <div id="reloading" class="reloading" style="display: none;">Reloading...</div>
+
     <div id="topHUD">
         <div class="hud-item">
             <div class="hud-label">SCORE</div>
@@ -167,8 +169,6 @@
         </div>
     </div>
 
-    <div id="reloading" class="reloading" style="display: none;">Reloading...</div>
-
     <canvas id="gameCanvas"></canvas>
 
     <script>
@@ -183,6 +183,7 @@
         let explosions = [];
         let stars = [];
         let nebulas = [];
+        let planets = [];
         let lifeBonuses = [];
         let score = 0;
         let lives = 3;
@@ -206,6 +207,7 @@
             reloadTime: 2000,
             starCount: 100,
             nebulaCount: 4,
+            planetCount: 3,
             lifeBonusChance: 0.1,
             missPenalty: 3
         };
@@ -217,7 +219,7 @@
                 stars.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
-                    size: Math.random() * 2 + 1,
+                    size: Math.random() * 3 + 2, // Увеличенный размер звезд
                     alpha: Math.random() * 0.8 + 0.2,
                     speed: Math.random() * 0.2 + 0.1,
                     color: Math.random() > 0.7 ? '#ffff00' : '#3399ff',
@@ -234,9 +236,37 @@
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
                     radius: Math.random() * 300 + 200,
-                    color: `hsla(${270 + Math.random() * 30}, 80%, 60%, ${Math.random() * 0.1 + 0.05})`,
+                    color: `hsla(${210 + Math.random() * 30}, 80%, 60%, ${Math.random() * 0.1 + 0.05})`,
                     speed: Math.random() * 0.1 + 0.05
                 });
+            }
+        }
+
+        // Initialize planets
+        function initPlanets() {
+            planets = [];
+            for (let i = 0; i < config.planetCount; i++) {
+                const planetType = Math.random() > 0.5 ? 'blue' : 'yellow';
+                planets.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 40 + 30,
+                    color: planetType === 'blue' ? '#3399ff' : '#ffcc00',
+                    speed: Math.random() * 0.05 + 0.02,
+                    rotation: 0,
+                    rotationSpeed: (Math.random() - 0.5) * 0.005,
+                    continents: []
+                });
+                
+                // Generate continents for the planet
+                for (let j = 0; j < 5; j++) {
+                    planets[i].continents.push({
+                        x: (Math.random() - 0.5) * 2,
+                        y: (Math.random() - 0.5) * 2,
+                        radius: Math.random() * 0.3 + 0.2,
+                        color: planetType === 'blue' ? '#2d5985' : '#cc9900'
+                    });
+                }
             }
         }
 
@@ -358,7 +388,7 @@
                         ctx.fill();
                     });
                     
-                    // Head
+                    // Head with helmet
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
                     ctx.beginPath();
                     ctx.arc(
@@ -369,10 +399,22 @@
                         Math.PI * 2
                     );
                     ctx.fill();
+                    ctx.strokeStyle = '#4d79ff';
+                    ctx.lineWidth = 3;
                     ctx.stroke();
                     
-                    // Helmet glass
-                    ctx.fillStyle = 'rgba(100, 200, 255, 0.3)';
+                    // Helmet glass with reflection
+                    const gradient = ctx.createRadialGradient(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 : this.width/2 - this.headRadius/2, 
+                        0, 
+                        0,
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 : this.width/2 - this.headRadius/2, 
+                        0, 
+                        this.headRadius - 2
+                    );
+                    gradient.addColorStop(0, 'rgba(100, 200, 255, 0.7)');
+                    gradient.addColorStop(1, 'rgba(100, 200, 255, 0.2)');
+                    ctx.fillStyle = gradient;
                     ctx.beginPath();
                     ctx.arc(
                         this.direction === 1 ? -this.width/2 + this.headRadius/2 : this.width/2 - this.headRadius/2, 
@@ -383,7 +425,7 @@
                     );
                     ctx.fill();
                     
-                    // Eyes
+                    // Eyes with pupils
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
                     ctx.arc(
@@ -394,6 +436,43 @@
                         Math.PI * 2
                     );
                     ctx.fill();
+                    
+                    // Pupils
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.arc(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 + 6 : this.width/2 - this.headRadius/2 - 4, 
+                        -3, 
+                        1, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    
+                    // Antennas (horns) on helmet
+                    ctx.strokeStyle = '#4d79ff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 - 5 : this.width/2 - this.headRadius/2 + 5, 
+                        -this.headRadius + 5
+                    );
+                    ctx.lineTo(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 - 15 : this.width/2 - this.headRadius/2 + 15, 
+                        -this.headRadius - 10
+                    );
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 - 5 : this.width/2 - this.headRadius/2 + 5, 
+                        this.headRadius - 5
+                    );
+                    ctx.lineTo(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 - 15 : this.width/2 - this.headRadius/2 + 15, 
+                        this.headRadius + 10
+                    );
+                    ctx.stroke();
                     
                     // Wings (butterfly style)
                     const wingYOffset = Math.sin(this.wingPhase) * 10;
@@ -558,6 +637,7 @@
             
             initStars();
             initNebulas();
+            initPlanets();
             updateHUD();
             resizeCanvas();
             
@@ -683,7 +763,7 @@
 
         function drawBackground() {
             // Draw space background
-            ctx.fillStyle = '#0a0416';
+            ctx.fillStyle = '#0a1038';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             // Draw nebulas
@@ -693,7 +773,7 @@
                     nebula.x, nebula.y, nebula.radius
                 );
                 gradient.addColorStop(0, nebula.color);
-                gradient.addColorStop(1, 'rgba(10, 4, 22, 0)');
+                gradient.addColorStop(1, 'rgba(10, 16, 56, 0)');
                 
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
@@ -705,6 +785,52 @@
                 if (nebula.x > canvas.width + nebula.radius) {
                     nebula.x = -nebula.radius;
                     nebula.y = Math.random() * canvas.height;
+                }
+            });
+            
+            // Draw planets
+            planets.forEach(planet => {
+                ctx.save();
+                ctx.translate(planet.x, planet.y);
+                planet.rotation += planet.rotationSpeed;
+                ctx.rotate(planet.rotation);
+                
+                // Planet body
+                ctx.fillStyle = planet.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Continents
+                planet.continents.forEach(continent => {
+                    ctx.fillStyle = continent.color;
+                    ctx.beginPath();
+                    ctx.arc(
+                        continent.x * planet.radius * 0.8,
+                        continent.y * planet.radius * 0.8,
+                        continent.radius * planet.radius,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                });
+                
+                // Planet glow
+                const glowGradient = ctx.createRadialGradient(0, 0, planet.radius * 0.7, 0, 0, planet.radius * 1.3);
+                glowGradient.addColorStop(0, planet.color + 'aa');
+                glowGradient.addColorStop(1, planet.color + '00');
+                ctx.fillStyle = glowGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, planet.radius * 1.3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+                
+                // Move planet
+                planet.x += planet.speed;
+                if (planet.x > canvas.width + planet.radius * 2) {
+                    planet.x = -planet.radius * 2;
+                    planet.y = Math.random() * canvas.height;
                 }
             });
             
@@ -808,6 +934,7 @@
             canvas.height = window.innerHeight;
             initStars();
             initNebulas();
+            initPlanets();
         }
 
         canvas.addEventListener('pointerdown', (e) => {
