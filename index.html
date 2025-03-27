@@ -43,7 +43,7 @@
             cursor: pointer;
             background: linear-gradient(to bottom, #d2b48c, #bc8f5f);
             border: none;
-            color: #5a3e2b;
+            color: #fff;
             border-radius: 8px;
             transition: all 0.3s;
         }
@@ -93,16 +93,7 @@
             text-shadow: 0 0 5px #ff3366;
             font-size: 28px;
         }
-        .life-bonus {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: radial-gradient(circle, #ff3366, #cc0066);
-            border-radius: 50%;
-            box-shadow: 0 0 10px #ff3366;
-            z-index: 100;
-        }
-        #reloadingOverlay {
+        .reloading-overlay {
             position: fixed;
             top: 50%;
             left: 50%;
@@ -113,15 +104,24 @@
             border-radius: 10px;
             font-size: 24px;
             font-weight: bold;
-            display: none;
             z-index: 999;
+            display: none;
+        }
+        .life-bonus {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background: radial-gradient(circle, #ff3366, #cc0066);
+            border-radius: 50%;
+            box-shadow: 0 0 10px #ff3366;
+            z-index: 100;
         }
     </style>
 </head>
 <body>
     <div id="mainMenu" class="menu">
         <h1>Space Cow Hunt</h1>
-        <p>Охота на коров в скафандрах!</p>
+        <p>Уничтожьте коров в скафандрах!</p>
         <button onclick="startGame()">Начать игру</button>
     </div>
 
@@ -133,7 +133,7 @@
         <button onclick="startGame()">Играть снова</button>
     </div>
 
-    <div id="reloadingOverlay">Reloading</div>
+    <div id="reloadingOverlay" class="reloading-overlay">Reloading...</div>
 
     <div id="topHUD">
         <div class="hud-item">
@@ -170,7 +170,6 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const reloadingOverlay = document.getElementById('reloadingOverlay');
         
         // Game state
         let gameActive = false;
@@ -215,10 +214,10 @@
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
                     size: Math.random() * 2 + 1,
-                    alpha: Math.random() * 0.5 + 0.5,
+                    alpha: Math.random() * 0.8 + 0.2,
                     speed: Math.random() * 0.2 + 0.1,
                     color: Math.random() > 0.7 ? '#ffff00' : '#3399ff',
-                    blinkSpeed: Math.random() * 0.05 + 0.01
+                    blinkSpeed: Math.random() * 0.02 + 0.01
                 });
             }
         }
@@ -244,17 +243,15 @@
                 this.headRadius = config.headRadius;
                 this.reset();
                 this.alive = true;
-                this.legPhase = Math.random() * Math.PI * 2;
-                this.legSpeed = Math.random() * 0.05 + 0.05;
                 this.deathAnimation = 0;
                 this.spots = [];
                 
-                // Generate random spots
-                for (let i = 0; i < 15; i++) {
+                // Create random spots
+                for (let i = 0; i < 10; i++) {
                     this.spots.push({
                         x: Math.random() * this.width - this.width/2,
                         y: Math.random() * this.height - this.height/2,
-                        radius: Math.random() * 3 + 1
+                        radius: Math.random() * 3 + 2
                     });
                 }
             }
@@ -305,7 +302,6 @@
                 if (this.alive) {
                     this.x += this.vx;
                     this.y += this.vy;
-                    this.legPhase += this.legSpeed;
                     
                     // Reset if out of bounds
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
@@ -338,26 +334,16 @@
                 ctx.translate(this.x, this.y);
                 
                 if (this.alive) {
-                    // Draw spacesuit (white)
-                    ctx.fillStyle = 'white';
-                    
-                    // Body
+                    // Draw spacesuit body
+                    ctx.fillStyle = '#ffffff';
                     ctx.beginPath();
-                    ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
+                    ctx.roundRect(-this.width/2, -this.height/2, this.width, this.height, 10);
                     ctx.fill();
+                    ctx.strokeStyle = '#cccccc';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
                     
-                    // Head (helmet)
-                    ctx.beginPath();
-                    ctx.arc(
-                        this.direction === 1 ? -this.width/2 + 10 : this.width/2 - 10, 
-                        0, 
-                        this.headRadius, 
-                        0, 
-                        Math.PI * 2
-                    );
-                    ctx.fill();
-                    
-                    // Draw spots (brown)
+                    // Draw spots
                     ctx.fillStyle = '#8b4513';
                     this.spots.forEach(spot => {
                         ctx.beginPath();
@@ -365,83 +351,79 @@
                         ctx.fill();
                     });
                     
-                    // Helmet glass
-                    ctx.fillStyle = 'rgba(100, 200, 255, 0.3)';
+                    // Draw helmet (head)
+                    ctx.fillStyle = 'rgba(200, 230, 255, 0.7)';
                     ctx.beginPath();
                     ctx.arc(
-                        this.direction === 1 ? -this.width/2 + 10 : this.width/2 - 10, 
+                        this.direction === 1 ? this.width/4 : -this.width/4, 
                         0, 
-                        this.headRadius - 3, 
+                        this.headRadius, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Draw face (always forward)
+                    ctx.fillStyle = '#000000';
+                    ctx.beginPath();
+                    ctx.arc(
+                        this.direction === 1 ? this.width/4 + 5 : -this.width/4 - 5, 
+                        -3, 
+                        3, 
                         0, 
                         Math.PI * 2
                     );
                     ctx.fill();
                     
-                    // Legs (animated)
-                    ctx.fillStyle = 'white';
-                    const legYOffset = Math.sin(this.legPhase) * 5;
-                    for (let i = 0; i < 4; i++) {
-                        ctx.fillRect(
-                            -this.width/3 + i * 10, 
-                            this.height/2 - 5 + (i % 2 === 0 ? legYOffset : -legYOffset), 
-                            5, 
-                            10
-                        );
-                    }
-                    
-                    // Oxygen tank
-                    ctx.fillStyle = '#ccc';
+                    // Draw oxygen tank
+                    ctx.fillStyle = '#dddddd';
                     ctx.fillRect(
-                        this.direction === 1 ? this.width/2 - 15 : -this.width/2 + 10, 
-                        -this.height/3, 
+                        this.direction === 1 ? -this.width/2 + 5 : this.width/2 - 15, 
+                        -this.height/2 + 5, 
                         10, 
-                        this.height/1.5
+                        this.height - 10
                     );
+                    ctx.strokeStyle = '#aaaaaa';
+                    ctx.strokeRect(
+                        this.direction === 1 ? -this.width/2 + 5 : this.width/2 - 15, 
+                        -this.height/2 + 5, 
+                        10, 
+                        this.height - 10
+                    );
+                    
+                    // Draw thrusters
+                    ctx.fillStyle = '#ff6600';
+                    ctx.beginPath();
+                    ctx.moveTo(this.direction === 1 ? -this.width/2 : this.width/2, this.height/4);
+                    ctx.lineTo(this.direction === 1 ? -this.width/2 - 10 : this.width/2 + 10, 0);
+                    ctx.lineTo(this.direction === 1 ? -this.width/2 : this.width/2, -this.height/4);
+                    ctx.closePath();
+                    ctx.fill();
                 } else {
                     // Death animation
                     ctx.rotate(this.rotation);
                     ctx.globalAlpha = this.deathAnimation;
                     
-                    // Broken spacesuit
-                    ctx.fillStyle = 'white';
+                    // Draw broken spacesuit
+                    ctx.fillStyle = '#ffffff';
                     ctx.beginPath();
-                    ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
+                    ctx.roundRect(-this.width/4, -this.height/4, this.width/2, this.height/2, 5);
                     ctx.fill();
-                    
-                    // Spots
-                    ctx.fillStyle = '#8b4513';
-                    this.spots.forEach(spot => {
-                        ctx.beginPath();
-                        ctx.arc(spot.x, spot.y, spot.radius, 0, Math.PI * 2);
-                        ctx.fill();
-                    });
-                    
-                    // Cracked helmet
-                    ctx.strokeStyle = '#333';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(
-                        this.direction === 1 ? -this.width/2 + 10 : this.width/2 - 10, 
-                        0, 
-                        this.headRadius, 
-                        0, 
-                        Math.PI * 2
-                    );
+                    ctx.strokeStyle = '#cccccc';
                     ctx.stroke();
                     
-                    // Cracks
-                    for (let i = 0; i < 3; i++) {
-                        ctx.beginPath();
-                        ctx.moveTo(
-                            (this.direction === 1 ? -this.width/2 + 10 : this.width/2 - 10) + (Math.random() - 0.5) * 5, 
-                            (Math.random() - 0.5) * 5
-                        );
-                        ctx.lineTo(
-                            (this.direction === 1 ? -this.width/2 + 10 : this.width/2 - 10) + (Math.random() - 0.5) * 10, 
-                            (Math.random() - 0.5) * 10
-                        );
-                        ctx.stroke();
-                    }
+                    // Draw cracks
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width/4 + 5, -this.height/4 + 5);
+                    ctx.lineTo(this.width/4 - 5, this.height/4 - 5);
+                    ctx.moveTo(this.width/4 - 5, -this.height/4 + 5);
+                    ctx.lineTo(-this.width/4 + 5, this.height/4 - 5);
+                    ctx.stroke();
                     
                     ctx.globalAlpha = 1;
                 }
@@ -518,7 +500,7 @@
             gameActive = true;
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('gameOverMenu').style.display = 'none';
-            reloadingOverlay.style.display = 'none';
+            document.getElementById('reloadingOverlay').style.display = 'none';
             
             // Reset game state
             cows = [];
@@ -592,20 +574,20 @@
                 
                 if (!cow.alive) continue;
                 
-                // Check body hit (ellipse)
-                const bodyX = cow.x;
-                const bodyY = cow.y;
-                const bodyDist = Math.sqrt(
-                    Math.pow((x - bodyX) / (cow.width/2), 2) + 
-                    Math.pow((y - bodyY) / (cow.height/2), 2)
-                );
+                // Check body hit
+                const bodyLeft = cow.x - cow.width/2;
+                const bodyRight = cow.x + cow.width/2;
+                const bodyTop = cow.y - cow.height/2;
+                const bodyBottom = cow.y + cow.height/2;
                 
-                // Check head hit
-                const headX = cow.direction === 1 ? cow.x - cow.width/2 + 10 : cow.x + cow.width/2 - 10;
-                const headY = cow.y;
-                const headDist = Math.sqrt(Math.pow(x - headX, 2) + Math.pow(y - headY, 2));
+                // Check helmet hit
+                const helmetX = cow.direction === 1 ? cow.x + cow.width/4 : cow.x - cow.width/4;
+                const helmetY = cow.y;
+                const helmetDist = Math.sqrt((x - helmetX) ** 2 + (y - helmetY) ** 2);
                 
-                if (bodyDist <= 1 || headDist <= cow.headRadius) {
+                if ((x >= bodyLeft && x <= bodyRight && y >= bodyTop && y <= bodyBottom) || 
+                    helmetDist <= cow.headRadius) {
+                    
                     // Create explosion
                     const color = '255, 100, 100';
                     explosions.push(new Explosion(cow.x, cow.y, color));
@@ -627,7 +609,7 @@
                 const bonus = lifeBonuses[i];
                 if (bonus.collected) continue;
                 
-                const dist = Math.sqrt(Math.pow(x - bonus.x, 2) + Math.pow(y - bonus.y, 2));
+                const dist = Math.sqrt((x - bonus.x) ** 2 + (y - bonus.y) ** 2);
                 if (dist <= bonus.radius) {
                     bonus.collected = true;
                     lives = Math.min(3, lives + 1);
@@ -683,6 +665,7 @@
             
             // Draw stars
             stars.forEach(star => {
+                // Blinking effect
                 star.alpha = 0.5 + Math.sin(Date.now() * star.blinkSpeed) * 0.5;
                 
                 ctx.fillStyle = star.color;
@@ -792,17 +775,27 @@
                 if (ammo <= 0) {
                     startReloading();
                 }
+            } else {
+                misses++;
+                missCount++;
+                if (missCount >= config.missPenalty) {
+                    lives--;
+                    missCount = 0;
+                    if (lives <= 0) endGame();
+                }
+                startReloading();
+                updateHUD();
             }
         });
 
         function startReloading() {
             isReloading = true;
-            reloadingOverlay.style.display = 'block';
+            document.getElementById('reloadingOverlay').style.display = 'block';
             
             setTimeout(() => {
                 ammo = 5;
                 isReloading = false;
-                reloadingOverlay.style.display = 'none';
+                document.getElementById('reloadingOverlay').style.display = 'none';
                 updateHUD();
             }, config.reloadTime);
         }
