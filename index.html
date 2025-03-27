@@ -41,14 +41,14 @@
             font-size: 18px;
             margin-top: 20px;
             cursor: pointer;
-            background: linear-gradient(to bottom, #d2b48c, #bc8f5f);
+            background: linear-gradient(to bottom, #d2b48c, #bc8f8f);
             border: none;
-            color: #fff;
+            color: #5a3e2b;
             border-radius: 8px;
             transition: all 0.3s;
         }
         .menu button:hover {
-            background: linear-gradient(to bottom, #bc8f5f, #d2b48c);
+            background: linear-gradient(to bottom, #bc8f8f, #d2b48c);
             transform: scale(1.05);
             box-shadow: 0 0 10px rgba(139, 90, 43, 0.5);
         }
@@ -90,10 +90,20 @@
         }
         .heart {
             color: #ff3366;
-            text-shadow: 0 0 5px #ff3366;
             font-size: 28px;
+            text-shadow: 0 0 5px #ff3366;
+            margin: 0 3px;
         }
-        .reloading-overlay {
+        .life-bonus {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #ff3366, #cc0066);
+            border-radius: 50%;
+            box-shadow: 0 0 10px #ff3366;
+            z-index: 100;
+        }
+        #reloading {
             position: fixed;
             top: 50%;
             left: 50%;
@@ -103,18 +113,8 @@
             padding: 15px 30px;
             border-radius: 10px;
             font-size: 24px;
-            font-weight: bold;
-            z-index: 999;
             display: none;
-        }
-        .life-bonus {
-            position: absolute;
-            width: 25px;
-            height: 25px;
-            background: radial-gradient(circle, #ff3366, #cc0066);
-            border-radius: 50%;
-            box-shadow: 0 0 10px #ff3366;
-            z-index: 100;
+            z-index: 999;
         }
     </style>
 </head>
@@ -133,7 +133,7 @@
         <button onclick="startGame()">Играть снова</button>
     </div>
 
-    <div id="reloadingOverlay" class="reloading-overlay">Reloading...</div>
+    <div id="reloading">Reloading...</div>
 
     <div id="topHUD">
         <div class="hud-item">
@@ -170,6 +170,7 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const reloadingDisplay = document.getElementById('reloading');
         
         // Game state
         let gameActive = false;
@@ -209,6 +210,8 @@
         // Initialize stars
         function initStars() {
             stars = [];
+            const starColors = ['#3399ff', '#33ccff', '#ffff33', '#ffcc33'];
+            
             for (let i = 0; i < config.starCount; i++) {
                 stars.push({
                     x: Math.random() * canvas.width,
@@ -216,8 +219,9 @@
                     size: Math.random() * 2 + 1,
                     alpha: Math.random() * 0.8 + 0.2,
                     speed: Math.random() * 0.2 + 0.1,
-                    color: Math.random() > 0.7 ? '#ffff00' : '#3399ff',
-                    blinkSpeed: Math.random() * 0.02 + 0.01
+                    color: starColors[Math.floor(Math.random() * starColors.length)],
+                    twinkleSpeed: Math.random() * 0.02 + 0.01,
+                    twinklePhase: Math.random() * Math.PI * 2
                 });
             }
         }
@@ -243,6 +247,8 @@
                 this.headRadius = config.headRadius;
                 this.reset();
                 this.alive = true;
+                this.wingPhase = Math.random() * Math.PI * 2;
+                this.wingSpeed = Math.random() * 0.05 + 0.05;
                 this.deathAnimation = 0;
                 this.spots = [];
                 
@@ -302,6 +308,7 @@
                 if (this.alive) {
                     this.x += this.vx;
                     this.y += this.vy;
+                    this.wingPhase += this.wingSpeed;
                     
                     // Reset if out of bounds
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
@@ -334,16 +341,11 @@
                 ctx.translate(this.x, this.y);
                 
                 if (this.alive) {
-                    // Draw spacesuit body
-                    ctx.fillStyle = '#ffffff';
-                    ctx.beginPath();
-                    ctx.roundRect(-this.width/2, -this.height/2, this.width, this.height, 10);
-                    ctx.fill();
-                    ctx.strokeStyle = '#cccccc';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
+                    // Body (scuba suit)
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
                     
-                    // Draw spots
+                    // Brown spots
                     ctx.fillStyle = '#8b4513';
                     this.spots.forEach(spot => {
                         ctx.beginPath();
@@ -351,79 +353,86 @@
                         ctx.fill();
                     });
                     
-                    // Draw helmet (head)
-                    ctx.fillStyle = 'rgba(200, 230, 255, 0.7)';
-                    ctx.beginPath();
-                    ctx.arc(
-                        this.direction === 1 ? this.width/4 : -this.width/4, 
-                        0, 
-                        this.headRadius, 
-                        0, 
-                        Math.PI * 2
-                    );
-                    ctx.fill();
-                    ctx.strokeStyle = '#ffffff';
+                    // Scuba suit details
+                    ctx.strokeStyle = '#333';
                     ctx.lineWidth = 2;
+                    ctx.strokeRect(-this.width/2, -this.height/2, this.width, this.height);
+                    
+                    // Helmet (head)
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.headRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(200, 230, 255, 0.7)';
+                    ctx.fill();
                     ctx.stroke();
                     
-                    // Draw face (always forward)
-                    ctx.fillStyle = '#000000';
+                    // Face
+                    ctx.fillStyle = '#333';
+                    // Eyes
                     ctx.beginPath();
-                    ctx.arc(
-                        this.direction === 1 ? this.width/4 + 5 : -this.width/4 - 5, 
-                        -3, 
-                        3, 
-                        0, 
-                        Math.PI * 2
-                    );
+                    ctx.arc(-this.headRadius/3, -this.headRadius/4, 3, 0, Math.PI * 2);
+                    ctx.arc(this.headRadius/3, -this.headRadius/4, 3, 0, Math.PI * 2);
                     ctx.fill();
-                    
-                    // Draw oxygen tank
-                    ctx.fillStyle = '#dddddd';
-                    ctx.fillRect(
-                        this.direction === 1 ? -this.width/2 + 5 : this.width/2 - 15, 
-                        -this.height/2 + 5, 
-                        10, 
-                        this.height - 10
-                    );
-                    ctx.strokeStyle = '#aaaaaa';
-                    ctx.strokeRect(
-                        this.direction === 1 ? -this.width/2 + 5 : this.width/2 - 15, 
-                        -this.height/2 + 5, 
-                        10, 
-                        this.height - 10
-                    );
-                    
-                    // Draw thrusters
-                    ctx.fillStyle = '#ff6600';
+                    // Mouth
                     ctx.beginPath();
-                    ctx.moveTo(this.direction === 1 ? -this.width/2 : this.width/2, this.height/4);
-                    ctx.lineTo(this.direction === 1 ? -this.width/2 - 10 : this.width/2 + 10, 0);
-                    ctx.lineTo(this.direction === 1 ? -this.width/2 : this.width/2, -this.height/4);
+                    ctx.arc(0, this.headRadius/4, 4, 0, Math.PI);
+                    ctx.stroke();
+                    
+                    // Wings
+                    const wingYOffset = Math.sin(this.wingPhase) * 8;
+                    ctx.fillStyle = 'rgba(200, 230, 255, 0.5)';
+                    
+                    // Left wing
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width/2, 0);
+                    ctx.lineTo(-this.width/2 - 20, -this.height/2 + wingYOffset);
+                    ctx.lineTo(-this.width/2 - 20, this.height/2 + wingYOffset);
                     ctx.closePath();
                     ctx.fill();
+                    ctx.stroke();
+                    
+                    // Right wing
+                    ctx.beginPath();
+                    ctx.moveTo(this.width/2, 0);
+                    ctx.lineTo(this.width/2 + 20, -this.height/2 + wingYOffset);
+                    ctx.lineTo(this.width/2 + 20, this.height/2 + wingYOffset);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    // Oxygen tank
+                    ctx.fillStyle = '#ccc';
+                    ctx.fillRect(this.width/2 - 10, -this.height/2 + 5, 8, this.height - 10);
+                    ctx.strokeRect(this.width/2 - 10, -this.height/2 + 5, 8, this.height - 10);
                 } else {
                     // Death animation
                     ctx.rotate(this.rotation);
                     ctx.globalAlpha = this.deathAnimation;
                     
-                    // Draw broken spacesuit
-                    ctx.fillStyle = '#ffffff';
-                    ctx.beginPath();
-                    ctx.roundRect(-this.width/4, -this.height/4, this.width/2, this.height/2, 5);
-                    ctx.fill();
-                    ctx.strokeStyle = '#cccccc';
-                    ctx.stroke();
+                    // Scuba suit debris
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(-this.width/4, -this.height/4, this.width/2, this.height/2);
                     
-                    // Draw cracks
-                    ctx.strokeStyle = '#000000';
-                    ctx.lineWidth = 2;
+                    // Helmet debris
                     ctx.beginPath();
-                    ctx.moveTo(-this.width/4 + 5, -this.height/4 + 5);
-                    ctx.lineTo(this.width/4 - 5, this.height/4 - 5);
-                    ctx.moveTo(this.width/4 - 5, -this.height/4 + 5);
-                    ctx.lineTo(-this.width/4 + 5, this.height/4 - 5);
-                    ctx.stroke();
+                    ctx.arc(0, 0, this.headRadius/2, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(200, 230, 255, 0.7)';
+                    ctx.fill();
+                    
+                    // Spots on debris
+                    ctx.fillStyle = '#8b4513';
+                    this.spots.forEach(spot => {
+                        if (Math.random() > 0.7) {
+                            ctx.beginPath();
+                            ctx.arc(
+                                spot.x * (Math.random() * 0.5 + 0.5),
+                                spot.y * (Math.random() * 0.5 + 0.5),
+                                spot.radius, 
+                                0, 
+                                Math.PI * 2
+                            );
+                            ctx.fill();
+                        }
+                    });
                     
                     ctx.globalAlpha = 1;
                 }
@@ -500,7 +509,7 @@
             gameActive = true;
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('gameOverMenu').style.display = 'none';
-            document.getElementById('reloadingOverlay').style.display = 'none';
+            reloadingDisplay.style.display = 'none';
             
             // Reset game state
             cows = [];
@@ -580,13 +589,11 @@
                 const bodyTop = cow.y - cow.height/2;
                 const bodyBottom = cow.y + cow.height/2;
                 
-                // Check helmet hit
-                const helmetX = cow.direction === 1 ? cow.x + cow.width/4 : cow.x - cow.width/4;
-                const helmetY = cow.y;
-                const helmetDist = Math.sqrt((x - helmetX) ** 2 + (y - helmetY) ** 2);
+                // Check head hit
+                const headDist = Math.sqrt((x - cow.x) ** 2 + (y - cow.y) ** 2);
                 
                 if ((x >= bodyLeft && x <= bodyRight && y >= bodyTop && y <= bodyBottom) || 
-                    helmetDist <= cow.headRadius) {
+                    headDist <= cow.headRadius) {
                     
                     // Create explosion
                     const color = '255, 100, 100';
@@ -665,18 +672,31 @@
             
             // Draw stars
             stars.forEach(star => {
-                // Blinking effect
-                star.alpha = 0.5 + Math.sin(Date.now() * star.blinkSpeed) * 0.5;
+                star.twinklePhase += star.twinkleSpeed;
+                const twinkle = Math.sin(star.twinklePhase) * 0.3 + 0.7;
                 
-                ctx.fillStyle = star.color;
-                ctx.globalAlpha = star.alpha;
+                ctx.save();
+                ctx.translate(star.x, star.y);
                 
                 // Draw plus-shaped star
-                const size = star.size;
-                ctx.fillRect(star.x - size/2, star.y - size/6, size, size/3);
-                ctx.fillRect(star.x - size/6, star.y - size/2, size/3, size);
+                ctx.fillStyle = star.color;
+                ctx.globalAlpha = star.alpha * twinkle;
                 
-                ctx.globalAlpha = 1;
+                // Vertical line
+                ctx.fillRect(-1, -star.size, 2, star.size * 2);
+                // Horizontal line
+                ctx.fillRect(-star.size, -1, star.size * 2, 2);
+                
+                // Glow effect
+                ctx.beginPath();
+                ctx.arc(0, 0, star.size * 1.5, 0, Math.PI * 2);
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, star.size * 1.5);
+                gradient.addColorStop(0, star.color);
+                gradient.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                
+                ctx.restore();
                 
                 // Move stars
                 star.x += star.speed;
@@ -775,27 +795,17 @@
                 if (ammo <= 0) {
                     startReloading();
                 }
-            } else {
-                misses++;
-                missCount++;
-                if (missCount >= config.missPenalty) {
-                    lives--;
-                    missCount = 0;
-                    if (lives <= 0) endGame();
-                }
-                startReloading();
-                updateHUD();
             }
         });
 
         function startReloading() {
             isReloading = true;
-            document.getElementById('reloadingOverlay').style.display = 'block';
+            reloadingDisplay.style.display = 'block';
             
             setTimeout(() => {
                 ammo = 5;
                 isReloading = false;
-                document.getElementById('reloadingOverlay').style.display = 'none';
+                reloadingDisplay.style.display = 'none';
                 updateHUD();
             }, config.reloadTime);
         }
