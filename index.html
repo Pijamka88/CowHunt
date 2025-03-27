@@ -203,12 +203,12 @@
 
         // Configuration
         const config = {
-            cowSpeed: 2.0,
-            spawnInterval: 1200,
+            cowSpeed: 3.0, // Увеличенная скорость
+            spawnInterval: 1000,
             maxCows: 6,
-            cowWidth: 60,
-            cowHeight: 40,
-            headRadius: 15,
+            cowWidth: 70,
+            cowHeight: 45,
+            headRadius: 16,
             reloadTime: 1500,
             starCount: 60,
             planetCount: 4,
@@ -219,30 +219,34 @@
         // Cow types
         const cowTypes = [
             { // Type 0 - Basic
-                color: '#ffffff',
+                bodyColor: '#f0e0d0',
                 spotColor: '#8B4513',
-                speed: 1.5,
+                legColor: '#8B4513',
+                speed: 2.5,
                 score: 100,
                 movement: 'linear'
             },
             { // Type 1 - Zigzag
-                color: '#f0f0f0',
+                bodyColor: '#e0d0c0',
                 spotColor: '#A0522D',
-                speed: 2.0,
+                legColor: '#A0522D',
+                speed: 3.0,
                 score: 150,
                 movement: 'zigzag'
             },
             { // Type 2 - Circular
-                color: '#e0e0e0',
+                bodyColor: '#d0c0b0',
                 spotColor: '#8B0000',
-                speed: 1.8,
+                legColor: '#8B0000',
+                speed: 2.8,
                 score: 200,
                 movement: 'circular'
             },
             { // Type 3 - Fast
-                color: '#d0d0d0',
+                bodyColor: '#c0b0a0',
                 spotColor: '#556B2F',
-                speed: 2.5,
+                legColor: '#556B2F',
+                speed: 3.5,
                 score: 250,
                 movement: 'linear'
             }
@@ -307,13 +311,15 @@
                 this.alive = true;
                 this.wingPhase = Math.random() * Math.PI * 2;
                 this.wingSpeed = Math.random() * 0.05 + 0.05;
+                this.tailPhase = Math.random() * Math.PI * 2;
+                this.tailSpeed = Math.random() * 0.1 + 0.05;
                 this.deathAnimation = 0;
                 this.spots = [];
                 this.movementPhase = 0;
                 this.originalY = 0;
                 
                 // Create random spots
-                for (let i = 0; i < 12; i++) {
+                for (let i = 0; i < 15; i++) {
                     this.spots.push({
                         x: Math.random() * this.width - this.width/2,
                         y: Math.random() * this.height - this.height/2,
@@ -348,6 +354,7 @@
 
             updateMovement() {
                 this.movementPhase += 0.02;
+                this.tailPhase += this.tailSpeed;
                 
                 switch(cowTypes[this.type].movement) {
                     case 'zigzag':
@@ -407,15 +414,75 @@
                 }
             }
 
+            drawLegs() {
+                const legWidth = 6;
+                const legHeight = 15;
+                const legSpacing = 12;
+                const startX = -this.width/3;
+                
+                ctx.fillStyle = cowTypes[this.type].legColor;
+                
+                // Передние ноги
+                ctx.fillRect(startX, this.height/2 - 5, legWidth, legHeight);
+                ctx.fillRect(startX + legSpacing, this.height/2 - 5, legWidth, legHeight);
+                
+                // Задние ноги
+                ctx.fillRect(startX + legSpacing*2, this.height/2 - 5, legWidth, legHeight);
+                ctx.fillRect(startX + legSpacing*3, this.height/2 - 5, legWidth, legHeight);
+            }
+
+            drawTail() {
+                const tailBaseX = -this.width/2 + 5;
+                const tailBaseY = 0;
+                const tailLength = 15;
+                const tailSwing = Math.sin(this.tailPhase) * 0.5;
+                
+                ctx.strokeStyle = cowTypes[this.type].legColor;
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                
+                ctx.beginPath();
+                ctx.moveTo(tailBaseX, tailBaseY);
+                ctx.quadraticCurveTo(
+                    tailBaseX - tailLength * 0.7, 
+                    tailBaseY + tailSwing * 10, 
+                    tailBaseX - tailLength, 
+                    tailBaseY + tailSwing * 20
+                );
+                ctx.stroke();
+                
+                // Кисточка на хвосте
+                ctx.fillStyle = cowTypes[this.type].legColor;
+                ctx.beginPath();
+                ctx.arc(
+                    tailBaseX - tailLength, 
+                    tailBaseY + tailSwing * 20, 
+                    4, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+
             draw() {
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 
                 if (this.alive) {
-                    // Body (scafander)
-                    ctx.fillStyle = cowTypes[this.type].color;
+                    // Body (more realistic shape)
+                    ctx.fillStyle = cowTypes[this.type].bodyColor;
                     ctx.beginPath();
+                    
+                    // Основное тело
                     ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
+                    
+                    // Задняя часть (более округлая)
+                    if (this.direction === 1) {
+                        ctx.ellipse(-this.width/3, 0, this.width/4, this.height/2, 0, 0, Math.PI * 2);
+                    } else {
+                        ctx.ellipse(this.width/3, 0, this.width/4, this.height/2, 0, 0, Math.PI * 2);
+                    }
+                    
                     ctx.fill();
                     ctx.strokeStyle = '#666';
                     ctx.lineWidth = 2;
@@ -432,12 +499,44 @@
                     // Head position based on direction
                     const headX = this.direction === 1 ? this.width/2 - this.headRadius/2 : -this.width/2 + this.headRadius/2;
                     
-                    // Head with helmet
-                    ctx.fillStyle = cowTypes[this.type].color;
+                    // Head with muzzle
+                    ctx.fillStyle = cowTypes[this.type].bodyColor;
                     ctx.beginPath();
                     ctx.arc(headX, 0, this.headRadius, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
+                    
+                    // Muzzle
+                    ctx.fillStyle = '#f0e0d0';
+                    ctx.beginPath();
+                    ctx.arc(
+                        headX + (this.direction === 1 ? this.headRadius/2 : -this.headRadius/2), 
+                        0, 
+                        this.headRadius/3, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    // Nostrils
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.arc(
+                        headX + (this.direction === 1 ? this.headRadius/2 : -this.headRadius/2) + 3, 
+                        -2, 
+                        1.5, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.arc(
+                        headX + (this.direction === 1 ? this.headRadius/2 : -this.headRadius/2) + 3, 
+                        2, 
+                        1.5, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
                     
                     // Helmet glass with reflection
                     const gradient = ctx.createRadialGradient(
@@ -494,6 +593,22 @@
                     ctx.closePath();
                     ctx.fill();
                     
+                    // Ears
+                    ctx.fillStyle = cowTypes[this.type].bodyColor;
+                    ctx.beginPath();
+                    ctx.moveTo(headX + (this.direction === 1 ? -5 : 5), -this.headRadius + 5);
+                    ctx.lineTo(headX + (this.direction === 1 ? -10 : 10), -this.headRadius - 5);
+                    ctx.lineTo(headX + (this.direction === 1 ? -15 : 15), -this.headRadius + 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(headX + (this.direction === 1 ? -5 : 5), this.headRadius - 5);
+                    ctx.lineTo(headX + (this.direction === 1 ? -10 : 10), this.headRadius + 5);
+                    ctx.lineTo(headX + (this.direction === 1 ? -15 : 15), this.headRadius - 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    
                     // Wings from center top (new position)
                     const wingYOffset = Math.sin(this.wingPhase) * 15;
                     ctx.fillStyle = 'rgba(200, 230, 255, 0.7)';
@@ -535,22 +650,18 @@
                     ctx.fill();
                     ctx.stroke();
                     
-                    // Legs (scafander details)
-                    ctx.strokeStyle = '#666';
-                    ctx.lineWidth = 3;
-                    for (let i = 0; i < 3; i++) {
-                        ctx.beginPath();
-                        ctx.moveTo(-this.width/4 + i*10, this.height/2);
-                        ctx.lineTo(-this.width/4 + i*10, this.height/2 + 10);
-                        ctx.stroke();
-                    }
+                    // Ноги (4 ноги)
+                    this.drawLegs();
+                    
+                    // Хвост с анимацией
+                    this.drawTail();
                 } else {
                     // Death animation
                     ctx.rotate(this.rotation);
                     ctx.globalAlpha = this.deathAnimation;
                     
-                    // Exploding scafander
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    // Exploding body
+                    ctx.fillStyle = cowTypes[this.type].bodyColor;
                     ctx.beginPath();
                     ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
                     ctx.fill();
