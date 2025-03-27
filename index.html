@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Cosmic Cow Hunt</title>
+    <title>Space Cow Hunt</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body {
@@ -43,7 +43,7 @@
             cursor: pointer;
             background: linear-gradient(to bottom, #d2b48c, #bc8f5f);
             border: none;
-            color: #fff;
+            color: #5a3e2b;
             border-radius: 8px;
             transition: all 0.3s;
         }
@@ -89,30 +89,44 @@
             font-weight: bold;
         }
         .heart {
-            color: #ff3366;
-            text-shadow: 0 0 5px #ff3366;
+            color: #e74c3c;
             font-size: 28px;
+            text-shadow: 0 0 5px rgba(231, 76, 60, 0.7);
             margin: 0 3px;
         }
-        .reloading-overlay {
+        .life-bonus {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: radial-gradient(circle, #e74c3c, #c0392b);
+            border-radius: 50%;
+            box-shadow: 0 0 15px #e74c3c;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 18px;
+        }
+        #reloadingOverlay {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(255, 0, 0, 0.5);
+            background: rgba(231, 76, 60, 0.7);
             color: white;
             padding: 15px 30px;
             border-radius: 10px;
             font-size: 24px;
             font-weight: bold;
-            z-index: 500;
             display: none;
+            z-index: 500;
         }
     </style>
 </head>
 <body>
     <div id="mainMenu" class="menu">
-        <h1>Cosmic Cow Hunt</h1>
+        <h1>Space Cow Hunt</h1>
         <p>Уничтожьте коров в скафандрах!</p>
         <button onclick="startGame()">Начать игру</button>
     </div>
@@ -125,7 +139,7 @@
         <button onclick="startGame()">Играть снова</button>
     </div>
 
-    <div id="reloadingOverlay" class="reloading-overlay">Reloading...</div>
+    <div id="reloadingOverlay">Reloading</div>
 
     <div id="topHUD">
         <div class="hud-item">
@@ -189,11 +203,11 @@
             cowSpeed: 1.8,
             spawnInterval: 1500,
             maxCows: 5,
-            cowWidth: 60,
-            cowHeight: 40,
-            headRadius: 15,
+            cowWidth: 50,
+            cowHeight: 60,
+            headRadius: 18,
             reloadTime: 2000,
-            starCount: 80,
+            starCount: 100,
             nebulaCount: 3,
             lifeBonusChance: 0.1,
             missPenalty: 3
@@ -203,16 +217,14 @@
         function initStars() {
             stars = [];
             for (let i = 0; i < config.starCount; i++) {
-                const isYellow = Math.random() > 0.7;
                 stars.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
                     size: Math.random() * 2 + 1,
                     alpha: Math.random() * 0.8 + 0.2,
                     speed: Math.random() * 0.2 + 0.1,
-                    color: isYellow ? '#ffff66' : '#66ccff',
-                    blinkSpeed: Math.random() * 0.02 + 0.01,
-                    blinkPhase: Math.random() * Math.PI * 2
+                    color: Math.random() > 0.7 ? '#ffff00' : '#3399ff',
+                    pulseSpeed: Math.random() * 0.02 + 0.01
                 });
             }
         }
@@ -248,7 +260,7 @@
                     this.spots.push({
                         x: Math.random() * this.width - this.width/2,
                         y: Math.random() * this.height - this.height/2,
-                        radius: Math.random() * 3 + 1
+                        size: Math.random() * 5 + 3
                     });
                 }
             }
@@ -290,7 +302,9 @@
                         y: this.y,
                         radius: 15,
                         collected: false,
-                        alpha: 1
+                        alpha: 1,
+                        symbol: '♥',
+                        color: '#e74c3c'
                     });
                 }
             }
@@ -333,29 +347,29 @@
                 
                 if (this.alive) {
                     // Body (scafander)
-                    ctx.fillStyle = 'white';
+                    ctx.fillStyle = '#ffffff';
                     ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
                     
                     // Spots
                     ctx.fillStyle = '#8b4513';
                     this.spots.forEach(spot => {
                         ctx.beginPath();
-                        ctx.arc(spot.x, spot.y, spot.radius, 0, Math.PI * 2);
+                        ctx.arc(spot.x, spot.y, spot.size, 0, Math.PI * 2);
                         ctx.fill();
                     });
                     
                     // Helmet
+                    ctx.fillStyle = 'rgba(200, 200, 255, 0.3)';
                     ctx.beginPath();
                     ctx.arc(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 : this.width/2 - this.headRadius/2, 
                         0, 
-                        -this.height/4, 
                         this.headRadius, 
                         0, 
                         Math.PI * 2
                     );
-                    ctx.fillStyle = 'rgba(200, 200, 255, 0.7)';
                     ctx.fill();
-                    ctx.strokeStyle = 'white';
+                    ctx.strokeStyle = '#ffffff';
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
@@ -363,79 +377,66 @@
                     ctx.fillStyle = 'rgba(100, 150, 255, 0.5)';
                     ctx.beginPath();
                     ctx.arc(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 : this.width/2 - this.headRadius/2, 
                         0, 
-                        -this.height/4, 
                         this.headRadius * 0.7, 
                         0, 
                         Math.PI * 2
                     );
                     ctx.fill();
                     
-                    // Wings
+                    // Wings (from top center)
                     const wingYOffset = Math.sin(this.wingPhase) * 8;
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
                     
                     // Left wing
                     ctx.beginPath();
-                    ctx.moveTo(-this.width/2, 0);
-                    ctx.lineTo(-this.width/2 - 20, -10 + wingYOffset);
-                    ctx.lineTo(-this.width/2 - 25, 10 + wingYOffset);
+                    ctx.moveTo(0, -this.height/2);
+                    ctx.lineTo(-20, -this.height/2 - 20 + wingYOffset);
+                    ctx.lineTo(-40, -this.height/2 + wingYOffset);
                     ctx.closePath();
                     ctx.fill();
                     
                     // Right wing
                     ctx.beginPath();
-                    ctx.moveTo(this.width/2, 0);
-                    ctx.lineTo(this.width/2 + 20, -10 + wingYOffset);
-                    ctx.lineTo(this.width/2 + 25, 10 + wingYOffset);
+                    ctx.moveTo(0, -this.height/2);
+                    ctx.lineTo(20, -this.height/2 - 20 + wingYOffset);
+                    ctx.lineTo(40, -this.height/2 + wingYOffset);
                     ctx.closePath();
                     ctx.fill();
                     
-                    // Jetpack
-                    ctx.fillStyle = '#333';
-                    ctx.fillRect(-10, this.height/2 - 15, 20, 15);
-                    
-                    // Jet flames
-                    ctx.fillStyle = '#ff6600';
-                    ctx.beginPath();
-                    ctx.moveTo(-10, this.height/2);
-                    ctx.lineTo(0, this.height/2 + 10 + Math.sin(Date.now()/100) * 5);
-                    ctx.lineTo(10, this.height/2);
-                    ctx.closePath();
-                    ctx.fill();
+                    // Legs
+                    ctx.fillStyle = '#ffffff';
+                    for (let i = 0; i < 4; i++) {
+                        ctx.fillRect(
+                            -this.width/2 + 5 + i * 10, 
+                            this.height/2 - 5, 
+                            5, 
+                            15
+                        );
+                    }
                 } else {
                     // Death animation
                     ctx.rotate(this.rotation);
                     ctx.globalAlpha = this.deathAnimation;
                     
-                    // Broken scafander
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(-this.width/4, -this.height/4, this.width/2, this.height/2);
+                    // Scafander breaking
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-this.width/4, -this.height/4, this.width/2, this.height/2);
                     
-                    // Spots
-                    ctx.fillStyle = '#8b4513';
-                    this.spots.forEach(spot => {
-                        if (Math.random() > 0.3) {
-                            ctx.beginPath();
-                            ctx.arc(spot.x, spot.y, spot.radius, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
-                    });
-                    
-                    // Broken helmet
+                    // Helmet breaking
                     ctx.beginPath();
-                    ctx.arc(0, -this.height/4, this.headRadius * 0.8, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(200, 200, 255, 0.5)';
-                    ctx.fill();
+                    ctx.arc(0, 0, this.headRadius/2, 0, Math.PI * 2);
+                    ctx.stroke();
                     
                     // Debris
-                    ctx.fillStyle = 'white';
                     for (let i = 0; i < 5; i++) {
-                        ctx.fillRect(
+                        ctx.strokeRect(
                             (Math.random() - 0.5) * 40,
                             (Math.random() - 0.5) * 40,
-                            Math.random() * 10 + 5,
-                            Math.random() * 10 + 5
+                            Math.random() * 15 + 5,
+                            Math.random() * 15 + 5
                         );
                     }
                     
@@ -595,15 +596,15 @@
                 const bodyBottom = cow.y + cow.height/2;
                 
                 // Check helmet hit
-                const headX = cow.x;
-                const headY = cow.y - cow.height/4;
-                const headDist = Math.sqrt((x - headX) ** 2 + (y - headY) ** 2);
+                const helmetX = cow.direction === 1 ? cow.x - cow.width/2 + cow.headRadius/2 : cow.x + cow.width/2 - cow.headRadius/2;
+                const helmetY = cow.y;
+                const helmetDist = Math.sqrt((x - helmetX) ** 2 + (y - helmetY) ** 2);
                 
                 if ((x >= bodyLeft && x <= bodyRight && y >= bodyTop && y <= bodyBottom) || 
-                    headDist <= cow.headRadius) {
+                    helmetDist <= cow.headRadius) {
                     
                     // Create explosion
-                    explosions.push(new Explosion(cow.x, cow.y, '255, 100, 100'));
+                    explosions.push(new Explosion(cow.x, cow.y, '255, 255, 255'));
                     
                     cow.die();
                     deadCows.push(cow);
@@ -629,7 +630,7 @@
                     updateHUD();
                     
                     // Create pink explosion
-                    explosions.push(new Explosion(bonus.x, bonus.y, '255, 51, 102'));
+                    explosions.push(new Explosion(bonus.x, bonus.y, '231, 76, 60'));
                     hit = true;
                     break;
                 }
@@ -677,28 +678,20 @@
             });
             
             // Draw stars
+            const time = Date.now();
             stars.forEach(star => {
-                star.blinkPhase += star.blinkSpeed;
-                const alpha = star.alpha * (0.7 + Math.sin(star.blinkPhase) * 0.3);
+                // Pulsing effect
+                const pulse = Math.sin(time * star.pulseSpeed) * 0.3 + 0.7;
                 
-                ctx.save();
-                ctx.translate(star.x, star.y);
-                ctx.rotate(Math.PI/4);
+                ctx.fillStyle = star.color;
+                ctx.globalAlpha = star.alpha * pulse;
                 
-                ctx.fillStyle = `${star.color}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`;
+                // Draw plus-shaped star
+                const size = star.size * pulse;
+                ctx.fillRect(star.x - size/2, star.y, size, size);
+                ctx.fillRect(star.x, star.y - size/2, size, size);
                 
-                // Draw + shape
-                ctx.fillRect(-star.size, -star.size/3, star.size*2, star.size*2/3);
-                ctx.fillRect(-star.size/3, -star.size, star.size*2/3, star.size*2);
-                
-                // Twinkle effect
-                if (Math.random() < 0.1) {
-                    ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.7})`;
-                    ctx.fillRect(-star.size*1.5, -star.size/2, star.size*3, star.size);
-                    ctx.fillRect(-star.size/2, -star.size*1.5, star.size, star.size*3);
-                }
-                
-                ctx.restore();
+                ctx.globalAlpha = 1;
                 
                 // Move stars
                 star.x += star.speed;
@@ -713,13 +706,17 @@
             lifeBonuses.forEach((bonus, index) => {
                 if (bonus.collected) return;
                 
-                ctx.fillStyle = `rgba(255, 51, 102, ${bonus.alpha})`;
-                ctx.beginPath();
-                ctx.arc(bonus.x, bonus.y, bonus.radius, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.fillStyle = bonus.color;
+                ctx.globalAlpha = bonus.alpha;
                 
-                // Pulse animation
-                bonus.alpha = 0.7 + Math.sin(Date.now() / 200) * 0.3;
+                // Draw pulsing heart
+                const pulse = Math.sin(Date.now() / 300) * 0.2 + 0.8;
+                ctx.font = `${18 * pulse}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(bonus.symbol, bonus.x, bonus.y);
+                
+                ctx.globalAlpha = 1;
                 
                 // Remove if out of screen
                 if (bonus.y > canvas.height + bonus.radius) {
@@ -792,18 +789,6 @@
                 ammo--;
                 checkHit(x, y);
                 shots.push(new Shot(x, y));
-                updateHUD();
-                
-                if (ammo === 0) {
-                    isReloading = true;
-                    reloadingOverlay.style.display = 'block';
-                    setTimeout(() => {
-                        ammo = 5;
-                        isReloading = false;
-                        reloadingOverlay.style.display = 'none';
-                        updateHUD();
-                    }, config.reloadTime);
-                }
             } else {
                 misses++;
                 missCount++;
@@ -812,8 +797,16 @@
                     missCount = 0;
                     if (lives <= 0) endGame();
                 }
-                updateHUD();
+                isReloading = true;
+                reloadingOverlay.style.display = 'block';
+                setTimeout(() => {
+                    ammo = 5;
+                    isReloading = false;
+                    reloadingOverlay.style.display = 'none';
+                    updateHUD();
+                }, config.reloadTime);
             }
+            updateHUD();
         });
 
         window.addEventListener('resize', resizeCanvas);
