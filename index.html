@@ -222,25 +222,25 @@
             { // Type 0 - Basic
                 bodyColor: '#f0e0d0',
                 spotsColor: '#8B4513',
-                helmetColor: '#d0d0d0',
+                helmetColor: '#cccccc',
                 wingColor: 'rgba(200, 230, 255, 0.7)',
                 score: 100,
                 speed: 1.5,
                 movePattern: 'linear'
             },
             { // Type 1 - Fast
-                bodyColor: '#e8d8c8',
+                bodyColor: '#e0d0c0',
                 spotsColor: '#A0522D',
-                helmetColor: '#c8c8c8',
+                helmetColor: '#dddddd',
                 wingColor: 'rgba(180, 220, 255, 0.8)',
                 score: 150,
                 speed: 2.2,
                 movePattern: 'wave'
             },
             { // Type 2 - Tank
-                bodyColor: '#e0d0c0',
+                bodyColor: '#d0c0b0',
                 spotsColor: '#654321',
-                helmetColor: '#b8b8b8',
+                helmetColor: '#bbbbbb',
                 wingColor: 'rgba(160, 210, 255, 0.6)',
                 score: 200,
                 speed: 1.2,
@@ -268,25 +268,22 @@
         // Initialize planets
         function initPlanets() {
             planets = [];
-            const planetTextures = [
-                { color: '#3399ff', landColor: '#0066cc', pattern: 'stripes' },
-                { color: '#33ccff', landColor: '#0099cc', pattern: 'circles' },
-                { color: '#ffcc00', landColor: '#ff9900', pattern: 'stripes' },
-                { color: '#ff9933', landColor: '#cc6600', pattern: 'circles' },
-                { color: '#66ccff', landColor: '#3399ff', pattern: 'stripes' }
+            const planetColors = [
+                { color: '#3399ff', landColor: '#0066cc' },
+                { color: '#33ccff', landColor: '#0099cc' },
+                { color: '#ffcc00', landColor: '#ff9900' },
+                { color: '#ff9933', landColor: '#cc6600' },
+                { color: '#66ccff', landColor: '#3399ff' }
             ];
             
             for (let i = 0; i < config.planetCount; i++) {
-                const texture = planetTextures[i % planetTextures.length];
+                const colors = planetColors[i % planetColors.length];
                 planets.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
                     radius: Math.random() * 50 + 40,
-                    color: texture.color,
-                    landColor: texture.landColor,
-                    pattern: texture.pattern,
-                    rotation: 0,
-                    rotationSpeed: (Math.random() - 0.5) * 0.005,
+                    color: colors.color,
+                    landColor: colors.landColor,
                     speed: Math.random() * 0.1 + 0.05
                 });
             }
@@ -352,15 +349,26 @@
                 this.alive = true;
                 this.deathAnimation = 0;
                 this.moveTime = 0;
+                this.deathParticles = [];
             }
 
             die() {
                 this.alive = false;
                 this.deathAnimation = 1;
-                this.vx = (Math.random() - 0.5) * 3;
-                this.vy = 1;
-                this.rotation = 0;
-                this.rotationSpeed = (Math.random() - 0.5) * 0.1;
+                
+                // Create death particles
+                this.deathParticles = [];
+                for (let i = 0; i < 20; i++) {
+                    this.deathParticles.push({
+                        x: 0,
+                        y: 0,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4 - 1,
+                        size: Math.random() * 4 + 2,
+                        color: Math.random() > 0.5 ? cowTypes[this.type].bodyColor : cowTypes[this.type].spotsColor,
+                        life: 1
+                    });
+                }
                 
                 // Chance to spawn life bonus
                 if (Math.random() < config.lifeBonusChance) {
@@ -406,15 +414,19 @@
                         this.vy *= -1;
                     }
                 } else {
-                    // Death animation
-                    this.deathAnimation -= 0.02;
-                    this.x += this.vx;
-                    this.y += this.vy;
-                    this.vy *= 1.05;
-                    this.rotation += this.rotationSpeed;
+                    // Update death animation
+                    this.deathAnimation -= 0.01;
                     
-                    // Remove if animation complete or out of screen
-                    if (this.deathAnimation <= 0 || this.y > canvas.height + this.height*2) {
+                    // Update particles
+                    this.deathParticles.forEach(p => {
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += 0.1; // Gravity
+                        p.life -= 0.02;
+                    });
+                    
+                    // Remove if animation complete
+                    if (this.deathAnimation <= 0) {
                         const index = deadCows.indexOf(this);
                         if (index !== -1) deadCows.splice(index, 1);
                     }
@@ -426,46 +438,15 @@
                 ctx.translate(this.x, this.y);
                 
                 if (this.alive) {
-                    // Body (more realistic shape)
+                    // Body (realistic cow shape)
                     ctx.fillStyle = cowTypes[this.type].bodyColor;
-                    ctx.beginPath();
                     
                     // Main body
+                    ctx.beginPath();
                     ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
-                    
-                    // Add slight curve for more organic shape
-                    ctx.moveTo(this.width/2, 0);
-                    ctx.quadraticCurveTo(
-                        this.width/2 + 5, 
-                        -this.height/3, 
-                        this.width/3, 
-                        -this.height/2
-                    );
-                    ctx.quadraticCurveTo(
-                        -this.width/3, 
-                        -this.height/2, 
-                        -this.width/2, 
-                        0
-                    );
-                    ctx.quadraticCurveTo(
-                        -this.width/3, 
-                        this.height/2, 
-                        this.width/3, 
-                        this.height/2
-                    );
-                    ctx.quadraticCurveTo(
-                        this.width/2 + 5, 
-                        this.height/3, 
-                        this.width/2, 
-                        0
-                    );
-                    
                     ctx.fill();
-                    ctx.strokeStyle = '#666';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
                     
-                    // Spots (more natural distribution)
+                    // Spots
                     ctx.fillStyle = cowTypes[this.type].spotsColor;
                     this.spots.forEach(spot => {
                         ctx.beginPath();
@@ -473,11 +454,10 @@
                         ctx.fill();
                     });
                     
-                    // Head with helmet (on correct side based on direction)
-                    const headX = this.direction === 1 ? this.width/2 - this.headWidth/2 : -this.width/2 + this.headWidth/2;
+                    // Head (on correct side based on direction)
+                    const headX = this.direction === 1 ? this.width/2 - 5 : -this.width/2 + 5;
                     
-                    // Head shape (more realistic)
-                    ctx.fillStyle = cowTypes[this.type].helmetColor;
+                    ctx.fillStyle = cowTypes[this.type].bodyColor;
                     ctx.beginPath();
                     ctx.ellipse(
                         headX, 
@@ -489,18 +469,10 @@
                         Math.PI * 2
                     );
                     ctx.fill();
-                    ctx.stroke();
                     
-                    // Helmet glass with reflection
-                    const gradient = ctx.createRadialGradient(
-                        headX, 0, 0,
-                        headX, 0, this.headWidth/2 - 2
-                    );
-                    gradient.addColorStop(0, 'rgba(100, 200, 255, 0.7)');
-                    gradient.addColorStop(0.7, 'rgba(100, 200, 255, 0.3)');
-                    gradient.addColorStop(1, 'rgba(100, 200, 255, 0.1)');
-                    
-                    ctx.fillStyle = gradient;
+                    // Helmet
+                    ctx.strokeStyle = cowTypes[this.type].helmetColor;
+                    ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.ellipse(
                         headX, 
@@ -511,168 +483,98 @@
                         0, 
                         Math.PI * 2
                     );
+                    ctx.stroke();
+                    
+                    // Helmet glass
+                    ctx.fillStyle = 'rgba(100, 200, 255, 0.3)';
+                    ctx.beginPath();
+                    ctx.ellipse(
+                        headX, 
+                        0, 
+                        this.headWidth/2 - 4, 
+                        this.headHeight/2 - 4, 
+                        0, 
+                        0, 
+                        Math.PI * 2
+                    );
                     ctx.fill();
                     
-                    // Eyes with pupils (more realistic positioning)
-                    const eyeXBase = headX + (this.direction === 1 ? -this.headWidth/4 : this.headWidth/4);
+                    // Eyes with pupils (two eyes)
+                    const eyeX = headX + (this.direction === 1 ? -5 : 5);
                     
                     // Left eye
                     ctx.fillStyle = 'white';
                     ctx.beginPath();
-                    ctx.arc(eyeXBase, -this.headHeight/4, 3, 0, Math.PI * 2);
+                    ctx.arc(eyeX, -3, 3, 0, Math.PI * 2);
                     ctx.fill();
                     
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.arc(
-                        eyeXBase + (this.direction === 1 ? -1 : 1), 
-                        -this.headHeight/4, 
-                        1.5, 
-                        0, 
-                        Math.PI * 2
-                    );
+                    ctx.arc(eyeX + (this.direction === 1 ? -1 : 1), -3, 1.5, 0, Math.PI * 2);
                     ctx.fill();
                     
                     // Right eye
                     ctx.fillStyle = 'white';
                     ctx.beginPath();
-                    ctx.arc(eyeXBase, this.headHeight/4, 3, 0, Math.PI * 2);
+                    ctx.arc(eyeX, 3, 3, 0, Math.PI * 2);
                     ctx.fill();
                     
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.arc(
-                        eyeXBase + (this.direction === 1 ? -1 : 1), 
-                        this.headHeight/4, 
-                        1.5, 
-                        0, 
-                        Math.PI * 2
-                    );
-                    ctx.fill();
-                    
-                    // Nostrils
-                    ctx.fillStyle = '#666';
-                    ctx.beginPath();
-                    ctx.arc(
-                        headX + (this.direction === 1 ? -this.headWidth/3 : this.headWidth/3), 
-                        0, 
-                        2, 
-                        0, 
-                        Math.PI * 2
-                    );
+                    ctx.arc(eyeX + (this.direction === 1 ? -1 : 1), 3, 1.5, 0, Math.PI * 2);
                     ctx.fill();
                     
                     // Ears
                     ctx.fillStyle = cowTypes[this.type].bodyColor;
                     ctx.beginPath();
-                    ctx.moveTo(
-                        headX + (this.direction === 1 ? -this.headWidth/3 : this.headWidth/3), 
-                        -this.headHeight/2
-                    );
-                    ctx.lineTo(
-                        headX + (this.direction === 1 ? -this.headWidth/2 : this.headWidth/2), 
-                        -this.headHeight
-                    );
-                    ctx.lineTo(
-                        headX + (this.direction === 1 ? -this.headWidth/6 : this.headWidth/6), 
-                        -this.headHeight/2
-                    );
+                    ctx.moveTo(headX + (this.direction === 1 ? -8 : 8), -this.headHeight/2 + 2);
+                    ctx.lineTo(headX + (this.direction === 1 ? -12 : 12), -this.headHeight/2 - 5);
+                    ctx.lineTo(headX + (this.direction === 1 ? -5 : 5), -this.headHeight/2);
                     ctx.closePath();
                     ctx.fill();
-                    ctx.stroke();
                     
-                    // Horns (more realistic shape)
-                    ctx.fillStyle = '#d0b090';
                     ctx.beginPath();
-                    ctx.moveTo(
-                        headX + (this.direction === 1 ? -this.headWidth/4 : this.headWidth/4), 
-                        -this.headHeight/2
-                    );
-                    ctx.quadraticCurveTo(
-                        headX + (this.direction === 1 ? -this.headWidth/2 : this.headWidth/2), 
-                        -this.headHeight * 1.5, 
-                        headX + (this.direction === 1 ? -this.headWidth/8 : this.headWidth/8), 
-                        -this.headHeight/2
-                    );
+                    ctx.moveTo(headX + (this.direction === 1 ? -8 : 8), this.headHeight/2 - 2);
+                    ctx.lineTo(headX + (this.direction === 1 ? -12 : 12), this.headHeight/2 + 5);
+                    ctx.lineTo(headX + (this.direction === 1 ? -5 : 5), this.headHeight/2);
                     ctx.closePath();
                     ctx.fill();
-                    ctx.stroke();
                     
-                    // Wings (from center, more organic shape)
-                    const wingYOffset = Math.sin(this.wingPhase) * 10;
+                    // Wings (from center)
+                    const wingYOffset = Math.sin(this.wingPhase) * 8;
                     ctx.fillStyle = cowTypes[this.type].wingColor;
                     
                     // Right wing
                     ctx.beginPath();
                     ctx.moveTo(5, 0);
-                    ctx.bezierCurveTo(
-                        25, -15 + wingYOffset,
-                        35, -25 + wingYOffset,
-                        15, -30 + wingYOffset
-                    );
-                    ctx.bezierCurveTo(
-                        5, -25 + wingYOffset,
-                        15, -10 + wingYOffset/2,
-                        5, 0
-                    );
+                    ctx.quadraticCurveTo(25, -15 + wingYOffset, 5, -25 + wingYOffset);
+                    ctx.quadraticCurveTo(15, -10 + wingYOffset/2, 5, 0);
                     ctx.fill();
-                    ctx.strokeStyle = '#666';
-                    ctx.stroke();
                     
                     // Left wing
                     ctx.beginPath();
                     ctx.moveTo(5, 0);
-                    ctx.bezierCurveTo(
-                        25, 15 - wingYOffset,
-                        35, 25 - wingYOffset,
-                        15, 30 - wingYOffset
-                    );
-                    ctx.bezierCurveTo(
-                        5, 25 - wingYOffset,
-                        15, 10 - wingYOffset/2,
-                        5, 0
-                    );
+                    ctx.quadraticCurveTo(25, 15 - wingYOffset, 5, 25 - wingYOffset);
+                    ctx.quadraticCurveTo(15, 10 - wingYOffset/2, 5, 0);
                     ctx.fill();
-                    ctx.stroke();
                     
-                    // Legs (more realistic)
-                    ctx.strokeStyle = '#666';
-                    ctx.lineWidth = 3;
-                    for (let i = 0; i < 4; i++) {
-                        const legX = -this.width/3 + i * (this.width/4);
-                        ctx.beginPath();
-                        ctx.moveTo(legX, this.height/2);
-                        ctx.lineTo(legX, this.height/2 + 12);
-                        ctx.lineTo(legX + 3, this.height/2 + 15);
-                        ctx.stroke();
+                    // Legs
+                    ctx.fillStyle = cowTypes[this.type].bodyColor;
+                    for (let i = 0; i < 2; i++) {
+                        // Front legs
+                        ctx.fillRect(-this.width/4 + i*15, this.height/4 - 5, 8, 15);
+                        // Back legs
+                        ctx.fillRect(-this.width/4 + i*15 + 5, this.height/2 - 5, 8, 15);
                     }
                 } else {
-                    // Death animation
-                    ctx.rotate(this.rotation);
+                    // Death animation - draw particles
                     ctx.globalAlpha = this.deathAnimation;
-                    
-                    // Exploding body
-                    ctx.fillStyle = 'rgba(240, 224, 208, 0.7)';
-                    ctx.beginPath();
-                    ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Cracks
-                    ctx.strokeStyle = '#666';
-                    ctx.lineWidth = 2;
-                    for (let i = 0; i < 5; i++) {
+                    this.deathParticles.forEach(p => {
+                        ctx.fillStyle = p.color;
                         ctx.beginPath();
-                        ctx.moveTo(
-                            (Math.random() - 0.5) * this.width,
-                            (Math.random() - 0.5) * this.height
-                        );
-                        ctx.lineTo(
-                            (Math.random() - 0.5) * this.width,
-                            (Math.random() - 0.5) * this.height
-                        );
-                        ctx.stroke();
-                    }
-                    
+                        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
                     ctx.globalAlpha = 1;
                 }
                 
@@ -847,7 +749,7 @@
                 const bodyRadiusY = cow.height/2;
                 
                 // Check head hit
-                const headX = cow.direction === 1 ? cow.x + cow.width/2 - cow.headWidth/2 : cow.x - cow.width/2 + cow.headWidth/2;
+                const headX = cow.direction === 1 ? cow.x + cow.width/2 - 5 : cow.x - cow.width/2 + 5;
                 const headY = cow.y;
                 const headRadiusX = cow.headWidth/2;
                 const headRadiusY = cow.headHeight/2;
@@ -858,9 +760,9 @@
                 const inBody = normalizedX * normalizedX + normalizedY * normalizedY <= 1;
                 
                 // Check if point is in head ellipse
-                const headNormalizedX = (x - headX) / headRadiusX;
-                const headNormalizedY = (y - headY) / headRadiusY;
-                const inHead = headNormalizedX * headNormalizedX + headNormalizedY * headNormalizedY <= 1;
+                const headNormX = (x - headX) / headRadiusX;
+                const headNormY = (y - headY) / headRadiusY;
+                const inHead = headNormX * headNormX + headNormY * headNormY <= 1;
                 
                 if (inBody || inHead) {
                     // Create explosion
@@ -927,105 +829,30 @@
             ctx.restore();
         }
 
-        function drawPlanetTexture(x, y, radius, color, landColor, pattern) {
-            ctx.save();
-            ctx.translate(x, y);
-            
+        function drawPlanet(x, y, radius, color, landColor) {
             // Base planet
-            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-            gradient.addColorStop(0, lightenColor(color, 20));
-            gradient.addColorStop(1, color);
-            
-            ctx.fillStyle = gradient;
+            ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
             ctx.fill();
             
-            // Land details based on pattern
+            // Land circles
             ctx.fillStyle = landColor;
-            
-            switch(pattern) {
-                case 'stripes':
-                    // Vertical stripes
-                    for (let i = 0; i < 6; i++) {
-                        const angle = Math.PI * 2 * i / 6;
-                        const width = Math.PI / 8;
-                        
-                        ctx.beginPath();
-                        ctx.arc(0, 0, radius, angle - width, angle + width);
-                        ctx.lineTo(
-                            Math.cos(angle + width) * radius * 0.7,
-                            Math.sin(angle + width) * radius * 0.7
-                        );
-                        ctx.arc(0, 0, radius * 0.7, angle + width, angle - width, true);
-                        ctx.closePath();
-                        ctx.fill();
-                    }
-                    
-                    // Horizontal stripes
-                    for (let i = 0; i < 3; i++) {
-                        const yPos = (i - 1) * radius * 0.6;
-                        const height = radius * 0.15;
-                        
-                        ctx.beginPath();
-                        ctx.ellipse(0, yPos, radius * 0.9, height, 0, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                    break;
-                    
-                case 'circles':
-                    // Large circles
-                    for (let i = 0; i < 5; i++) {
-                        const angle = Math.PI * 2 * i / 5;
-                        const dist = radius * (0.3 + Math.random() * 0.4);
-                        const size = radius * 0.25;
-                        
-                        ctx.beginPath();
-                        ctx.arc(
-                            Math.cos(angle) * dist,
-                            Math.sin(angle) * dist,
-                            size,
-                            0,
-                            Math.PI * 2
-                        );
-                        ctx.fill();
-                    }
-                    
-                    // Small circles
-                    for (let i = 0; i < 10; i++) {
-                        const angle = Math.PI * 2 * Math.random();
-                        const dist = radius * (0.1 + Math.random() * 0.7);
-                        const size = radius * 0.1;
-                        
-                        ctx.beginPath();
-                        ctx.arc(
-                            Math.cos(angle) * dist,
-                            Math.sin(angle) * dist,
-                            size,
-                            0,
-                            Math.PI * 2
-                        );
-                        ctx.fill();
-                    }
-                    break;
+            for (let i = 0; i < 8; i++) {
+                const angle = Math.PI * 2 * i / 8;
+                const dist = radius * (0.2 + Math.random() * 0.6);
+                const size = radius * 0.2;
+                
+                ctx.beginPath();
+                ctx.arc(
+                    x + Math.cos(angle) * dist,
+                    y + Math.sin(angle) * dist,
+                    size * (0.7 + Math.random() * 0.3),
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
             }
-            
-            ctx.restore();
-        }
-
-        function lightenColor(color, percent) {
-            const num = parseInt(color.replace('#', ''), 16);
-            const amt = Math.round(2.55 * percent);
-            const R = (num >> 16) + amt;
-            const G = (num >> 8 & 0x00FF) + amt;
-            const B = (num & 0x0000FF) + amt;
-            
-            return '#' + (
-                0x1000000 +
-                (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
-                (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
-                (B < 255 ? (B < 1 ? 0 : B) : 255)
-            ).toString(16).slice(1);
         }
 
         function drawBackground() {
@@ -1079,14 +906,12 @@
             
             // Draw planets
             planets.forEach(planet => {
-                planet.rotation += planet.rotationSpeed;
-                drawPlanetTexture(
+                drawPlanet(
                     planet.x, 
                     planet.y, 
                     planet.radius, 
                     planet.color, 
-                    planet.landColor, 
-                    planet.pattern
+                    planet.landColor
                 );
                 
                 // Move planet
