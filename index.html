@@ -4,6 +4,16 @@
     <title>Cosmic Cow Hunt</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        @keyframes buttonHover {
+            0% { box-shadow: 0 0 10px rgba(51, 153, 255, 0.7); }
+            50% { box-shadow: 0 0 20px rgba(51, 153, 255, 0.9); }
+            100% { box-shadow: 0 0 10px rgba(51, 153, 255, 0.7); }
+        }
         body {
             margin: 0;
             overflow: hidden;
@@ -29,28 +39,54 @@
             border: 2px solid #3399ff;
             z-index: 1000;
             max-width: 80%;
-            box-shadow: 0 0 20px rgba(51, 153, 255, 0.7);
+            box-shadow: 0 0 30px rgba(51, 153, 255, 0.5);
+            animation: pulse 2s infinite;
         }
         .menu h1 {
             color: #fff;
             margin-bottom: 20px;
-            text-shadow: 0 0 10px #3399ff;
+            text-shadow: 0 0 15px #3399ff;
+            font-size: 2.5em;
+        }
+        .menu p {
+            font-size: 1.2em;
+            margin-bottom: 25px;
         }
         .menu button {
-            padding: 12px 25px;
-            font-size: 18px;
-            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            margin: 10px;
             cursor: pointer;
             background: linear-gradient(to bottom, #3399ff, #0066cc);
             border: none;
             color: white;
             border-radius: 8px;
             transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
         }
         .menu button:hover {
-            background: linear-gradient(to bottom, #0066cc, #3399ff);
+            animation: buttonHover 1.5s infinite;
             transform: scale(1.05);
-            box-shadow: 0 0 10px rgba(51, 153, 255, 0.7);
+        }
+        .menu button:before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to bottom right,
+                rgba(255,255,255,0) 45%,
+                rgba(255,255,255,0.3) 50%,
+                rgba(255,255,255,0) 55%
+            );
+            transform: rotate(30deg);
+            transition: all 0.5s;
+        }
+        .menu button:hover:before {
+            left: 100%;
         }
         #topHUD {
             position: fixed;
@@ -93,6 +129,11 @@
             text-shadow: 0 0 10px #ff3366;
             font-size: 28px;
             margin: 0 5px;
+            transition: all 0.3s;
+        }
+        .heart.lost {
+            color: #666;
+            text-shadow: none;
         }
         .reloading {
             position: fixed;
@@ -124,47 +165,48 @@
 </head>
 <body>
     <div id="mainMenu" class="menu">
-        <h1>Cosmic Cow Hunt</h1>
+        <h1>COSMIC COW HUNT</h1>
         <p>Уничтожьте космических коров!</p>
-        <button onclick="startGame()">Начать игру</button>
+        <button onclick="startGame()">НАЧАТЬ ИГРУ</button>
+        <button onclick="showInstructions()">ИНСТРУКЦИЯ</button>
     </div>
 
     <div id="gameOverMenu" class="menu" style="display: none;">
-        <h1>Миссия завершена!</h1>
+        <h1>МИССИЯ ЗАВЕРШЕНА!</h1>
         <p>Счет: <span id="finalScore">0</span></p>
         <p>Попаданий: <span id="finalHits">0</span></p>
         <p>Промахов: <span id="finalMisses">0</span></p>
-        <button onclick="startGame()">Играть снова</button>
+        <button onclick="startGame()">ИГРАТЬ СНОВА</button>
     </div>
 
-    <div id="reloading" class="reloading" style="display: none;">Reloading...</div>
+    <div id="reloading" class="reloading" style="display: none;">ПЕРЕЗАРЯДКА...</div>
 
     <div id="topHUD">
         <div class="hud-item">
-            <div class="hud-label">SCORE</div>
+            <div class="hud-label">СЧЕТ</div>
             <div class="hud-value" id="scoreDisplay">0</div>
         </div>
         <div class="hud-item">
-            <div class="hud-label">TIME</div>
+            <div class="hud-label">ВРЕМЯ</div>
             <div class="hud-value" id="timer">1:00</div>
         </div>
         <div class="hud-item">
-            <div class="hud-label">LIVES</div>
+            <div class="hud-label">ЖИЗНИ</div>
             <div class="hud-value" id="lives"><span class="heart">♥</span><span class="heart">♥</span><span class="heart">♥</span></div>
         </div>
     </div>
 
     <div id="bottomHUD">
         <div class="hud-item">
-            <div class="hud-label">AMMO</div>
+            <div class="hud-label">ПАТРОНЫ</div>
             <div class="hud-value" id="ammo">5/5</div>
         </div>
         <div class="hud-item">
-            <div class="hud-label">HITS</div>
+            <div class="hud-label">ПОПАДАНИЯ</div>
             <div class="hud-value" id="hits">0</div>
         </div>
         <div class="hud-item">
-            <div class="hud-label">MISSES</div>
+            <div class="hud-label">ПРОМАХИ</div>
             <div class="hud-value" id="misses">0</div>
         </div>
     </div>
@@ -194,23 +236,56 @@
         let isReloading = false;
         let gameTimer;
         let lastTime = 0;
-        let missCount = 0;
 
         // Configuration
         const config = {
-            cowSpeed: 1.8,
-            spawnInterval: 1500,
-            maxCows: 5,
-            cowWidth: 80,
+            cowSpeed: 2.5,
+            spawnInterval: 1200,
+            maxCows: 6,
+            cowWidth: 70,
             cowHeight: 50,
-            headRadius: 15,
+            headRadius: 12,
             reloadTime: 2000,
             starCount: 60,
             planetCount: 4,
             nebulaCount: 3,
-            lifeBonusChance: 0.1,
-            missPenalty: 3
+            lifeBonusChance: 0.15
         };
+
+        // Cow types
+        const cowTypes = [
+            { 
+                bodyColor: '#f8f8f8',
+                spots: [
+                    {x: -15, y: -5, w: 12, h: 8, r: 3},
+                    {x: 10, y: 10, w: 15, h: 10, r: 5},
+                    {x: -5, y: 15, w: 10, h: 6, r: 4},
+                    {x: 20, y: -10, w: 8, h: 8, r: 4}
+                ],
+                wingColor: 'rgba(200, 230, 255, 0.7)',
+                movePattern: 'linear'
+            },
+            { 
+                bodyColor: '#e8e8e8',
+                spots: [
+                    {x: -20, y: 0, w: 18, h: 12, r: 6},
+                    {x: 15, y: 15, w: 12, h: 8, r: 4},
+                    {x: 0, y: -15, w: 10, h: 10, r: 5}
+                ],
+                wingColor: 'rgba(180, 220, 255, 0.7)',
+                movePattern: 'wave'
+            },
+            { 
+                bodyColor: '#ffffff',
+                spots: [
+                    {x: -25, y: 10, w: 20, h: 15, r: 7},
+                    {x: 5, y: -10, w: 15, h: 10, r: 5},
+                    {x: 25, y: 5, w: 10, h: 12, r: 6}
+                ],
+                wingColor: 'rgba(220, 240, 255, 0.8)',
+                movePattern: 'zigzag'
+            }
+        ];
 
         // Initialize stars
         function initStars() {
@@ -223,7 +298,8 @@
                     alpha: Math.random() * 0.8 + 0.2,
                     speed: Math.random() * 0.2 + 0.1,
                     color: Math.random() > 0.7 ? '#ffff00' : '#3399ff',
-                    phase: Math.random() * Math.PI * 2
+                    phase: Math.random() * Math.PI * 2,
+                    rotation: Math.random() * Math.PI * 2
                 });
             }
         }
@@ -231,15 +307,26 @@
         // Initialize planets
         function initPlanets() {
             planets = [];
+            const planetTextures = [
+                {color: '#3366cc', texture: '#003366', pattern: 'stripes'},
+                {color: '#ffcc00', texture: '#ff9900', pattern: 'craters'},
+                {color: '#3399ff', texture: '#0066cc', pattern: 'bands'},
+                {color: '#ff9933', texture: '#cc6600', pattern: 'spots'}
+            ];
+            
             for (let i = 0; i < config.planetCount; i++) {
-                const isBlue = Math.random() > 0.5;
+                const texture = planetTextures[i % planetTextures.length];
                 planets.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
                     radius: Math.random() * 50 + 40,
-                    color: isBlue ? '#3366cc' : '#ffcc33',
+                    color: texture.color,
+                    texture: texture.texture,
+                    pattern: texture.pattern,
+                    rotation: 0,
+                    rotationSpeed: (Math.random() - 0.5) * 0.01,
                     speed: Math.random() * 0.1 + 0.05,
-                    pattern: Math.floor(Math.random() * 3) // 3 types of patterns
+                    cloudCover: Math.random() * 0.3 + 0.1
                 });
             }
         }
@@ -251,7 +338,7 @@
                 nebulas.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
-                    radius: Math.random() * 300 + 200,
+                    radius: Math.random() * 400 + 300,
                     color: `hsla(${200 + Math.random() * 40}, 80%, 60%, ${Math.random() * 0.1 + 0.05})`,
                     speed: Math.random() * 0.1 + 0.05
                 });
@@ -260,6 +347,7 @@
 
         class Cow {
             constructor() {
+                this.type = Math.floor(Math.random() * cowTypes.length);
                 this.width = config.cowWidth;
                 this.height = config.cowHeight;
                 this.headRadius = config.headRadius;
@@ -267,45 +355,34 @@
                 this.alive = true;
                 this.wingPhase = Math.random() * Math.PI * 2;
                 this.wingSpeed = Math.random() * 0.05 + 0.05;
-                this.deathAnimation = 0;
-                this.spots = this.generateSpots();
-            }
-
-            generateSpots() {
-                const spots = [];
-                // Large irregular spots
-                for (let i = 0; i < 5; i++) {
-                    spots.push({
-                        x: Math.random() * this.width - this.width/2,
-                        y: Math.random() * this.height - this.height/2,
-                        width: Math.random() * 15 + 10,
-                        height: Math.random() * 10 + 5,
-                        rotation: Math.random() * Math.PI
-                    });
-                }
-                return spots;
+                this.deathAnimation = 1;
+                this.deathRotation = 0;
+                this.legPhase = Math.random() * Math.PI * 2;
+                this.movePhase = 0;
+                this.moveSpeed = Math.random() * 0.02 + 0.01;
             }
 
             reset() {
-                // Random direction (left to right or right to left)
                 this.direction = Math.random() > 0.5 ? 1 : -1;
+                this.alive = true;
+                this.deathAnimation = 1;
+                this.deathRotation = 0;
+                this.movePhase = 0;
                 
                 if (this.direction === 1) {
                     // Left to right
                     this.x = -this.width;
-                    this.y = Math.random() * (canvas.height - 100) + 50;
+                    this.y = Math.random() * (canvas.height - 150) + 75;
                     this.vx = Math.random() * config.cowSpeed + config.cowSpeed * 0.5;
-                    this.vy = (Math.random() - 0.5) * config.cowSpeed * 0.5;
                 } else {
                     // Right to left
                     this.x = canvas.width + this.width;
-                    this.y = Math.random() * (canvas.height - 100) + 50;
+                    this.y = Math.random() * (canvas.height - 150) + 75;
                     this.vx = -(Math.random() * config.cowSpeed + config.cowSpeed * 0.5);
-                    this.vy = (Math.random() - 0.5) * config.cowSpeed * 0.5;
                 }
                 
-                this.alive = true;
-                this.deathAnimation = 0;
+                this.baseY = this.y;
+                this.vy = 0;
             }
 
             die() {
@@ -313,11 +390,9 @@
                 this.deathAnimation = 1;
                 this.vx = (Math.random() - 0.5) * 3;
                 this.vy = 1;
-                this.rotation = 0;
+                this.deathRotation = 0;
                 this.rotationSpeed = (Math.random() - 0.5) * 0.1;
-                this.deathParticles = this.createDeathParticles();
                 
-                // Chance to spawn life bonus
                 if (Math.random() < config.lifeBonusChance) {
                     lifeBonuses.push({
                         x: this.x,
@@ -329,104 +404,38 @@
                 }
             }
 
-            createDeathParticles() {
-                const particles = [];
-                // Body parts
-                particles.push({
-                    type: 'body',
-                    x: 0, y: 0,
-                    vx: (Math.random() - 0.5) * 2,
-                    vy: -Math.random() * 2,
-                    rotation: 0,
-                    rotationSpeed: (Math.random() - 0.5) * 0.1,
-                    alpha: 1
-                });
-                
-                // Head
-                particles.push({
-                    type: 'head',
-                    x: this.direction === 1 ? -this.width/2 + this.headRadius/2 : this.width/2 - this.headRadius/2,
-                    y: 0,
-                    vx: (Math.random() - 0.5) * 3,
-                    vy: -Math.random() * 3,
-                    rotation: 0,
-                    rotationSpeed: (Math.random() - 0.5) * 0.2,
-                    alpha: 1
-                });
-                
-                // Legs
-                for (let i = 0; i < 4; i++) {
-                    particles.push({
-                        type: 'leg',
-                        x: -this.width/4 + (i%2)*this.width/2,
-                        y: this.height/2 - 5,
-                        vx: (Math.random() - 0.5) * 4,
-                        vy: -Math.random() * 4,
-                        rotation: 0,
-                        rotationSpeed: (Math.random() - 0.5) * 0.3,
-                        alpha: 1
-                    });
-                }
-                
-                // Wings
-                particles.push({
-                    type: 'wing',
-                    x: this.width/4,
-                    y: -this.height/4,
-                    vx: (Math.random() - 0.5) * 3,
-                    vy: -Math.random() * 3,
-                    rotation: 0,
-                    rotationSpeed: (Math.random() - 0.5) * 0.2,
-                    alpha: 1
-                });
-                
-                particles.push({
-                    type: 'wing',
-                    x: this.width/4,
-                    y: this.height/4,
-                    vx: (Math.random() - 0.5) * 3,
-                    vy: -Math.random() * 3,
-                    rotation: 0,
-                    rotationSpeed: (Math.random() - 0.5) * 0.2,
-                    alpha: 1
-                });
-                
-                return particles;
-            }
-
             update() {
                 if (this.alive) {
                     this.x += this.vx;
-                    this.y += this.vy;
+                    this.movePhase += this.moveSpeed;
                     this.wingPhase += this.wingSpeed;
+                    this.legPhase += 0.1;
                     
-                    // Reset if out of bounds
+                    // Movement patterns
+                    switch(cowTypes[this.type].movePattern) {
+                        case 'wave':
+                            this.y = this.baseY + Math.sin(this.movePhase * 2) * 30;
+                            this.vy = Math.cos(this.movePhase * 2) * 0.5;
+                            break;
+                        case 'zigzag':
+                            this.y = this.baseY + Math.sin(this.movePhase * 3) * 20;
+                            this.vy = Math.cos(this.movePhase * 3) * 0.3;
+                            break;
+                        default: // linear
+                            this.vy = 0;
+                    }
+                    
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
                         (this.direction === -1 && this.x < -this.width*2)) {
                         this.reset();
                     }
-                    
-                    // Bounce on top/bottom
-                    if (this.y < this.height/2 || this.y > canvas.height - this.height/2) {
-                        this.vy *= -1;
-                    }
                 } else {
-                    // Death animation
-                    this.deathAnimation -= 0.02;
+                    this.deathAnimation -= 0.01;
                     this.x += this.vx;
                     this.y += this.vy;
-                    this.vy *= 1.05;
+                    this.vy *= 1.02;
+                    this.deathRotation += this.rotationSpeed;
                     
-                    // Update particles
-                    this.deathParticles.forEach(p => {
-                        p.x += p.vx;
-                        p.y += p.vy;
-                        p.vy += 0.1;
-                        p.rotation += p.rotationSpeed;
-                        p.alpha = this.deathAnimation;
-                    });
-                    
-                    // Remove if animation complete or out of screen
                     if (this.deathAnimation <= 0 || this.y > canvas.height + this.height*2) {
                         const index = deadCows.indexOf(this);
                         if (index !== -1) deadCows.splice(index, 1);
@@ -439,58 +448,61 @@
                 ctx.translate(this.x, this.y);
                 
                 if (this.alive) {
-                    // Body (side view)
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    // Body
+                    ctx.fillStyle = cowTypes[this.type].bodyColor;
                     ctx.beginPath();
-                    
-                    // Cow body shape (side view)
-                    ctx.moveTo(-this.width/3, -this.height/4);
-                    ctx.lineTo(this.width/2, -this.height/4);
-                    ctx.lineTo(this.width/2, this.height/4);
-                    ctx.lineTo(-this.width/3, this.height/4);
-                    ctx.closePath();
+                    ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.strokeStyle = '#666';
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
-                    // Spots (side view)
+                    // Spots (textured)
                     ctx.fillStyle = '#8B4513';
-                    this.spots.forEach(spot => {
-                        ctx.save();
-                        ctx.translate(spot.x, spot.y);
-                        ctx.rotate(spot.rotation);
-                        
+                    cowTypes[this.type].spots.forEach(spot => {
                         ctx.beginPath();
-                        ctx.ellipse(0, 0, spot.width/2, spot.height/2, 0, 0, Math.PI * 2);
+                        ctx.ellipse(
+                            spot.x, 
+                            spot.y, 
+                            spot.w, 
+                            spot.h, 
+                            spot.r, 
+                            0, 
+                            Math.PI * 2
+                        );
                         ctx.fill();
                         
-                        ctx.restore();
+                        // Spot texture
+                        ctx.fillStyle = '#a0522d';
+                        for (let i = 0; i < 3; i++) {
+                            ctx.beginPath();
+                            ctx.ellipse(
+                                spot.x + (Math.random() - 0.5) * spot.w/2, 
+                                spot.y + (Math.random() - 0.5) * spot.h/2, 
+                                spot.w/4, 
+                                spot.h/4, 
+                                spot.r, 
+                                0, 
+                                Math.PI * 2
+                            );
+                            ctx.fill();
+                        }
+                        ctx.fillStyle = '#8B4513';
                     });
                     
-                    // Head (side view)
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    // Head with helmet
+                    const headX = this.direction === 1 ? -this.width/2 + this.headRadius : this.width/2 - this.headRadius;
+                    
+                    ctx.fillStyle = cowTypes[this.type].bodyColor;
                     ctx.beginPath();
-                    ctx.ellipse(
-                        -this.width/2 + this.headRadius/2, 
-                        0, 
-                        this.headRadius, 
-                        this.headRadius * 0.8, 
-                        0, 
-                        0, 
-                        Math.PI * 2
-                    );
+                    ctx.arc(headX, 0, this.headRadius, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
                     
                     // Helmet glass with reflection
                     const gradient = ctx.createRadialGradient(
-                        -this.width/2 + this.headRadius/2, 
-                        0, 
-                        0,
-                        -this.width/2 + this.headRadius/2, 
-                        0, 
-                        this.headRadius - 2
+                        headX, 0, 0,
+                        headX, 0, this.headRadius - 2
                     );
                     gradient.addColorStop(0, 'rgba(100, 200, 255, 0.7)');
                     gradient.addColorStop(0.7, 'rgba(100, 200, 255, 0.3)');
@@ -498,86 +510,65 @@
                     
                     ctx.fillStyle = gradient;
                     ctx.beginPath();
-                    ctx.ellipse(
-                        -this.width/2 + this.headRadius/2, 
-                        0, 
-                        this.headRadius - 2, 
-                        (this.headRadius - 2) * 0.8, 
-                        0, 
-                        0, 
-                        Math.PI * 2
-                    );
+                    ctx.arc(headX, 0, this.headRadius - 2, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Eyes (side view - two eyes)
-                    const eyeYPositions = [-8, 8];
-                    eyeYPositions.forEach(eyeY => {
-                        // Eye white
-                        ctx.fillStyle = 'white';
-                        ctx.beginPath();
-                        ctx.ellipse(
-                            -this.width/2 + this.headRadius/2 + 5, 
-                            eyeY, 
-                            3, 
-                            2, 
-                            0, 
-                            0, 
-                            Math.PI * 2
-                        );
-                        ctx.fill();
-                        
-                        // Pupil
-                        ctx.fillStyle = '#333';
-                        ctx.beginPath();
-                        ctx.ellipse(
-                            -this.width/2 + this.headRadius/2 + 6, 
-                            eyeY, 
-                            1.5, 
-                            1, 
-                            0, 
-                            0, 
-                            Math.PI * 2
-                        );
-                        ctx.fill();
-                    });
+                    // Eyes with pupils (two eyes)
+                    const eyeX = headX + (this.direction === 1 ? 5 : -5);
                     
-                    // Horns (side view)
+                    // Left eye
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.arc(eyeX, -4, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.arc(eyeX + (this.direction === 1 ? 1 : -1), -4, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Right eye
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.arc(eyeX, 4, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.arc(eyeX + (this.direction === 1 ? 1 : -1), 4, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Horns
                     ctx.fillStyle = '#ffcc99';
                     ctx.beginPath();
-                    ctx.moveTo(-this.width/2 + this.headRadius/2 - 5, -this.headRadius + 5);
-                    ctx.lineTo(-this.width/2 + this.headRadius/2 - 10, -this.headRadius - 5);
-                    ctx.lineTo(-this.width/2 + this.headRadius/2, -this.headRadius);
+                    ctx.moveTo(headX, -this.headRadius + 2);
+                    ctx.lineTo(headX + (this.direction === 1 ? -8 : 8), -this.headRadius - 5);
+                    ctx.lineTo(headX + (this.direction === 1 ? -4 : 4), -this.headRadius);
                     ctx.closePath();
                     ctx.fill();
                     
-                    // Legs (4 legs, side view)
-                    const legPositions = [
-                        { x: -this.width/4, y: this.height/4 },
-                        { x: -this.width/8, y: this.height/4 },
-                        { x: this.width/8, y: this.height/4 },
-                        { x: this.width/4, y: this.height/4 }
-                    ];
+                    ctx.beginPath();
+                    ctx.moveTo(headX, this.headRadius - 2);
+                    ctx.lineTo(headX + (this.direction === 1 ? -8 : 8), this.headRadius + 5);
+                    ctx.lineTo(headX + (this.direction === 1 ? -4 : 4), this.headRadius);
+                    ctx.closePath();
+                    ctx.fill();
                     
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                    legPositions.forEach(leg => {
-                        ctx.fillRect(leg.x - 3, leg.y - 15, 6, 15);
-                    });
-                    
-                    // Wings (side view)
+                    // Wings
                     const wingYOffset = Math.sin(this.wingPhase) * 10;
-                    ctx.fillStyle = 'rgba(200, 230, 255, 0.7)';
+                    ctx.fillStyle = cowTypes[this.type].wingColor;
                     
                     // Upper wing
                     ctx.beginPath();
                     ctx.moveTo(this.width/4, -this.height/4);
                     ctx.quadraticCurveTo(
-                        this.width/2 + 20, 
+                        this.width/2 + 25, 
                         -this.height/2 + wingYOffset, 
                         this.width/4, 
                         -this.height/2 + wingYOffset
                     );
                     ctx.quadraticCurveTo(
-                        this.width/2, 
+                        this.width/2 + 5, 
                         -this.height/4 + wingYOffset/2, 
                         this.width/4, 
                         -this.height/4
@@ -590,64 +581,105 @@
                     ctx.beginPath();
                     ctx.moveTo(this.width/4, this.height/4);
                     ctx.quadraticCurveTo(
-                        this.width/2 + 20, 
+                        this.width/2 + 25, 
                         this.height/2 - wingYOffset, 
                         this.width/4, 
                         this.height/2 - wingYOffset
                     );
                     ctx.quadraticCurveTo(
-                        this.width/2, 
+                        this.width/2 + 5, 
                         this.height/4 - wingYOffset/2, 
                         this.width/4, 
                         this.height/4
                     );
                     ctx.fill();
                     ctx.stroke();
+                    
+                    // 4 Legs with animation
+                    const legPositions = [
+                        {x: -this.width/3, y: this.height/2},
+                        {x: -this.width/6, y: this.height/2},
+                        {x: this.width/6, y: this.height/2},
+                        {x: this.width/3, y: this.height/2}
+                    ];
+                    
+                    ctx.strokeStyle = '#666';
+                    ctx.lineWidth = 3;
+                    legPositions.forEach((leg, i) => {
+                        const legOffset = Math.sin(this.legPhase + i * Math.PI/2) * 5;
+                        ctx.beginPath();
+                        ctx.moveTo(leg.x, leg.y);
+                        ctx.lineTo(leg.x, leg.y + 10 + legOffset);
+                        ctx.stroke();
+                        
+                        // Hooves
+                        ctx.fillStyle = '#333';
+                        ctx.beginPath();
+                        ctx.arc(leg.x, leg.y + 12 + legOffset, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
                 } else {
-                    // Death animation - draw particles
+                    // Death animation
+                    ctx.rotate(this.deathRotation);
                     ctx.globalAlpha = this.deathAnimation;
                     
-                    this.deathParticles.forEach(particle => {
-                        ctx.save();
-                        ctx.translate(particle.x, particle.y);
-                        ctx.rotate(particle.rotation);
+                    // Exploding body parts
+                    ctx.fillStyle = cowTypes[this.type].bodyColor;
+                    
+                    // Body parts
+                    ctx.beginPath();
+                    ctx.ellipse(
+                        0, 
+                        0, 
+                        this.width/2 * this.deathAnimation, 
+                        this.height/2 * this.deathAnimation, 
+                        0, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    
+                    // Crack lines
+                    ctx.strokeStyle = '#666';
+                    ctx.lineWidth = 2;
+                    for (let i = 0; i < 8; i++) {
+                        const angle = Math.PI * 2 * i / 8;
+                        const length = (this.width/2 + this.height/2) / 2 * (1 - this.deathAnimation) * 2;
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(
+                            Math.cos(angle) * length,
+                            Math.sin(angle) * length
+                        );
+                        ctx.stroke();
+                    }
+                    
+                    // Flying pieces
+                    for (let i = 0; i < 5; i++) {
+                        const pieceAngle = Math.PI * 2 * i / 5;
+                        const distance = (1 - this.deathAnimation) * 30;
                         
-                        switch(particle.type) {
-                            case 'body':
-                                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                                ctx.beginPath();
-                                ctx.moveTo(-this.width/3, -this.height/4);
-                                ctx.lineTo(this.width/2, -this.height/4);
-                                ctx.lineTo(this.width/2, this.height/4);
-                                ctx.lineTo(-this.width/3, this.height/4);
-                                ctx.closePath();
-                                ctx.fill();
-                                break;
-                                
-                            case 'head':
-                                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                                ctx.beginPath();
-                                ctx.ellipse(0, 0, this.headRadius, this.headRadius * 0.8, 0, 0, Math.PI * 2);
-                                ctx.fill();
-                                break;
-                                
-                            case 'leg':
-                                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                                ctx.fillRect(-3, -15, 6, 15);
-                                break;
-                                
-                            case 'wing':
-                                ctx.fillStyle = 'rgba(200, 230, 255, 0.5)';
-                                ctx.beginPath();
-                                ctx.moveTo(0, 0);
-                                ctx.quadraticCurveTo(20, -20, 0, -20);
-                                ctx.quadraticCurveTo(10, -10, 0, 0);
-                                ctx.fill();
-                                break;
-                        }
+                        ctx.save();
+                        ctx.translate(
+                            Math.cos(pieceAngle) * distance,
+                            Math.sin(pieceAngle) * distance
+                        );
+                        ctx.rotate(pieceAngle);
+                        
+                        ctx.beginPath();
+                        ctx.ellipse(
+                            0, 
+                            0, 
+                            this.width/8 * this.deathAnimation, 
+                            this.height/8 * this.deathAnimation, 
+                            0, 
+                            0, 
+                            Math.PI * 2
+                        );
+                        ctx.fill();
                         
                         ctx.restore();
-                    });
+                    }
                     
                     ctx.globalAlpha = 1;
                 }
@@ -663,16 +695,15 @@
                 this.particles = [];
                 this.color = color;
                 
-                // Create particles
-                for (let i = 0; i < 20; i++) {
+                for (let i = 0; i < 25; i++) {
                     this.particles.push({
                         x: 0,
                         y: 0,
-                        vx: (Math.random() - 0.5) * 6,
-                        vy: (Math.random() - 0.5) * 6,
-                        size: Math.random() * 6 + 3,
+                        vx: (Math.random() - 0.5) * 8,
+                        vy: (Math.random() - 0.5) * 8,
+                        size: Math.random() * 8 + 4,
                         alpha: 1,
-                        life: Math.random() * 0.5 + 0.5
+                        life: Math.random() * 0.7 + 0.3
                     });
                 }
             }
@@ -682,7 +713,7 @@
                     p.x += p.vx;
                     p.y += p.vy;
                     p.alpha -= 0.02;
-                    p.size *= 0.97;
+                    p.size *= 0.95;
                     p.life -= 0.02;
                 });
                 
@@ -692,9 +723,24 @@
             draw() {
                 this.particles.forEach(p => {
                     ctx.fillStyle = `rgba(${this.color}, ${p.alpha})`;
+                    
+                    // Draw 4-pointed star
+                    ctx.save();
+                    ctx.translate(this.x + p.x, this.y + p.y);
+                    ctx.rotate(Math.PI/4);
+                    
                     ctx.beginPath();
-                    ctx.arc(this.x + p.x, this.y + p.y, p.size, 0, Math.PI * 2);
+                    for (let i = 0; i < 4; i++) {
+                        ctx.rotate(Math.PI/2);
+                        ctx.lineTo(p.size, 0);
+                        ctx.rotate(Math.PI/4);
+                        ctx.lineTo(p.size * 0.5, 0);
+                        ctx.rotate(-Math.PI/4);
+                    }
+                    ctx.closePath();
                     ctx.fill();
+                    
+                    ctx.restore();
                 });
             }
         }
@@ -737,9 +783,14 @@
             timeLeft = 60;
             hits = 0;
             misses = 0;
-            missCount = 0;
             ammo = 5;
             isReloading = false;
+            
+            // Reset hearts
+            const hearts = document.querySelectorAll('.heart');
+            hearts.forEach(heart => {
+                heart.classList.remove('lost');
+            });
             
             initStars();
             initPlanets();
@@ -758,6 +809,10 @@
             gameLoop();
         }
 
+        function showInstructions() {
+            alert("Цель игры: стрелять в космических коров!\n\nУправление:\n- Клик/тап - выстрел\n- У вас 5 патронов, затем перезарядка\n- 1 промах = -1 жизнь\n- Соберите сердца для восстановления жизней\n\nРазные коровы двигаются по разным траекториям!");
+        }
+
         function endGame() {
             gameActive = false;
             clearInterval(gameTimer);
@@ -770,16 +825,24 @@
         function updateHUD() {
             document.getElementById('scoreDisplay').textContent = score;
             document.getElementById('timer').textContent = `${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2, '0')}`;
-            document.getElementById('lives').innerHTML = '<span class="heart">♥</span>'.repeat(lives);
             document.getElementById('ammo').textContent = `${ammo}/5`;
             document.getElementById('hits').textContent = hits;
             document.getElementById('misses').textContent = misses;
+            
+            // Update hearts
+            const hearts = document.querySelectorAll('.heart');
+            hearts.forEach((heart, index) => {
+                if (index < lives) {
+                    heart.classList.remove('lost');
+                } else {
+                    heart.classList.add('lost');
+                }
+            });
         }
 
         function spawnCow() {
             if (!gameActive || timeLeft <= 0) return;
             
-            // Count only alive cows
             const aliveCows = cows.filter(cow => cow.alive);
             
             if (aliveCows.length < config.maxCows) {
@@ -799,13 +862,27 @@
                 
                 if (!cow.alive) continue;
                 
-                // Simplified hit detection for side-view cow
-                const cowLeft = cow.x - cow.width/2;
-                const cowRight = cow.x + cow.width/2;
-                const cowTop = cow.y - cow.height/2;
-                const cowBottom = cow.y + cow.height/2;
+                // Check body hit (ellipse)
+                const bodyX = cow.x;
+                const bodyY = cow.y;
+                const bodyRadiusX = cow.width/2;
+                const bodyRadiusY = cow.height/2;
                 
-                if (x >= cowLeft && x <= cowRight && y >= cowTop && y <= cowBottom) {
+                // Check head hit
+                const headX = cow.direction === 1 ? cow.x - cow.width/2 + cow.headRadius : cow.x + cow.width/2 - cow.headRadius;
+                const headY = cow.y;
+                const headRadius = cow.headRadius;
+                
+                // Check if point is in body ellipse
+                const normalizedX = (x - bodyX) / bodyRadiusX;
+                const normalizedY = (y - bodyY) / bodyRadiusY;
+                const inBody = normalizedX * normalizedX + normalizedY * normalizedY <= 1;
+                
+                // Check if point is in head circle
+                const headDist = Math.sqrt((x - headX) ** 2 + (y - headY) ** 2);
+                const inHead = headDist <= headRadius;
+                
+                if (inBody || inHead) {
                     // Create explosion
                     explosions.push(new Explosion(x, y, '255, 100, 100'));
                     
@@ -841,15 +918,10 @@
             
             if (!hit && ammo > 0) {
                 misses++;
-                missCount++;
+                lives--;
                 updateHUD();
                 
-                // Lose life after 3 misses
-                if (missCount >= config.missPenalty) {
-                    lives--;
-                    missCount = 0;
-                    if (lives <= 0) endGame();
-                }
+                if (lives <= 0) endGame();
             }
         }
 
@@ -880,20 +952,31 @@
                 }
             });
             
-            // Draw stars (behind planets)
+            // Draw stars (4-pointed)
             const time = Date.now() / 1000;
             stars.forEach(star => {
-                // Pulsing effect
                 const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
                 
                 ctx.fillStyle = star.color;
                 ctx.globalAlpha = star.alpha * pulse;
                 
-                // Draw plus-shaped star
-                ctx.fillRect(star.x - star.size/2, star.y - star.size/6, star.size, star.size/3);
-                ctx.fillRect(star.x - star.size/6, star.y - star.size/2, star.size/3, star.size);
+                ctx.save();
+                ctx.translate(star.x, star.y);
+                ctx.rotate(star.rotation);
                 
-                ctx.globalAlpha = 1;
+                // Draw 4-pointed star
+                ctx.beginPath();
+                for (let i = 0; i < 4; i++) {
+                    ctx.rotate(Math.PI/2);
+                    ctx.lineTo(star.size, 0);
+                    ctx.rotate(Math.PI/4);
+                    ctx.lineTo(star.size * 0.5, 0);
+                    ctx.rotate(-Math.PI/4);
+                }
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.restore();
                 
                 // Move stars
                 star.x += star.speed;
@@ -901,98 +984,144 @@
                     star.x = 0;
                     star.y = Math.random() * canvas.height;
                 }
+                
+                // Rotate stars
+                star.rotation += 0.005;
             });
             
             // Draw planets
             planets.forEach(planet => {
                 ctx.save();
                 ctx.translate(planet.x, planet.y);
+                planet.rotation += planet.rotationSpeed;
+                ctx.rotate(planet.rotation);
                 
                 // Planet body
-                const gradient = ctx.createRadialGradient(0, 0, planet.radius*0.3, 0, 0, planet.radius);
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, planet.radius);
                 gradient.addColorStop(0, planet.color);
-                gradient.addColorStop(1, planet.color === '#3366cc' ? '#224488' : '#cc9933');
+                gradient.addColorStop(1, planet.texture);
                 
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
                 ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Planet patterns
-                ctx.fillStyle = planet.color === '#3366cc' ? '#5588dd' : '#ffdd77';
+                // Planet details based on pattern
+                ctx.fillStyle = planet.texture;
                 switch(planet.pattern) {
-                    case 0: // Stripes
-                        for (let i = 0; i < 5; i++) {
-                            const angle = Math.PI * 2 * i / 5;
+                    case 'stripes':
+                        for (let i = 0; i < 6; i++) {
                             ctx.beginPath();
                             ctx.arc(
-                                0, 0, planet.radius * 0.9,
-                                angle - 0.2, angle + 0.2
+                                0, 
+                                0, 
+                                planet.radius * (0.9 - i * 0.1), 
+                                Math.PI * 2 * i / 6, 
+                                Math.PI * 2 * (i + 0.5) / 6
                             );
                             ctx.lineTo(
-                                Math.cos(angle + 0.2) * planet.radius * 0.7,
-                                Math.sin(angle + 0.2) * planet.radius * 0.7
+                                Math.cos(Math.PI * 2 * (i + 0.5) / 6) * planet.radius * (0.8 - i * 0.1),
+                                Math.sin(Math.PI * 2 * (i + 0.5) / 6) * planet.radius * (0.8 - i * 0.1)
                             );
                             ctx.arc(
-                                0, 0, planet.radius * 0.7,
-                                angle + 0.2, angle - 0.2, true
+                                0, 
+                                0, 
+                                planet.radius * (0.8 - i * 0.1), 
+                                Math.PI * 2 * (i + 0.5) / 6, 
+                                Math.PI * 2 * i / 6,
+                                true
                             );
                             ctx.closePath();
                             ctx.fill();
                         }
                         break;
                         
-                    case 1: // Craters
+                    case 'craters':
                         for (let i = 0; i < 8; i++) {
                             const angle = Math.PI * 2 * i / 8;
-                            const dist = planet.radius * (0.3 + Math.random() * 0.5);
-                            const size = planet.radius * 0.1;
+                            const dist = planet.radius * 0.7;
+                            const size = planet.radius * 0.2;
                             
                             ctx.beginPath();
                             ctx.arc(
                                 Math.cos(angle) * dist,
                                 Math.sin(angle) * dist,
-                                size,
-                                0, Math.PI * 2
+                                size * (0.8 + Math.random() * 0.4),
+                                0,
+                                Math.PI * 2
                             );
                             ctx.fill();
                             
                             // Crater shadow
-                            ctx.fillStyle = planet.color === '#3366cc' ? '#112244' : '#996633';
+                            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
                             ctx.beginPath();
                             ctx.arc(
-                                Math.cos(angle) * dist - size*0.3,
-                                Math.sin(angle) * dist + size*0.3,
+                                Math.cos(angle) * dist - size/3,
+                                Math.sin(angle) * dist - size/3,
                                 size * 0.7,
-                                0, Math.PI * 2
+                                0,
+                                Math.PI * 2
                             );
                             ctx.fill();
-                            
-                            ctx.fillStyle = planet.color === '#3366cc' ? '#5588dd' : '#ffdd77';
+                            ctx.fillStyle = planet.texture;
                         }
                         break;
                         
-                    case 2: // Random blobs
-                        for (let i = 0; i < 10; i++) {
-                            const angle = Math.random() * Math.PI * 2;
-                            const dist = planet.radius * Math.random() * 0.8;
-                            const width = planet.radius * (0.05 + Math.random() * 0.15);
-                            const height = width * (0.7 + Math.random() * 0.6);
-                            
-                            ctx.save();
-                            ctx.translate(
-                                Math.cos(angle) * dist,
-                                Math.sin(angle) * dist
-                            );
-                            ctx.rotate(Math.random() * Math.PI * 2);
-                            
+                    case 'bands':
+                        for (let i = 0; i < 4; i++) {
                             ctx.beginPath();
-                            ctx.ellipse(0, 0, width, height, 0, 0, Math.PI * 2);
+                            ctx.ellipse(
+                                0, 
+                                0, 
+                                planet.radius * (0.9 - i * 0.2), 
+                                planet.radius * (0.3 + i * 0.1), 
+                                Math.PI/4 * i, 
+                                0, 
+                                Math.PI * 2
+                            );
                             ctx.fill();
-                            
-                            ctx.restore();
                         }
                         break;
+                        
+                    case 'spots':
+                        for (let i = 0; i < 12; i++) {
+                            const angle = Math.PI * 2 * i / 12;
+                            const dist = planet.radius * (0.3 + Math.random() * 0.5);
+                            const size = planet.radius * 0.1;
+                            
+                            ctx.beginPath();
+                            ctx.ellipse(
+                                Math.cos(angle) * dist,
+                                Math.sin(angle) * dist,
+                                size * (1 + Math.random()),
+                                size * (0.5 + Math.random()),
+                                angle,
+                                0,
+                                Math.PI * 2
+                            );
+                            ctx.fill();
+                        }
+                        break;
+                }
+                
+                // Clouds
+                if (planet.cloudCover > 0) {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${planet.cloudCover})`;
+                    for (let i = 0; i < 5; i++) {
+                        const angle = Math.PI * 2 * i / 5;
+                        const dist = planet.radius * 0.8;
+                        const size = planet.radius * 0.3;
+                        
+                        ctx.beginPath();
+                        ctx.arc(
+                            Math.cos(angle) * dist,
+                            Math.sin(angle) * dist,
+                            size * (0.7 + Math.random() * 0.3),
+                            0,
+                            Math.PI * 2
+                        );
+                        ctx.fill();
+                    }
                 }
                 
                 ctx.restore();
@@ -1002,7 +1131,6 @@
                 if (planet.x > canvas.width + planet.radius) {
                     planet.x = -planet.radius;
                     planet.y = Math.random() * canvas.height;
-                    planet.pattern = Math.floor(Math.random() * 3); // New random pattern
                 }
             });
         }
@@ -1027,7 +1155,7 @@
                 bonus.alpha = 0.7 + Math.sin(Date.now() / 200) * 0.3;
                 
                 // Move down
-                bonus.y += 1;
+                bonus.y += 1.5;
                 
                 // Remove if out of screen
                 if (bonus.y > canvas.height + bonus.radius) {
@@ -1101,12 +1229,6 @@
                 shots.push(new Shot(x, y));
             } else {
                 misses++;
-                missCount++;
-                if (missCount >= config.missPenalty) {
-                    lives--;
-                    missCount = 0;
-                    if (lives <= 0) endGame();
-                }
                 isReloading = true;
                 document.getElementById('reloading').style.display = 'block';
                 setTimeout(() => {
