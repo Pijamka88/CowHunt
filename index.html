@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Space Cow Hunt</title>
+    <title>Cosmic Cow Hunt</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body {
             margin: 0;
             overflow: hidden;
             touch-action: none;
-            background: #0a0e2e;
+            background: #001a33;
             font-family: 'Arial', sans-serif;
             color: white;
         }
         #gameCanvas {
-            background: #0a0e2e;
+            background: #001a33;
             display: block;
         }
         .menu {
@@ -21,36 +21,36 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(25, 40, 120, 0.9);
+            background: rgba(0, 51, 102, 0.9);
             padding: 30px;
             color: white;
             text-align: center;
             border-radius: 15px;
-            border: 2px solid #4a6bff;
+            border: 2px solid #3399ff;
             z-index: 1000;
             max-width: 80%;
-            box-shadow: 0 0 20px rgba(74, 107, 255, 0.7);
+            box-shadow: 0 0 20px rgba(51, 153, 255, 0.7);
         }
         .menu h1 {
             color: #fff;
             margin-bottom: 20px;
-            text-shadow: 0 0 10px #4a6bff;
+            text-shadow: 0 0 10px #3399ff;
         }
         .menu button {
             padding: 12px 25px;
             font-size: 18px;
             margin-top: 20px;
             cursor: pointer;
-            background: linear-gradient(to bottom, #4a6bff, #3a5bef);
+            background: linear-gradient(to bottom, #3399ff, #0066cc);
             border: none;
             color: white;
             border-radius: 8px;
             transition: all 0.3s;
         }
         .menu button:hover {
-            background: linear-gradient(to bottom, #3a5bef, #4a6bff);
+            background: linear-gradient(to bottom, #0066cc, #3399ff);
             transform: scale(1.05);
-            box-shadow: 0 0 10px rgba(74, 107, 255, 0.7);
+            box-shadow: 0 0 10px rgba(51, 153, 255, 0.7);
         }
         #topHUD {
             position: fixed;
@@ -59,9 +59,9 @@
             right: 0;
             display: flex;
             justify-content: space-around;
-            background: rgba(25, 40, 120, 0.7);
+            background: rgba(0, 51, 102, 0.7);
             padding: 10px;
-            border-bottom: 1px solid #4a6bff;
+            border-bottom: 1px solid #3399ff;
         }
         #bottomHUD {
             position: fixed;
@@ -70,9 +70,9 @@
             right: 0;
             display: flex;
             justify-content: space-around;
-            background: rgba(25, 40, 120, 0.7);
+            background: rgba(0, 51, 102, 0.7);
             padding: 10px;
-            border-top: 1px solid #4a6bff;
+            border-top: 1px solid #3399ff;
         }
         .hud-item {
             display: flex;
@@ -81,7 +81,7 @@
         }
         .hud-label {
             font-size: 12px;
-            color: #aabfff;
+            color: #a3d1ff;
             margin-bottom: 3px;
         }
         .hud-value {
@@ -124,7 +124,7 @@
 </head>
 <body>
     <div id="mainMenu" class="menu">
-        <h1>Space Cow Hunt</h1>
+        <h1>Cosmic Cow Hunt</h1>
         <p>Уничтожьте космических коров!</p>
         <button onclick="startGame()">Начать игру</button>
     </div>
@@ -136,6 +136,8 @@
         <p>Промахов: <span id="finalMisses">0</span></p>
         <button onclick="startGame()">Играть снова</button>
     </div>
+
+    <div id="reloading" class="reloading" style="display: none;">Reloading...</div>
 
     <div id="topHUD">
         <div class="hud-item">
@@ -167,8 +169,6 @@
         </div>
     </div>
 
-    <div id="reloading" class="reloading" style="display: none;">Reloading...</div>
-
     <canvas id="gameCanvas"></canvas>
 
     <script>
@@ -183,6 +183,7 @@
         let explosions = [];
         let stars = [];
         let planets = [];
+        let nebulas = [];
         let lifeBonuses = [];
         let score = 0;
         let lives = 3;
@@ -230,45 +231,32 @@
         // Initialize planets
         function initPlanets() {
             planets = [];
-            const planetColors = ['#3399ff', '#33ccff', '#ffff00', '#ffcc00'];
-            
             for (let i = 0; i < config.planetCount; i++) {
-                let validPosition = false;
-                let x, y, radius;
-                
-                // Try to find non-overlapping position
-                for (let tries = 0; tries < 100; tries++) {
-                    radius = Math.random() * 60 + 40;
-                    x = Math.random() * (canvas.width - radius * 2) + radius;
-                    y = Math.random() * (canvas.height - radius * 2) + radius;
-                    
-                    let overlapping = false;
-                    for (const planet of planets) {
-                        const dist = Math.sqrt((x - planet.x) ** 2 + (y - planet.y) ** 2);
-                        if (dist < radius + planet.radius) {
-                            overlapping = true;
-                            break;
-                        }
-                    }
-                    
-                    if (!overlapping) {
-                        validPosition = true;
-                        break;
-                    }
-                }
-                
-                if (validPosition) {
-                    planets.push({
-                        x: x,
-                        y: y,
-                        radius: radius,
-                        color: planetColors[Math.floor(Math.random() * planetColors.length)],
-                        rotation: Math.random() * Math.PI * 2,
-                        rotationSpeed: (Math.random() - 0.5) * 0.01,
-                        landColor: '#8B4513',
-                        landSize: radius * 0.7
-                    });
-                }
+                const isBlue = Math.random() > 0.5;
+                planets.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 40 + 30,
+                    color: isBlue ? '#3399ff' : '#ffcc00',
+                    landColor: isBlue ? '#0066cc' : '#ff9900',
+                    rotation: 0,
+                    rotationSpeed: (Math.random() - 0.5) * 0.005,
+                    speed: Math.random() * 0.1 + 0.05
+                });
+            }
+        }
+
+        // Initialize nebulas
+        function initNebulas() {
+            nebulas = [];
+            for (let i = 0; i < config.nebulaCount; i++) {
+                nebulas.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 300 + 200,
+                    color: `hsla(${200 + Math.random() * 40}, 80%, 60%, ${Math.random() * 0.1 + 0.05})`,
+                    speed: Math.random() * 0.1 + 0.05
+                });
             }
         }
 
@@ -284,14 +272,12 @@
                 this.deathAnimation = 0;
                 this.spots = [];
                 
-                // Create random spots (brown patches)
-                for (let i = 0; i < 6; i++) {
+                // Create random spots
+                for (let i = 0; i < 10; i++) {
                     this.spots.push({
                         x: Math.random() * this.width - this.width/2,
                         y: Math.random() * this.height - this.height/2,
-                        width: Math.random() * 15 + 10,
-                        height: Math.random() * 10 + 5,
-                        rotation: Math.random() * Math.PI
+                        radius: Math.random() * 3 + 2
                     });
                 }
             }
@@ -384,19 +370,15 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
-                    // Brown patches
+                    // Spots
                     ctx.fillStyle = '#8B4513';
                     this.spots.forEach(spot => {
-                        ctx.save();
-                        ctx.translate(spot.x, spot.y);
-                        ctx.rotate(spot.rotation);
                         ctx.beginPath();
-                        ctx.ellipse(0, 0, spot.width/2, spot.height/2, 0, 0, Math.PI * 2);
+                        ctx.arc(spot.x, spot.y, spot.radius, 0, Math.PI * 2);
                         ctx.fill();
-                        ctx.restore();
                     });
                     
-                    // Head
+                    // Head with helmet
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
                     ctx.beginPath();
                     ctx.arc(
@@ -409,87 +391,126 @@
                     ctx.fill();
                     ctx.stroke();
                     
-                    // Helmet glass (more visible)
-                    ctx.fillStyle = 'rgba(100, 200, 255, 0.5)';
+                    // Helmet glass with reflection
+                    const gradient = ctx.createRadialGradient(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 : this.width/2 - this.headRadius/2, 
+                        0, 
+                        0,
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 : this.width/2 - this.headRadius/2, 
+                        0, 
+                        this.headRadius - 2
+                    );
+                    gradient.addColorStop(0, 'rgba(100, 200, 255, 0.7)');
+                    gradient.addColorStop(0.7, 'rgba(100, 200, 255, 0.3)');
+                    gradient.addColorStop(1, 'rgba(100, 200, 255, 0.1)');
+                    
+                    ctx.fillStyle = gradient;
                     ctx.beginPath();
                     ctx.arc(
                         this.direction === 1 ? -this.width/2 + this.headRadius/2 : this.width/2 - this.headRadius/2, 
                         0, 
-                        this.headRadius - 3, 
+                        this.headRadius - 2, 
                         0, 
                         Math.PI * 2
                     );
                     ctx.fill();
-                    ctx.strokeStyle = '#3399ff';
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
                     
-                    // Eyes (two eyes with pupils)
-                    const eyeX = this.direction === 1 ? -this.width/2 + this.headRadius/2 : this.width/2 - this.headRadius/2;
+                    // Eyes with pupils (two eyes)
+                    const eyeXBase = this.direction === 1 ? -this.width/2 + this.headRadius/2 + 5 : this.width/2 - this.headRadius/2 - 5;
                     
                     // Left eye
                     ctx.fillStyle = 'white';
                     ctx.beginPath();
-                    ctx.arc(eyeX - 5, -3, 4, 0, Math.PI * 2);
+                    ctx.arc(eyeXBase, -5, 4, 0, Math.PI * 2);
                     ctx.fill();
+                    
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.arc(eyeX - 5, -3, 2, 0, Math.PI * 2);
+                    ctx.arc(eyeXBase + 1, -5, 2, 0, Math.PI * 2);
                     ctx.fill();
                     
                     // Right eye
                     ctx.fillStyle = 'white';
                     ctx.beginPath();
-                    ctx.arc(eyeX + 5, -3, 4, 0, Math.PI * 2);
+                    ctx.arc(eyeXBase, 5, 4, 0, Math.PI * 2);
                     ctx.fill();
+                    
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.arc(eyeX + 5, -3, 2, 0, Math.PI * 2);
+                    ctx.arc(eyeXBase + 1, 5, 2, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Horns (small)
-                    ctx.fillStyle = '#8B4513';
+                    // Horns
+                    ctx.fillStyle = '#ffcc99';
                     ctx.beginPath();
-                    ctx.moveTo(eyeX - 8, -this.headRadius + 5);
-                    ctx.lineTo(eyeX - 12, -this.headRadius - 5);
-                    ctx.lineTo(eyeX - 4, -this.headRadius + 3);
+                    ctx.moveTo(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 - 5 : this.width/2 - this.headRadius/2 + 5, 
+                        -this.headRadius + 5
+                    );
+                    ctx.lineTo(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 - 10 : this.width/2 - this.headRadius/2 + 10, 
+                        -this.headRadius - 5
+                    );
+                    ctx.lineTo(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 : this.width/2 - this.headRadius/2, 
+                        -this.headRadius
+                    );
+                    ctx.closePath();
                     ctx.fill();
                     
                     ctx.beginPath();
-                    ctx.moveTo(eyeX + 8, -this.headRadius + 5);
-                    ctx.lineTo(eyeX + 12, -this.headRadius - 5);
-                    ctx.lineTo(eyeX + 4, -this.headRadius + 3);
+                    ctx.moveTo(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 - 5 : this.width/2 - this.headRadius/2 + 5, 
+                        this.headRadius - 5
+                    );
+                    ctx.lineTo(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 - 10 : this.width/2 - this.headRadius/2 + 10, 
+                        this.headRadius + 5
+                    );
+                    ctx.lineTo(
+                        this.direction === 1 ? -this.width/2 + this.headRadius/2 : this.width/2 - this.headRadius/2, 
+                        this.headRadius
+                    );
+                    ctx.closePath();
                     ctx.fill();
                     
-                    // Wings (butterfly style)
+                    // Wings (new design)
                     const wingYOffset = Math.sin(this.wingPhase) * 10;
-                    ctx.fillStyle = 'rgba(200, 200, 255, 0.6)';
+                    ctx.fillStyle = 'rgba(200, 230, 255, 0.7)';
                     
-                    // Upper wings
+                    // Upper wing
                     ctx.beginPath();
-                    ctx.ellipse(
-                        this.direction === 1 ? -this.width/2 - 10 : this.width/2 + 10, 
-                        -10 + wingYOffset, 
-                        15, 
-                        25, 
-                        0, 
-                        0, 
-                        Math.PI * 2
+                    ctx.moveTo(this.width/4, -this.height/4);
+                    ctx.quadraticCurveTo(
+                        this.width/2 + 20, 
+                        -this.height/2 + wingYOffset, 
+                        this.width/4, 
+                        -this.height/2 + wingYOffset
+                    );
+                    ctx.quadraticCurveTo(
+                        this.width/2, 
+                        -this.height/4 + wingYOffset/2, 
+                        this.width/4, 
+                        -this.height/4
                     );
                     ctx.fill();
                     ctx.strokeStyle = '#666';
                     ctx.stroke();
                     
-                    // Lower wings
+                    // Lower wing
                     ctx.beginPath();
-                    ctx.ellipse(
-                        this.direction === 1 ? -this.width/2 - 10 : this.width/2 + 10, 
-                        10 - wingYOffset, 
-                        15, 
-                        25, 
-                        0, 
-                        0, 
-                        Math.PI * 2
+                    ctx.moveTo(this.width/4, this.height/4);
+                    ctx.quadraticCurveTo(
+                        this.width/2 + 20, 
+                        this.height/2 - wingYOffset, 
+                        this.width/4, 
+                        this.height/2 - wingYOffset
+                    );
+                    ctx.quadraticCurveTo(
+                        this.width/2, 
+                        this.height/4 - wingYOffset/2, 
+                        this.width/4, 
+                        this.height/4
                     );
                     ctx.fill();
                     ctx.stroke();
@@ -624,6 +645,7 @@
             
             initStars();
             initPlanets();
+            initNebulas();
             updateHUD();
             resizeCanvas();
             
@@ -749,54 +771,32 @@
 
         function drawBackground() {
             // Draw space background
-            ctx.fillStyle = '#0a0e2e';
+            ctx.fillStyle = '#001a33';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Draw planets first (behind stars)
-            planets.forEach(planet => {
-                // Planet body
-                ctx.fillStyle = planet.color;
-                ctx.beginPath();
-                ctx.arc(planet.x, planet.y, planet.radius, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Land masses
-                ctx.fillStyle = planet.landColor;
-                ctx.beginPath();
-                ctx.arc(
-                    planet.x + Math.cos(planet.rotation) * planet.radius * 0.3,
-                    planet.y + Math.sin(planet.rotation) * planet.radius * 0.3,
-                    planet.landSize * 0.5,
-                    0,
-                    Math.PI * 2
+            // Draw nebulas
+            nebulas.forEach(nebula => {
+                const gradient = ctx.createRadialGradient(
+                    nebula.x, nebula.y, 0,
+                    nebula.x, nebula.y, nebula.radius
                 );
-                ctx.fill();
+                gradient.addColorStop(0, nebula.color);
+                gradient.addColorStop(1, 'rgba(0, 26, 51, 0)');
                 
+                ctx.fillStyle = gradient;
                 ctx.beginPath();
-                ctx.arc(
-                    planet.x + Math.cos(planet.rotation + Math.PI/2) * planet.radius * 0.4,
-                    planet.y + Math.sin(planet.rotation + Math.PI/2) * planet.radius * 0.4,
-                    planet.landSize * 0.3,
-                    0,
-                    Math.PI * 2
-                );
+                ctx.arc(nebula.x, nebula.y, nebula.radius, 0, Math.PI * 2);
                 ctx.fill();
                 
-                ctx.beginPath();
-                ctx.arc(
-                    planet.x + Math.cos(planet.rotation + Math.PI) * planet.radius * 0.2,
-                    planet.y + Math.sin(planet.rotation + Math.PI) * planet.radius * 0.2,
-                    planet.landSize * 0.4,
-                    0,
-                    Math.PI * 2
-                );
-                ctx.fill();
-                
-                // Update rotation
-                planet.rotation += planet.rotationSpeed;
+                // Move nebula
+                nebula.x += nebula.speed;
+                if (nebula.x > canvas.width + nebula.radius) {
+                    nebula.x = -nebula.radius;
+                    nebula.y = Math.random() * canvas.height;
+                }
             });
             
-            // Draw stars (on top of background but behind planets)
+            // Draw stars (behind planets)
             const time = Date.now() / 1000;
             stars.forEach(star => {
                 // Pulsing effect
@@ -816,6 +816,51 @@
                 if (star.x > canvas.width) {
                     star.x = 0;
                     star.y = Math.random() * canvas.height;
+                }
+            });
+            
+            // Draw planets
+            planets.forEach(planet => {
+                ctx.save();
+                ctx.translate(planet.x, planet.y);
+                planet.rotation += planet.rotationSpeed;
+                ctx.rotate(planet.rotation);
+                
+                // Planet body
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, planet.radius);
+                gradient.addColorStop(0, planet.color);
+                gradient.addColorStop(1, planet.landColor);
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Land details
+                ctx.fillStyle = planet.landColor;
+                for (let i = 0; i < 5; i++) {
+                    const angle = Math.PI * 2 * i / 5;
+                    const dist = planet.radius * 0.7;
+                    const size = planet.radius * 0.3;
+                    
+                    ctx.beginPath();
+                    ctx.arc(
+                        Math.cos(angle) * dist,
+                        Math.sin(angle) * dist,
+                        size * (0.7 + Math.random() * 0.3),
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+                
+                // Move planet
+                planet.x += planet.speed;
+                if (planet.x > canvas.width + planet.radius) {
+                    planet.x = -planet.radius;
+                    planet.y = Math.random() * canvas.height;
                 }
             });
         }
@@ -896,6 +941,7 @@
             canvas.height = window.innerHeight;
             initStars();
             initPlanets();
+            initNebulas();
         }
 
         canvas.addEventListener('pointerdown', (e) => {
