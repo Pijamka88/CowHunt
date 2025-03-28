@@ -8,12 +8,12 @@
             margin: 0;
             overflow: hidden;
             touch-action: none;
-            background: #001133;
+            background: #002244;
             font-family: 'Arial', sans-serif;
             color: white;
         }
         #gameCanvas {
-            background: #001133;
+            background: #002244;
             display: block;
         }
         .menu {
@@ -21,7 +21,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 34, 102, 0.9);
+            background: rgba(0, 68, 136, 0.9);
             padding: 30px;
             color: white;
             text-align: center;
@@ -59,7 +59,7 @@
             right: 0;
             display: flex;
             justify-content: space-around;
-            background: rgba(0, 34, 102, 0.7);
+            background: rgba(0, 68, 136, 0.7);
             padding: 10px;
             border-bottom: 1px solid #3399ff;
         }
@@ -70,7 +70,7 @@
             right: 0;
             display: flex;
             justify-content: space-around;
-            background: rgba(0, 34, 102, 0.7);
+            background: rgba(0, 68, 136, 0.7);
             padding: 10px;
             border-top: 1px solid #3399ff;
         }
@@ -262,46 +262,47 @@
             }
         }
 
-        // Initialize planets with minimum distance
+        // Initialize planets with minimum distance check
         function initPlanets() {
             planets = [];
             
             for (let i = 0; i < config.planetCount; i++) {
                 let attempts = 0;
                 let validPosition = false;
-                let newPlanet;
+                let x, y;
                 
                 while (!validPosition && attempts < 100) {
-                    attempts++;
+                    x = Math.random() * canvas.width;
+                    y = Math.random() * canvas.height;
                     validPosition = true;
                     
+                    // Check distance to other planets
+                    for (const planet of planets) {
+                        const dx = x - planet.x;
+                        const dy = y - planet.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < config.minPlanetDistance) {
+                            validPosition = false;
+                            break;
+                        }
+                    }
+                    
+                    attempts++;
+                }
+                
+                if (validPosition) {
                     const isBlue = Math.random() > 0.5;
-                    newPlanet = {
-                        x: Math.random() * canvas.width,
-                        y: Math.random() * canvas.height,
+                    planets.push({
+                        x: x,
+                        y: y,
                         radius: Math.random() * 50 + 40,
                         color: isBlue ? '#3399ff' : '#ffcc00',
                         landColor: isBlue ? '#0066cc' : '#ff9900',
                         rotation: 0,
                         rotationSpeed: (Math.random() - 0.5) * 0.005,
                         speed: Math.random() * 0.1 + 0.05
-                    };
-                    
-                    // Check distance to other planets
-                    for (const planet of planets) {
-                        const dx = newPlanet.x - planet.x;
-                        const dy = newPlanet.y - planet.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        
-                        if (distance < newPlanet.radius + planet.radius + config.minPlanetDistance) {
-                            validPosition = false;
-                            break;
-                        }
-                    }
-                }
-                
-                if (validPosition) {
-                    planets.push(newPlanet);
+                    });
                 }
             }
         }
@@ -412,7 +413,7 @@
                     this.y += this.vy;
                     this.vy += 0.1; // Gravity
                     this.rotation += this.rotationSpeed;
-                    this.scale *= 0.99;
+                    this.scale *= 0.98;
                     
                     // Remove if animation complete or out of screen
                     if (this.deathAnimation <= 0 || this.y > canvas.height + this.height*2) {
@@ -436,71 +437,106 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
-                    // Head with helmet (always facing screen)
-                    ctx.fillStyle = cowTypes[this.type].color;
-                    ctx.beginPath();
-                    ctx.arc(0, 0, this.headRadius, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.stroke();
+                    // Head with helmet (always facing player)
+                    const headX = 0;
+                    const headY = 0;
                     
                     // Helmet glass with reflection
-                    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.headRadius - 2);
+                    const gradient = ctx.createRadialGradient(
+                        headX, headY, 0,
+                        headX, headY, this.headRadius - 2
+                    );
                     gradient.addColorStop(0, 'rgba(100, 200, 255, 0.7)');
                     gradient.addColorStop(0.7, 'rgba(100, 200, 255, 0.3)');
                     gradient.addColorStop(1, 'rgba(100, 200, 255, 0.1)');
                     
                     ctx.fillStyle = gradient;
                     ctx.beginPath();
-                    ctx.arc(0, 0, this.headRadius - 2, 0, Math.PI * 2);
+                    ctx.arc(headX, headY, this.headRadius - 2, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Big eyes in center of helmet
+                    // Helmet outline
+                    ctx.strokeStyle = '#666';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(headX, headY, this.headRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    // Eyes (bigger and in center)
+                    const eyeSize = 6;
+                    const pupilSize = 3;
+                    
+                    // Left eye
                     ctx.fillStyle = 'white';
                     ctx.beginPath();
-                    ctx.arc(-5, -5, 6, 0, Math.PI * 2);
+                    ctx.arc(headX - 8, headY - 2, eyeSize, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    ctx.beginPath();
-                    ctx.arc(-5, 5, 6, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Pupils
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.arc(-3, -5, 3, 0, Math.PI * 2);
+                    ctx.arc(headX - 8, headY - 2, pupilSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Right eye
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.arc(headX + 8, headY - 2, eyeSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.arc(headX + 8, headY - 2, pupilSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Nose (beige with nostrils)
+                    ctx.fillStyle = '#f5deb3';
+                    ctx.beginPath();
+                    ctx.ellipse(headX, headY + 8, 10, 6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.arc(headX - 4, headY + 8, 2, 0, Math.PI * 2);
                     ctx.fill();
                     
                     ctx.beginPath();
-                    ctx.arc(-3, 5, 3, 0, Math.PI * 2);
+                    ctx.arc(headX + 4, headY + 8, 2, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Horns (more visible)
+                    // Horns
                     ctx.fillStyle = '#ffcc99';
                     ctx.beginPath();
-                    ctx.moveTo(0, -this.headRadius + 5);
-                    ctx.lineTo(5, -this.headRadius - 5);
-                    ctx.lineTo(-5, -this.headRadius - 5);
+                    ctx.moveTo(headX - 10, headY - this.headRadius + 5);
+                    ctx.lineTo(headX - 15, headY - this.headRadius - 5);
+                    ctx.lineTo(headX - 5, headY - this.headRadius);
                     ctx.closePath();
                     ctx.fill();
                     
-                    // Wings from body upwards
+                    ctx.beginPath();
+                    ctx.moveTo(headX + 10, headY - this.headRadius + 5);
+                    ctx.lineTo(headX + 15, headY - this.headRadius - 5);
+                    ctx.lineTo(headX + 5, headY - this.headRadius);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Wings from body center (flapping up)
                     const wingYOffset = Math.sin(this.wingPhase) * 15;
                     ctx.fillStyle = 'rgba(200, 230, 255, 0.7)';
                     
                     // Right wing
                     ctx.beginPath();
-                    ctx.moveTo(this.width/4, 0);
+                    ctx.moveTo(this.width/4, -5);
                     ctx.quadraticCurveTo(
-                        this.width/2 + 10, 
-                        -20 + wingYOffset, 
+                        this.width/2 + 15, 
+                        -30 + wingYOffset, 
                         this.width/4, 
-                        -30 + wingYOffset
+                        -20 + wingYOffset
                     );
                     ctx.quadraticCurveTo(
                         this.width/3, 
                         -15 + wingYOffset/2, 
                         this.width/4, 
-                        0
+                        -5
                     );
                     ctx.fill();
                     ctx.strokeStyle = '#666';
@@ -508,71 +544,92 @@
                     
                     // Left wing
                     ctx.beginPath();
-                    ctx.moveTo(-this.width/4, 0);
+                    ctx.moveTo(-this.width/4, -5);
                     ctx.quadraticCurveTo(
-                        -this.width/2 - 10, 
-                        -20 + wingYOffset, 
+                        -this.width/2 - 15, 
+                        -30 + wingYOffset, 
                         -this.width/4, 
-                        -30 + wingYOffset
+                        -20 + wingYOffset
                     );
                     ctx.quadraticCurveTo(
                         -this.width/3, 
                         -15 + wingYOffset/2, 
                         -this.width/4, 
-                        0
+                        -5
                     );
                     ctx.fill();
                     ctx.stroke();
                     
-                    // Four legs
+                    // Legs (4 legs - 2 front, 2 back)
                     ctx.strokeStyle = '#666';
                     ctx.lineWidth = 3;
-                    for (let i = 0; i < 4; i++) {
-                        ctx.beginPath();
-                        ctx.moveTo(-this.width/3 + i*8, this.height/2);
-                        ctx.lineTo(-this.width/3 + i*8, this.height/2 + 12);
-                        ctx.stroke();
-                    }
+                    
+                    // Front legs
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width/4 + 5, this.height/2);
+                    ctx.lineTo(-this.width/4 + 5, this.height/2 + 15);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(this.width/4 - 5, this.height/2);
+                    ctx.lineTo(this.width/4 - 5, this.height/2 + 15);
+                    ctx.stroke();
+                    
+                    // Back legs
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width/4 + 15, this.height/2);
+                    ctx.lineTo(-this.width/4 + 15, this.height/2 + 12);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(this.width/4 - 15, this.height/2);
+                    ctx.lineTo(this.width/4 - 15, this.height/2 + 12);
+                    ctx.stroke();
                 } else {
-                    // Death animation - spinning and shrinking
+                    // Death animation - breaking apart
                     ctx.rotate(this.rotation);
                     ctx.scale(this.scale, this.scale);
                     ctx.globalAlpha = this.deathAnimation;
                     
-                    // Broken scafander
-                    ctx.fillStyle = cowTypes[this.type].color;
-                    ctx.beginPath();
-                    ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Cracks
+                    // Broken helmet
                     ctx.strokeStyle = '#666';
                     ctx.lineWidth = 2;
-                    for (let i = 0; i < 8; i++) {
-                        ctx.beginPath();
-                        ctx.moveTo(
-                            (Math.random() - 0.5) * this.width,
-                            (Math.random() - 0.5) * this.height
-                        );
-                        ctx.lineTo(
-                            (Math.random() - 0.5) * this.width,
-                            (Math.random() - 0.5) * this.height
-                        );
-                        ctx.stroke();
-                    }
-                    
-                    // Broken helmet
-                    ctx.fillStyle = 'rgba(100, 200, 255, 0.3)';
                     ctx.beginPath();
-                    for (let i = 0; i < 5; i++) {
-                        const angle = Math.PI * 2 * i / 5;
-                        ctx.lineTo(
-                            Math.cos(angle) * this.headRadius * 0.7,
-                            Math.sin(angle) * this.headRadius * 0.7
-                        );
-                    }
+                    ctx.arc(0, 0, this.headRadius, 0, Math.PI * 1.5);
+                    ctx.stroke();
+                    
+                    // Broken body parts
+                    ctx.fillStyle = cowTypes[this.type].color;
+                    
+                    // Body part 1
+                    ctx.beginPath();
+                    ctx.ellipse(-10, -5, 15, 10, Math.PI/4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    // Body part 2
+                    ctx.beginPath();
+                    ctx.ellipse(10, 5, 15, 10, -Math.PI/4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    // Wings debris
+                    ctx.fillStyle = 'rgba(200, 230, 255, 0.7)';
+                    ctx.beginPath();
+                    ctx.moveTo(5, -5);
+                    ctx.lineTo(15, -10);
+                    ctx.lineTo(10, -15);
                     ctx.closePath();
                     ctx.fill();
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(-5, -5);
+                    ctx.lineTo(-15, -10);
+                    ctx.lineTo(-10, -15);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
                     
                     ctx.globalAlpha = 1;
                 }
@@ -745,21 +802,12 @@
                 const bodyRadiusX = cow.width/2;
                 const bodyRadiusY = cow.height/2;
                 
-                // Check head hit
-                const headX = cow.x;
-                const headY = cow.y;
-                const headRadius = cow.headRadius;
-                
                 // Check if point is in body ellipse
                 const normalizedX = (x - bodyX) / bodyRadiusX;
                 const normalizedY = (y - bodyY) / bodyRadiusY;
                 const inBody = normalizedX * normalizedX + normalizedY * normalizedY <= 1;
                 
-                // Check if point is in head circle
-                const headDist = Math.sqrt((x - headX) ** 2 + (y - headY) ** 2);
-                const inHead = headDist <= headRadius;
-                
-                if (inBody || inHead) {
+                if (inBody) {
                     // Create explosion
                     explosions.push(new Explosion(x, y, '255, 100, 100'));
                     
@@ -842,7 +890,7 @@
 
         function drawBackground() {
             // Draw space background
-            ctx.fillStyle = '#001133';
+            ctx.fillStyle = '#002244';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             // Draw nebulas
@@ -852,7 +900,7 @@
                     nebula.x, nebula.y, nebula.radius
                 );
                 gradient.addColorStop(0, nebula.color);
-                gradient.addColorStop(1, 'rgba(0, 17, 51, 0)');
+                gradient.addColorStop(1, 'rgba(0, 34, 68, 0)');
                 
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
