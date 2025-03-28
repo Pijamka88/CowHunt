@@ -205,16 +205,16 @@
         const config = {
             cowSpeed: 2.0,
             spawnInterval: 1200,
-            maxCows: 5,
-            cowWidth: 70,
-            cowHeight: 50,
-            headRadius: 20,
+            maxCows: 6,
+            cowWidth: 60,
+            cowHeight: 40,
+            headRadius: 18,
             reloadTime: 1500,
             starCount: 60,
             planetCount: 4,
             nebulaCount: 3,
             lifeBonusChance: 0.15,
-            playAreaPadding: 80
+            minCowDistance: 100
         };
 
         // Cow types
@@ -259,16 +259,19 @@
         // Initialize planets
         function initPlanets() {
             planets = [];
+            const landColors = ['#228B22', '#006400', '#556B2F', '#2E8B57'];
             for (let i = 0; i < config.planetCount; i++) {
+                const isBlue = Math.random() > 0.5;
                 planets.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
-                    radius: Math.random() * 60 + 50,
-                    color: '#3399ff',
-                    landColor: '#00cc99',
+                    radius: Math.random() * 50 + 40,
+                    color: isBlue ? '#3399ff' : '#ffcc00',
+                    landColor: landColors[Math.floor(Math.random() * landColors.length)],
                     rotation: 0,
                     rotationSpeed: (Math.random() - 0.5) * 0.005,
-                    speed: Math.random() * 0.1 + 0.05
+                    speed: Math.random() * 0.1 + 0.05,
+                    landSeed: Math.random() * 1000
                 });
             }
         }
@@ -303,44 +306,26 @@
             }
 
             reset() {
-                this.direction = Math.random() > 0.5 ? 1 : -1;
-                const minY = config.playAreaPadding;
-                const maxY = canvas.height - config.playAreaPadding;
-                
-                if (this.direction === 1) {
-                    this.x = -this.width;
-                    this.y = Math.random() * (maxY - minY) + minY;
-                    this.vx = cowTypes[this.type].speed;
-                } else {
-                    this.x = canvas.width + this.width;
-                    this.y = Math.random() * (maxY - minY) + minY;
-                    this.vx = -cowTypes[this.type].speed;
-                }
-                
+                do {
+                    this.direction = Math.random() > 0.5 ? 1 : -1;
+                    this.y = Math.random() * (canvas.height - 100) + 50;
+                    this.x = this.direction === 1 ? -this.width : canvas.width + this.width;
+                } while (this.isTooCloseToOtherCows());
+
+                this.vx = cowTypes[this.type].speed * this.direction;
+                this.vy = (Math.random() - 0.5) * cowTypes[this.type].speed * 0.5;
                 this.originalY = this.y;
                 this.alive = true;
                 this.deathAnimation = 0;
                 this.movementPhase = 0;
-                
-                // Check collisions with other cows
-                let collision = true;
-                while (collision) {
-                    collision = false;
-                    for (const cow of cows) {
-                        if (cow.alive && this.checkCollision(cow)) {
-                            this.y = Math.random() * (maxY - minY) + minY;
-                            collision = true;
-                            break;
-                        }
-                    }
-                }
             }
 
-            checkCollision(otherCow) {
-                const dx = this.x - otherCow.x;
-                const dy = this.y - otherCow.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                return distance < (this.width + otherCow.width) * 0.6;
+            isTooCloseToOtherCows() {
+                return cows.some(existingCow => {
+                    const dx = this.x - existingCow.x;
+                    const dy = this.y - existingCow.y;
+                    return Math.sqrt(dx*dx + dy*dy) < config.minCowDistance;
+                });
             }
 
             updateMovement() {
@@ -423,14 +408,7 @@
                     ctx.stroke();
 
                     // Helmet
-                    const gradient = ctx.createRadialGradient(
-                        headX, 0, 0,
-                        headX, 0, this.headRadius - 2
-                    );
-                    gradient.addColorStop(0, 'rgba(100, 200, 255, 0.7)');
-                    gradient.addColorStop(0.7, 'rgba(100, 200, 255, 0.3)');
-                    gradient.addColorStop(1, 'rgba(100, 200, 255, 0.1)');
-                    ctx.fillStyle = gradient;
+                    ctx.fillStyle = 'rgba(100, 200, 255, 0.3)';
                     ctx.beginPath();
                     ctx.arc(headX, 0, this.headRadius - 2, 0, Math.PI * 2);
                     ctx.fill();
@@ -438,58 +416,45 @@
                     // Eyes
                     ctx.fillStyle = 'white';
                     ctx.beginPath();
-                    ctx.arc(headX - 8, -5, 6, 0, Math.PI * 2);
-                    ctx.arc(headX - 8, 5, 6, 0, Math.PI * 2);
+                    ctx.arc(headX + 5, -8, 6, 0, Math.PI * 2);
+                    ctx.arc(headX + 5, 8, 6, 0, Math.PI * 2);
                     ctx.fill();
+                    
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.arc(headX - 10, -5, 3, 0, Math.PI * 2);
-                    ctx.arc(headX - 10, 5, 3, 0, Math.PI * 2);
+                    ctx.arc(headX + 7, -8, 3, 0, Math.PI * 2);
+                    ctx.arc(headX + 7, 8, 3, 0, Math.PI * 2);
                     ctx.fill();
 
                     // Horns
-                    ctx.fillStyle = '#ffcc99';
+                    ctx.fillStyle = '#ffd700';
                     ctx.beginPath();
-                    ctx.moveTo(headX - 5, -this.headRadius + 5);
-                    ctx.lineTo(headX - 15, -this.headRadius - 10);
-                    ctx.lineTo(headX - 5, -this.headRadius);
+                    ctx.moveTo(headX + 10, -this.headRadius + 5);
+                    ctx.lineTo(headX + 20, -this.headRadius - 10);
+                    ctx.lineTo(headX + 15, -this.headRadius);
                     ctx.closePath();
                     ctx.fill();
 
                     ctx.beginPath();
-                    ctx.moveTo(headX - 5, this.headRadius - 5);
-                    ctx.lineTo(headX - 15, this.headRadius + 10);
-                    ctx.lineTo(headX - 5, this.headRadius);
+                    ctx.moveTo(headX + 10, this.headRadius - 5);
+                    ctx.lineTo(headX + 20, this.headRadius + 10);
+                    ctx.lineTo(headX + 15, this.headRadius);
                     ctx.closePath();
                     ctx.fill();
 
                     // Wings
-                    const wingAngle = Math.sin(this.wingPhase) * Math.PI/4;
+                    const wingY = Math.sin(this.wingPhase) * 15;
                     ctx.fillStyle = 'rgba(200, 230, 255, 0.7)';
-                    
-                    // Right wing
-                    ctx.save();
-                    ctx.translate(0, -10);
-                    ctx.rotate(wingAngle);
                     ctx.beginPath();
-                    ctx.ellipse(20, 0, 25, 10, 0, 0, Math.PI * 2);
+                    ctx.moveTo(0, -this.height/2 + 5);
+                    ctx.quadraticCurveTo(-30, -this.height/2 - 20 + wingY, 0, -this.height/2 - 40 + wingY);
+                    ctx.quadraticCurveTo(30, -this.height/2 - 20 + wingY, 0, -this.height/2 + 5);
                     ctx.fill();
-                    ctx.restore();
-
-                    // Left wing
-                    ctx.save();
-                    ctx.translate(0, 10);
-                    ctx.rotate(-wingAngle);
-                    ctx.beginPath();
-                    ctx.ellipse(20, 0, 25, 10, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.restore();
                 } else {
-                    // Death animation
                     ctx.globalAlpha = this.deathAnimation;
-                    ctx.fillStyle = '#ffffff';
+                    ctx.fillStyle = '#ff0000';
                     ctx.beginPath();
-                    ctx.ellipse(0, 0, this.width/2, this.height/2, this.rotation, 0, Math.PI * 2);
+                    ctx.arc(0, 0, this.width/2 * (1 - this.deathAnimation), 0, Math.PI * 2);
                     ctx.fill();
                     ctx.globalAlpha = 1;
                 }
@@ -498,20 +463,21 @@
         }
 
         class Explosion {
-            constructor(x, y) {
+            constructor(x, y, color) {
                 this.x = x;
                 this.y = y;
                 this.particles = [];
+                this.color = color;
                 
-                for (let i = 0; i < 30; i++) {
+                for (let i = 0; i < 20; i++) {
                     this.particles.push({
                         x: 0,
                         y: 0,
-                        vx: (Math.random() - 0.5) * 8,
-                        vy: (Math.random() - 0.5) * 8,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
                         size: Math.random() * 6 + 3,
                         alpha: 1,
-                        life: 1.0
+                        life: Math.random() * 0.5 + 0.5
                     });
                 }
             }
@@ -529,7 +495,7 @@
             
             draw() {
                 this.particles.forEach(p => {
-                    ctx.fillStyle = `rgba(255, 100, 100, ${p.alpha})`;
+                    ctx.fillStyle = `rgba(${this.color}, ${p.alpha})`;
                     ctx.beginPath();
                     ctx.arc(this.x + p.x, this.y + p.y, p.size, 0, Math.PI * 2);
                     ctx.fill();
@@ -555,9 +521,8 @@
             misses = 0;
             ammo = 5;
             isReloading = false;
-            
-            const hearts = document.querySelectorAll('.heart');
-            hearts.forEach(heart => heart.classList.remove('burned'));
+
+            document.querySelectorAll('.heart').forEach(h => h.classList.remove('burned'));
             
             initStars();
             initPlanets();
@@ -593,17 +558,15 @@
             document.getElementById('hits').textContent = hits;
             document.getElementById('misses').textContent = misses;
             
-            const heartElements = document.querySelectorAll('.heart');
-            heartElements.forEach((heart, index) => {
-                heart.classList.toggle('burned', index >= lives);
+            document.querySelectorAll('.heart').forEach((h, i) => {
+                h.classList.toggle('burned', i >= lives);
             });
         }
 
         function spawnCow() {
             if (!gameActive || timeLeft <= 0) return;
             
-            const aliveCows = cows.filter(cow => cow.alive);
-            if (aliveCows.length < config.maxCows) {
+            if (cows.filter(c => c.alive).length < config.maxCows) {
                 const cow = new Cow();
                 cows.push(cow);
             }
@@ -613,37 +576,31 @@
         function checkHit(x, y) {
             let hit = false;
             
-            for (let i = 0; i < cows.length; i++) {
-                const cow = cows[i];
-                if (!cow.alive) continue;
-
+            cows.forEach((cow, i) => {
+                if (!cow.alive) return;
+                
                 const dx = x - cow.x;
                 const dy = y - cow.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < cow.width * 0.6) {
-                    explosions.push(new Explosion(cow.x, cow.y));
+                if (Math.sqrt(dx*dx + dy*dy) < cow.width/2) {
+                    explosions.push(new Explosion(cow.x, cow.y, '255,100,100'));
                     cow.die();
                     deadCows.push(cow);
                     score += cowTypes[cow.type].score;
                     hits++;
                     hit = true;
-                    break;
                 }
-            }
+            });
 
-            for (let i = 0; i < lifeBonuses.length; i++) {
-                const bonus = lifeBonuses[i];
-                if (bonus.collected) continue;
-
+            lifeBonuses.forEach((bonus, i) => {
                 const dx = x - bonus.x;
                 const dy = y - bonus.y;
-                if (Math.sqrt(dx * dx + dy * dy) < bonus.radius) {
+                if (Math.sqrt(dx*dx + dy*dy) < bonus.radius) {
                     lives = Math.min(3, lives + 1);
-                    bonus.collected = true;
+                    explosions.push(new Explosion(bonus.x, bonus.y, '255,51,102'));
+                    lifeBonuses.splice(i, 1);
                     hit = true;
-                    break;
                 }
-            }
+            });
 
             if (!hit) {
                 misses++;
@@ -673,136 +630,111 @@
             ctx.fillStyle = color;
             ctx.beginPath();
             for (let i = 0; i < 4; i++) {
-                const angle = Math.PI / 2 * i;
+                const angle = Math.PI/2 * i;
                 ctx.lineTo(Math.cos(angle) * size, Math.sin(angle) * size);
-                ctx.lineTo(Math.cos(angle + Math.PI/4) * size * 0.4, Math.sin(angle + Math.PI/4) * size * 0.4);
+                ctx.lineTo(Math.cos(angle + Math.PI/4) * size/2, Math.sin(angle + Math.PI/4) * size/2);
             }
             ctx.closePath();
             ctx.fill();
             ctx.restore();
         }
 
-        function drawBackground() {
-            ctx.fillStyle = '#001a33';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        function drawPlanet(planet) {
+            ctx.save();
+            ctx.translate(planet.x, planet.y);
+            ctx.rotate(planet.rotation);
             
-            nebulas.forEach(nebula => {
-                const gradient = ctx.createRadialGradient(
-                    nebula.x, nebula.y, 0,
-                    nebula.x, nebula.y, nebula.radius
-                );
-                gradient.addColorStop(0, nebula.color);
-                gradient.addColorStop(1, 'rgba(0, 26, 51, 0)');
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(nebula.x, nebula.y, nebula.radius, 0, Math.PI * 2);
-                ctx.fill();
-                nebula.x += nebula.speed;
-                if (nebula.x > canvas.width + nebula.radius) {
-                    nebula.x = -nebula.radius;
-                    nebula.y = Math.random() * canvas.height;
-                }
-            });
+            // Base planet
+            ctx.fillStyle = planet.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
+            ctx.fill();
 
-            const time = Date.now() / 1000;
-            stars.forEach(star => {
-                const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
-                star.rotation += 0.005;
-                draw4PointStar(star.x, star.y, star.size * pulse, star.color, star.rotation);
-                star.x += star.speed;
-                if (star.x > canvas.width) {
-                    star.x = 0;
-                    star.y = Math.random() * canvas.height;
-                }
-            });
+            // Generate continents using noise
+            const noiseScale = 0.05;
+            ctx.fillStyle = planet.landColor;
+            ctx.beginPath();
+            for (let angle = 0; angle < Math.PI * 2; angle += 0.1) {
+                const radiusVariation = (Math.sin(angle * 3 + planet.landSeed) * 0.3 + 
+                                       Math.cos(angle * 2 + planet.landSeed) * 0.2) * planet.radius;
+                const x = Math.cos(angle) * (planet.radius + radiusVariation);
+                const y = Math.sin(angle) * (planet.radius + radiusVariation);
+                angle === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
 
-            planets.forEach(planet => {
-                ctx.save();
-                ctx.translate(planet.x, planet.y);
-                planet.rotation += planet.rotationSpeed;
-                ctx.rotate(planet.rotation);
-                
-                ctx.fillStyle = planet.color;
-                ctx.beginPath();
-                ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.fillStyle = planet.landColor;
-                for (let i = 0; i < 8; i++) {
-                    const angle = Math.PI * 2 * i / 8;
-                    ctx.beginPath();
-                    ctx.arc(
-                        Math.cos(angle) * planet.radius * 0.7,
-                        Math.sin(angle) * planet.radius * 0.7,
-                        planet.radius * 0.3,
-                        0,
-                        Math.PI * 2
-                    );
-                    ctx.fill();
-                }
-                ctx.restore();
-
-                planet.x += planet.speed;
-                if (planet.x > canvas.width + planet.radius) {
-                    planet.x = -planet.radius;
-                    planet.y = Math.random() * canvas.height;
-                }
-            });
-        }
-
-        function drawLifeBonuses() {
-            lifeBonuses.forEach((bonus, index) => {
-                if (bonus.collected) return;
-                
-                ctx.fillStyle = `rgba(255, 51, 102, ${bonus.alpha})`;
-                ctx.beginPath();
-                ctx.arc(bonus.x, bonus.y, bonus.radius, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.fillStyle = 'white';
-                ctx.font = `${bonus.radius}px Arial`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('♥', bonus.x, bonus.y);
-                
-                bonus.alpha = 0.7 + Math.sin(Date.now() / 200) * 0.3;
-                bonus.y += 1;
-                
-                if (bonus.y > canvas.height + bonus.radius) {
-                    lifeBonuses.splice(index, 1);
-                }
-            });
+            ctx.restore();
         }
 
         function gameLoop(timestamp) {
             if (!gameActive) return;
             
-            const deltaTime = timestamp - lastTime;
-            lastTime = timestamp;
-            
-            drawBackground();
-            
-            cows.forEach(cow => cow.update());
-            deadCows.forEach(cow => cow.update());
-            
-            shots.forEach((shot, index) => {
-                shot.update();
-                if (shot.alpha <= 0) shots.splice(index, 1);
+            ctx.fillStyle = '#001a33';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw nebulas
+            nebulas.forEach(n => {
+                const gradient = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.radius);
+                gradient.addColorStop(0, n.color);
+                gradient.addColorStop(1, 'rgba(0,26,51,0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+                ctx.fill();
+                n.x += n.speed;
+                if (n.x > canvas.width + n.radius) n.x = -n.radius;
             });
 
-            explosions.forEach((explosion, index) => {
-                if (!explosion.update()) explosions.splice(index, 1);
+            // Draw stars
+            const time = Date.now() / 1000;
+            stars.forEach(star => {
+                draw4PointStar(
+                    star.x, 
+                    star.y, 
+                    star.size * (0.8 + Math.sin(time + star.phase) * 0.2), 
+                    star.color, 
+                    star.rotation += 0.005
+                );
+                star.x += star.speed;
+                if (star.x > canvas.width) star.x = 0;
             });
 
-            ctx.save();
-            ctx.globalCompositeOperation = 'lighter';
-            explosions.forEach(explosion => explosion.draw());
-            ctx.restore();
+            // Draw planets
+            planets.forEach(p => {
+                drawPlanet(p);
+                p.x += p.speed;
+                p.rotation += p.rotationSpeed;
+                if (p.x > canvas.width + p.radius) p.x = -p.radius;
+            });
 
-            cows.forEach(cow => cow.draw());
-            deadCows.forEach(cow => cow.draw());
-            shots.forEach(shot => shot.draw());
-            drawLifeBonuses();
+            // Update and draw game objects
+            cows.forEach(c => {
+                c.update();
+                c.draw();
+            });
+            deadCows.forEach(c => {
+                c.update();
+                c.draw();
+            });
+            shots.forEach((s, i) => {
+                s.update();
+                s.draw();
+                if (s.alpha <= 0) shots.splice(i, 1);
+            });
+            explosions.forEach((e, i) => {
+                if (!e.update()) explosions.splice(i, 1);
+                else e.draw();
+            });
+            lifeBonuses.forEach((b, i) => {
+                ctx.fillStyle = `rgba(255,51,102,${b.alpha})`;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.fill();
+                b.y += 1;
+                b.alpha = 0.7 + Math.sin(Date.now()/200) * 0.3;
+                if (b.y > canvas.height + b.radius) lifeBonuses.splice(i, 1);
+            });
 
             requestAnimationFrame(gameLoop);
         }
@@ -815,7 +747,7 @@
             initNebulas();
         }
 
-        canvas.addEventListener('pointerdown', (e) => {
+        canvas.addEventListener('pointerdown', e => {
             if (!gameActive || isReloading) return;
             
             const rect = canvas.getBoundingClientRect();
@@ -824,15 +756,14 @@
             
             if (ammo > 0) {
                 ammo--;
-                checkHit(x, y);
                 shots.push(new Shot(x, y));
-                updateHUD();
+                checkHit(x, y);
                 if (ammo <= 0) startReloading();
+                updateHUD();
             }
         });
 
         window.addEventListener('resize', resizeCanvas);
-        
         if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
             Telegram.WebApp.ready();
             Telegram.WebApp.expand();
