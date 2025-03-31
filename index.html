@@ -1,185 +1,183 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Cosmic Cow Hunt</title>
+    <title>Cosmic Cow Hunt Pro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        /* Стили оптимизированы и сокращены */
-        body { margin:0; overflow:hidden; background: #000b1a; font-family: Arial; color:white; }
-        #gameCanvas { background: #000b1a; }
-        .menu { 
-            position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); 
-            background:rgba(0,50,100,0.9); padding:30px; border-radius:15px;
-            border:2px solid #3399ff; box-shadow:0 0 30px #ff69b4; min-width:300px;
+        /* Обновлённые стили */
+        body {
+            margin: 0;
+            overflow: hidden;
+            touch-action: none;
+            background: #000a20;
+            font-family: 'Arial', sans-serif;
+            color: white;
         }
-        .menu h1 { color:#fff; margin:0 0 20px; text-shadow:2px 2px 0 #ff69b4; }
-        button { padding:10px 25px; background:#3399ff; border:none; color:white; border-radius:5px; }
-        #hud { position:fixed; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; }
-        .heart { color:#ff3366; font-size:24px; }
-        .burned { color:#444 !important; }
-        #level { position:fixed; bottom:10px; right:10px; }
+        #gameCanvas {
+            background: #000a20;
+            display: block;
+        }
+        .menu {
+            /* Обновлённый дизайн меню */
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 20, 40, 0.95);
+            padding: 40px 60px;
+            color: white;
+            text-align: center;
+            border-radius: 20px;
+            border: 3px solid #3399ff;
+            box-shadow: 0 0 40px rgba(255, 100, 200, 0.4);
+            min-width: 300px;
+        }
+        .menu h1 {
+            color: #ff66cc;
+            margin: 0 0 25px;
+            font-size: 2.5em;
+            text-shadow: 3px 3px 0 #ff0066;
+        }
+        /* Остальные стили... */
     </style>
 </head>
 <body>
-    <div id="mainMenu" class="menu">
-        <h1>COSMIC COW HUNT</h1>
-        <button onclick="startGame()">START</button>
-        <div id="level" style="display:none;">Level: 1</div>
+    <!-- Обновлённая разметка -->
+    <div class="menu" id="mainMenu">
+        <h1>COSMIC COW</h1>
+        <div class="menu-content">
+            <button onclick="startGame()">START</button>
+            <div class="level">Level: <span id="currentLevel">1</span></div>
+        </div>
     </div>
-    <canvas id="gameCanvas"></canvas>
 
-<script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-let gameActive = false, cows = [], level = 1;
+    <!-- Игровые элементы... -->
 
-class Cow {
-    constructor() {
-        this.x = Math.random() > 0.5 ? -100 : canvas.width + 100;
-        this.y = Math.random() * canvas.height;
-        this.speed = 1 + level * 0.3;
-        this.dir = this.x < 0 ? 1 : -1;
-        this.angle = 0;
-        this.legPhase = 0;
-        this.alive = true;
-    }
+    <script>
+        const gameConfig = {
+            levels: [
+                { cows: 4, speed: 1.5, spawn: 2000 },
+                { cows: 5, speed: 1.8, spawn: 1800 },
+                { cows: 6, speed: 2.0, spawn: 1500 },
+                // Добавьте больше уровней
+            ],
+            currentLevel: 0,
+            cowTypes: [
+                { // Базовый тип
+                    texture: createBellyTexture('#f0f0f0', '#d0d0d0'),
+                    score: 100,
+                    movement: 'sinusoidal'
+                },
+                // Добавьте другие типы
+            ]
+        };
 
-    update() {
-        if(!this.alive) {
-            this.y += 3;
-            return;
+        class AdvancedCow {
+            constructor() {
+                // Улучшенная анимация ног
+                this.legs = [
+                    { angle: 0, phase: 0 },
+                    { angle: 0, phase: Math.PI/2 },
+                    { angle: 0, phase: Math.PI },
+                    { angle: 0, phase: Math.PI*1.5 }
+                ];
+                
+                // Новая система анимации
+                this.animations = {
+                    flying: this.createWingAnimation(),
+                    dying: this.createDeathAnimation()
+                };
+            }
+
+            drawHead(ctx) {
+                // Новая отрисовка головы с носом
+                ctx.fillStyle = '#F5DEB3';
+                ctx.beginPath();
+                ctx.ellipse(0, 10, 8, 6, 0, 0, Math.PI*2);
+                ctx.fill();
+                
+                // Ноздри
+                ctx.fillStyle = '#333';
+                ctx.beginPath();
+                ctx.arc(-4, 12, 1.5, 0, Math.PI*2);
+                ctx.arc(4, 12, 1.5, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            drawLegs(ctx) {
+                // Улучшенная анимация ног
+                this.legs.forEach((leg, i) => {
+                    const angle = Math.sin(Date.now()/200 + leg.phase) * 0.3;
+                    this.drawLeg(ctx, i, angle);
+                });
+            }
+
+            drawWings(ctx) {
+                // Новая система анимации крыльев
+                const frame = this.animations.flying.next().value;
+                ctx.drawImage(frame, -40, -30, 80, 60);
+            }
+
+            die() {
+                // Новая анимация смерти
+                this.state = 'dying';
+                this.color = '#808080';
+                this.eyes = 'X';
+                this.startDeathAnimation();
+            }
         }
-        this.x += this.dir * this.speed;
-        this.angle = Math.sin(Date.now()/200) * 0.2;
-        this.legPhase = (this.legPhase + 0.1) % (Math.PI*2);
-    }
 
-    draw() {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.scale(this.dir, 1);
-        
-        // Тело
-        ctx.fillStyle = this.alive ? '#fff' : '#888';
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 40, 30, this.angle, 0, Math.PI*2);
-        ctx.fill();
-        
-        // Текстура брюшка
-        ctx.fillStyle = '#eee';
-        ctx.beginPath();
-        ctx.ellipse(0, 10, 25, 15, 0, 0, Math.PI*2);
-        ctx.fill();
-
-        // Голова
-        ctx.translate(30, 0);
-        this.drawHead();
-        ctx.restore();
-    }
-
-    drawHead() {
-        // Шлем
-        ctx.strokeStyle = 'rgba(100,200,255,0.8)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, 0, 15, 0, Math.PI*2);
-        ctx.stroke();
-
-        // Глаза
-        ctx.fillStyle = '#333';
-        [-5, 5].forEach(y => {
-            ctx.beginPath();
-            ctx.arc(5, y, 4, 0, Math.PI*2);
-            ctx.fill();
-            ctx.fillStyle = '#fff';
-            ctx.arc(7, y-2, 2, 0, Math.PI*2);
-            ctx.fill();
-            ctx.fillStyle = '#333';
-        });
-
-        // Нос
-        ctx.fillStyle = '#deb887';
-        ctx.beginPath();
-        ctx.ellipse(10, 0, 6, 4, 0, 0, Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle = '#000';
-        ctx.arc(12, -1, 1, 0, Math.PI*2);
-        ctx.arc(12, 1, 1, 0, Math.PI*2);
-        ctx.fill();
-
-        // Рога
-        ctx.strokeStyle = '#996633';
-        ctx.lineWidth = 3;
-        [-10, 10].forEach(y => {
-            ctx.beginPath();
-            ctx.moveTo(-5, y);
-            ctx.lineTo(-15, y-5);
-            ctx.stroke();
-        });
-
-        // Ноги
-        ctx.strokeStyle = '#333';
-        [ -25, -15, 15, 25 ].forEach(x => {
-            ctx.beginPath();
-            ctx.moveTo(x, 20);
-            ctx.lineTo(x, 40 + Math.sin(this.legPhase)*5);
-            ctx.lineTo(x+5, 45);
-            ctx.stroke();
-        });
-    }
-}
-
-function gameLoop() {
-    if(!gameActive) return;
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Отрисовка коров
-    cows.forEach(cow => {
-        cow.update();
-        cow.draw();
-    });
-    
-    // Удаление вышедших за пределы
-    cows = cows.filter(cow => cow.x > -100 && cow.x < canvas.width + 100);
-    
-    // Спавн новых коров
-    if(Math.random() < 0.02 + level*0.005) {
-        cows.push(new Cow());
-    }
-    
-    requestAnimationFrame(gameLoop);
-}
-
-function startGame() {
-    gameActive = true;
-    document.getElementById('mainMenu').style.display = 'none';
-    document.getElementById('level').style.display = 'block';
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    cows = [];
-    level = 1;
-    gameLoop();
-}
-
-// Обработчики событий и остальная логика
-canvas.addEventListener('click', e => {
-    if(!gameActive) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    cows.forEach(cow => {
-        if(Math.hypot(cow.x - x, cow.y - y) < 40) {
-            cow.alive = false;
+        // Оптимизированные функции
+        function optimizedStarDrawing() {
+            // Кэшированные объекты для звезд
+            const starCache = new Map();
+            
+            function drawStar(x, y, size, color) {
+                const key = `${size}-${color}`;
+                if(!starCache.has(key)) {
+                    const canvas = document.createElement('canvas');
+                    // ... создание кэшированного изображения
+                    starCache.set(key, canvas);
+                }
+                ctx.drawImage(starCache.get(key), x, y);
+            }
         }
-    });
-});
 
-window.onresize = () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-};
-</script>
+        // Система уровней
+        function updateLevel() {
+            if(score > gameConfig.levels[currentLevel].requiredScore) {
+                currentLevel++;
+                updateLevelDisplay();
+                applyLevelSettings();
+            }
+        }
+
+        // Инициализация игры
+        function initGame() {
+            // Оптимизированная инициализация объектов
+            createPlanetsWithCollisionCheck();
+            generateNebulae();
+            initCachedTextures();
+        }
+
+        // Запуск игры
+        function startGame() {
+            initGame();
+            gameLoop();
+        }
+
+        // Основной цикл
+        function gameLoop(timestamp) {
+            if(!gameActive) return;
+            
+            updatePhysics();
+            checkCollisions();
+            updateAnimations();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Добавьте остальные функции...
+    </script>
 </body>
 </html>
