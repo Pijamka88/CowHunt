@@ -29,7 +29,7 @@
             font-size: 16px;
             cursor: pointer;
         }
-        #score-display {
+        #game-info {
             position: absolute;
             top: 10px;
             left: 10px;
@@ -43,7 +43,11 @@
         <h1>Cosmic Cow Hunt</h1>
         <button id="start-button">Start Game</button>
     </div>
-    <div id="score-display">Score: 0</div>
+    <div id="game-info">
+        <div>Score: <span id="score-display">0</span></div>
+        <div>Time: <span id="time-display">60</span></div>
+        <div>Ammo: <span id="ammo-display">20</span></div>
+    </div>
     <canvas id="gameCanvas"></canvas>
 
     <script>
@@ -52,71 +56,94 @@
         const menu = document.getElementById('menu');
         const startButton = document.getElementById('start-button');
         const scoreDisplay = document.getElementById('score-display');
+        const timeDisplay = document.getElementById('time-display');
+        const ammoDisplay = document.getElementById('ammo-display');
 
         let score = 0;
+        let timeLeft = 60;
+        let ammo = 20;
         let cows = [];
         let gameRunning = false;
         let gameInterval;
+        let level = 1;
 
-        // Set canvas size to match window
-        canvas.width = window.innerWidth * 0.8; // 80% of window width
-        canvas.height = window.innerHeight * 0.8; // 80% of window height
+        canvas.width = window.innerWidth * 0.8;
+        canvas.height = window.innerHeight * 0.8;
 
-        // Cow properties
-        const cowWidth = 50;
-        const cowHeight = 50;
-        const cowSpeed = 2;
+        // Cow types
+        const cowTypes = [
+            { width: 50, height: 50, speed: 2, score: 10, image: new Image() }, // Normal
+            { width: 70, height: 70, speed: 1.5, score: 20, image: new Image() }, // Big
+            { width: 30, height: 30, speed: 3, score: 30, image: new Image() }  // Small
+        ];
+        cowTypes[0].image.src = 'https://i.imgur.com/YfOqG7v.png';  // Normal Cow
+        cowTypes[1].image.src = 'https://i.imgur.com/9L0J4H4.png';  // Big Cow
+        cowTypes[2].image.src = 'https://i.imgur.com/Rj0J4H4.png';  // Small Cow
+        let background = new Image();
+        background.src = 'https://i.imgur.com/zRxyjwz.png'; //background image
+
 
         // Function to draw a cow
-        function drawCow(x, y) {
-            ctx.fillStyle = 'white';
-            ctx.fillRect(x, y, cowWidth, cowHeight); // Simplified cow for now
-            // TODO: Add more detailed cow graphics (wings, etc.)
+        function drawCow(cow) {
+          ctx.drawImage(cow.type.image, cow.x, cow.y, cow.type.width, cow.type.height);
         }
-        
-        // Function to create a new cow at a random position
+
+
+        // Function to create a new cow
         function createCow() {
-            const x = Math.random() * (canvas.width - cowWidth);
-            const y = -cowHeight; // Start above the canvas
-            cows.push({ x, y });
+            const type = cowTypes[Math.floor(Math.random() * cowTypes.length)];
+            const x = Math.random() * (canvas.width - type.width);
+            const y = -type.height;
+            cows.push({ x, y, type });
         }
 
-        // Function to update the game state
         function update() {
-            // Clear the canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
-            // Move and draw cows
             for (let i = 0; i < cows.length; i++) {
-                cows[i].y += cowSpeed;
-                drawCow(cows[i].x, cows[i].y);
+                cows[i].y += cows[i].type.speed + (level * 0.5); // Increase speed with level
+                drawCow(cows[i]);
 
-                // Remove cows that have gone off-screen
                 if (cows[i].y > canvas.height) {
                     cows.splice(i, 1);
-                    i--; // Adjust index after removing
+                    i--;
                 }
             }
 
-            // Update score display
-            scoreDisplay.textContent = `Score: ${score}`;
+            scoreDisplay.textContent = score;
+            timeDisplay.textContent = timeLeft;
+            ammoDisplay.textContent = ammo;
+
+            if (timeLeft <= 0 || ammo <= 0) {
+                gameOver();
+            }
         }
 
-        // Function to start the game
         function startGame() {
             menu.style.display = 'none';
             gameRunning = true;
             score = 0;
+            timeLeft = 60;
+            ammo = 20;
             cows = [];
+            level = 1;
+
+            // Timer
             gameInterval = setInterval(() => {
-              if (Math.random() < 0.1) { // 10% chance to create a new cow each frame
-                createCow();
-              }
-              update();
-            }, 20);
+                if (timeLeft > 0) {
+                    timeLeft--;
+                }
+
+                // Cow creation based on level
+                if (Math.random() < 0.1 + (level * 0.05)) {  //increased cow creation chance
+                  createCow();
+                }
+                update();
+              }, 20);
+
         }
 
-        // Function to handle game over
         function gameOver() {
             clearInterval(gameInterval);
             gameRunning = false;
@@ -124,27 +151,36 @@
             alert(`Game Over! Your score: ${score}`);
         }
 
-        // Event listener for start button
         startButton.addEventListener('click', startGame);
 
-        // Event listener for canvas clicks (shooting)
-        canvas.addEventListener('click', (event) => {
-            if (!gameRunning) return;
+      canvas.addEventListener('click', (event) => {
+        if (!gameRunning || ammo <= 0) return;
 
-            const rect = canvas.getBoundingClientRect();
-            const clickX = event.clientX - rect.left;
-            const clickY = event.clientY - rect.top;
+        ammo--;
+        const rect = canvas.getBoundingClientRect();
+        const clickX = event.clientX - rect.left;
+        const clickY = event.clientY - rect.top;
 
-            // Check if a cow was clicked
-            for (let i = 0; i < cows.length; i++) {
-                if (clickX >= cows[i].x && clickX <= cows[i].x + cowWidth &&
-                    clickY >= cows[i].y && clickY <= cows[i].y + cowHeight) {
-                    cows.splice(i, 1);
-                    score += 10;
-                    break; // Only one cow per click
-                }
+        for (let i = 0; i < cows.length; i++) {
+          const cow = cows[i];
+          if (
+            clickX >= cow.x &&
+            clickX <= cow.x + cow.type.width &&
+            clickY >= cow.y &&
+            clickY <= cow.y + cow.type.height
+          ) {
+            score += cow.type.score;
+            cows.splice(i, 1);
+
+            // Level up every 50 points
+            if (score > 0 && score % 50 === 0) {
+              level++;
             }
-        });
+            break;
+          }
+        }
+      });
+
     </script>
 </body>
 </html>
