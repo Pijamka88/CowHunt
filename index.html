@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flying Cows Hunt</title>
+    <title>Cosmic Cows Hunt</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background-color: #87CEEB;
+            background-color: #000;
             font-family: 'Arial', sans-serif;
             touch-action: manipulation;
             user-select: none;
@@ -23,23 +23,306 @@
             overflow: hidden;
         }
         
-        #sky {
+        #space {
             position: absolute;
             width: 100%;
             height: 100%;
-            background: linear-gradient(to bottom, #87CEEB 0%, #E0F7FA 100%);
+            background: radial-gradient(ellipse at center, #0a0e2a 0%, #000000 100%);
+            z-index: 1;
         }
         
-        #ground {
+        .nebula {
             position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 20%;
-            background: linear-gradient(to bottom, #8BC34A, #4CAF50);
+            border-radius: 50%;
+            opacity: 0.3;
+            filter: blur(30px);
+            z-index: 2;
+        }
+        
+        #nebula1 {
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, #9c27b0, transparent 70%);
+            top: 20%;
+            left: 10%;
+        }
+        
+        #nebula2 {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, #673ab7, transparent 70%);
+            bottom: 10%;
+            right: 15%;
+        }
+        
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            z-index: 3;
         }
         
         .cow {
             position: absolute;
             width: 60px;
             height: 60px;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60"><rect x="10" y="10" width="40" height="40" fill="%23FFFFFF" stroke="%23000" stroke-width="2"/><rect x="15" y="15" width="10" height="10" fill="%23000"/><rect x="35" y="15" width="10" height="10" fill="%23000"/><rect x="20" y="30" width="20" height="10" fill="%23FF5722"/><path d="M10,20 L0,15 M50,20 L60,15 M30
+            image-rendering: pixelated;
+            z-index: 10;
+            transition: transform 0.1s;
+        }
+        
+        .bullet {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background-color: #ffeb3b;
+            border-radius: 50%;
+            z-index: 5;
+        }
+        
+        .hit-effect {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><path d="M20,5 Q30,15 20,25 Q10,15 20,5" fill="%234CAF50" opacity="0.8"/></svg>');
+            background-size: contain;
+            z-index: 15;
+            animation: splash 0.5s forwards;
+        }
+        
+        @keyframes splash {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        
+        #ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 20;
+        }
+        
+        #stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 18px;
+            text-shadow: 1px 1px 2px black;
+        }
+        
+        #lives {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+        }
+        
+        .heart {
+            width: 30px;
+            height: 30px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 30"><path d="M15,5 Q20,0 25,5 Q30,10 15,25 Q0,10 5,5 Q10,0 15,5" fill="%23F44336"/></svg>');
+            background-size: contain;
+        }
+        
+        #timer {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            color: white;
+            font-size: 24px;
+            text-shadow: 1px 1px 2px black;
+        }
+        
+        #ammo {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            color: white;
+            font-size: 24px;
+            text-shadow: 1px 1px 2px black;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+            color: white;
+            display: none;
+        }
+        
+        #game-over h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        
+        #final-stats {
+            font-size: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        #restart-btn {
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 40;
+            color: white;
+        }
+        
+        #start-screen h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #9c27b0;
+            text-shadow: 0 0 10px #673ab7;
+        }
+        
+        #instructions {
+            max-width: 80%;
+            text-align: center;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+        
+        #start-btn {
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        #crosshair {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 25;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="%23FFEB3B" stroke-width="1"/><line x1="10" y1="0" x2="10" y2="5" stroke="%23FFEB3B" stroke-width="1"/><line x1="10" y1="15" x2="10" y2="20" stroke="%23FFEB3B" stroke-width="1"/><line x1="0" y1="10" x2="5" y2="10" stroke="%23FFEB3B" stroke-width="1"/><line x1="15" y1="10" x2="20" y2="10" stroke="%23FFEB3B" stroke-width="1"/></svg>');
+            background-size: contain;
+            transform: translate(-10px, -10px);
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="space"></div>
+        <div id="nebula1" class="nebula"></div>
+        <div id="nebula2" class="nebula"></div>
+        
+        <div id="ui-container">
+            <div id="stats">Hits: 0 | Misses: 0</div>
+            <div id="lives"></div>
+            <div id="timer">60</div>
+            <div id="ammo">5</div>
+            <div id="crosshair"></div>
+            
+            <div id="game-over">
+                <h1>Mission Failed</h1>
+                <div id="final-stats">
+                    <p>Total Hits: <span id="final-hits">0</span></p>
+                    <p>Accuracy: <span id="final-accuracy">0%</span></p>
+                    <p>Time Left: <span id="final-time">0s</span></p>
+                </div>
+                <button id="restart-btn">Try Again</button>
+            </div>
+            
+            <div id="start-screen">
+                <h1>Cosmic Cows Hunt</h1>
+                <div id="instructions">
+                    <p>Shoot the cosmic cows flying through space!</p>
+                    <p>Tap to shoot. You have limited ammo.</p>
+                    <p>Reload by waiting or hitting special cows.</p>
+                    <p>Don't let the cows escape!</p>
+                </div>
+                <button id="start-btn">Start Mission</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game variables
+        let score = 0;
+        let hits = 0;
+        let misses = 0;
+        let ammo = 5;
+        let maxAmmo = 5;
+        let lives = 3;
+        let gameActive = false;
+        let cows = [];
+        let bullets = [];
+        let effects = [];
+        let cowSpawnInterval;
+        let reloadInterval;
+        let gameTime = 60; // 60 seconds game duration
+        let timeLeft = gameTime;
+        let gameTimer;
+        
+        // Cow types
+        const cowTypes = [
+            { color: "#FFFFFF", wingColor: "#9E9E9E", speed: 2, score: 10, ammo: 0 }, // Normal cow
+            { color: "#FFC107", wingColor: "#FF9800", speed: 3, score: 20, ammo: 0 }, // Fast cow
+            { color: "#4CAF50", wingColor: "#2E7D32", speed: 1.5, score: 15, ammo: 1 }, // Ammo cow
+            { color: "#F44336", wingColor: "#D32F2F", speed: 2.5, score: 30, ammo: 0 }  // Rare cow
+        ];
+        
+        // DOM elements
+        const gameContainer = document.getElementById('game-container');
+        const space = document.getElementById('space');
+        const statsDisplay = document.getElementById('stats');
+        const livesDisplay = document.getElementById('lives');
+        const timerDisplay = document.getElementById('timer');
+        const ammoDisplay = document.getElementById('ammo');
+        const crosshair = document.getElementById('crosshair');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalHitsDisplay = document.getElementById('final-hits');
+        const finalAccuracyDisplay = document.getElementById('final-accuracy');
+        const finalTimeDisplay = document.getElementById('final-time');
+        const restartBtn = document.getElementById('restart-btn');
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+        
+        // Initialize Telegram Web App
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        // Create stars
+        function createStars() {
+            for (let i = 0; i < 100; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.width = `${Math.random() * 2 + 1}px`;
+                star.style.height
