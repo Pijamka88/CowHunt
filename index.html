@@ -4,817 +4,193 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sopwith Modern</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background-color: #121212;
-            font-family: 'Arial', sans-serif;
-            touch-action: manipulation;
+            background-color: #1a1a2e;
+            font-family: 'Courier New', monospace;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
         }
-        #gameCanvas {
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #game-canvas {
             display: block;
             background-color: #1a1a2e;
         }
-        #startScreen, #gameOverScreen {
+        
+        #ui-overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            pointer-events: none;
+            color: white;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 18px;
+            color: #4cc9f0;
+        }
+        
+        #health-display {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 18px;
+            color: #f72585;
+        }
+        
+        #ammo-display {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 18px;
+            color: #4cc9f0;
+        }
+        
+        #fuel-display {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 18px;
+            color: #f72585;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+        
+        #game-over h2 {
+            color: #f72585;
+            margin-top: 0;
+        }
+        
+        #restart-btn {
+            background-color: #4cc9f0;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            color: #1a1a2e;
+            font-weight: bold;
+            cursor: pointer;
+            pointer-events: auto;
+            margin-top: 10px;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 50px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            pointer-events: none;
+        }
+        
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(76, 201, 240, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            pointer-events: auto;
+            touch-action: manipulation;
+            border: 2px solid #4cc9f0;
+        }
+        
+        #title-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #1a1a2e;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background-color: rgba(0, 0, 0, 0.7);
             color: white;
+            z-index: 10;
+        }
+        
+        #title-screen h1 {
+            color: #4cc9f0;
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(76, 201, 240, 0.5);
+        }
+        
+        #title-screen p {
+            max-width: 80%;
             text-align: center;
+            margin-bottom: 30px;
         }
-        #gameOverScreen {
-            display: none;
-        }
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-            color: #4fc3f7;
-        }
-        button {
-            background-color: #4fc3f7;
-            color: #121212;
+        
+        #start-btn {
+            background-color: #4cc9f0;
             border: none;
             padding: 15px 30px;
-            font-size: 1.2rem;
             border-radius: 5px;
-            margin: 10px;
-            cursor: pointer;
+            color: #1a1a2e;
             font-weight: bold;
-            transition: all 0.3s;
+            font-size: 1.2rem;
+            cursor: pointer;
         }
-        button:hover {
-            background-color: #0288d1;
-            transform: scale(1.05);
-        }
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 20px;
-            box-sizing: border-box;
-        }
-        .control-btn {
-            background-color: rgba(79, 195, 247, 0.7);
-            color: white;
-            border: none;
+        
+        #instructions {
+            margin-top: 20px;
+            background-color: rgba(0, 0, 0, 0.5);
             padding: 15px;
-            font-size: 1rem;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            touch-action: manipulation;
+            border-radius: 10px;
+            max-width: 80%;
         }
-        #scoreDisplay {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: white;
-            font-size: 1.2rem;
-            background-color: rgba(0, 0, 0, 0.5);
-            padding: 10px 15px;
-            border-radius: 5px;
+        
+        #instructions h3 {
+            color: #f72585;
+            margin-top: 0;
         }
-        #healthDisplay {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            color: white;
-            font-size: 1.2rem;
-            background-color: rgba(0, 0, 0, 0.5);
-            padding: 10px 15px;
-            border-radius: 5px;
-        }
-        .health-bar {
-            height: 10px;
-            background-color: #f44336;
-            margin-top: 5px;
-            border-radius: 5px;
-        }
-        .health-fill {
-            height: 100%;
-            background-color: #4caf50;
-            border-radius: 5px;
-            width: 100%;
-            transition: width 0.3s;
+        
+        #instructions ul {
+            text-align: left;
+            padding-left: 20px;
         }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    
-    <div id="startScreen">
-        <h1>SOPWITH MODERN</h1>
-        <p>Fly your plane, destroy enemy targets and avoid obstacles!</p>
-        <button id="startButton">START GAME</button>
-        <div style="margin-top: 20px;">
-            <p>Controls:</p>
-            <p>Left/Right to steer</p>
-            <p>Up to accelerate</p>
-            <p>Space to shoot</p>
-            <p>Or use buttons below</p>
-        </div>
-    </div>
-    
-    <div id="gameOverScreen">
-        <h1>GAME OVER</h1>
-        <p id="finalScore">Score: 0</p>
-        <button id="restartButton">PLAY AGAIN</button>
-    </div>
-    
-    <div id="scoreDisplay">Score: 0</div>
-    <div id="healthDisplay">
-        Health
-        <div class="health-bar">
-            <div class="health-fill" id="healthFill"></div>
-        </div>
-    </div>
-    
-    <div id="controls">
-        <button class="control-btn" id="leftBtn">←</button>
-        <button class="control-btn" id="upBtn">↑</button>
-        <button class="control-btn" id="rightBtn">→</button>
-        <button class="control-btn" id="shootBtn">FIRE</button>
-    </div>
-
-    <script>
-        // Telegram Web App initialization
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
         
-        // Game constants
-        const GRAVITY = 0.2;
-        const THRUST = 0.15;
-        const ROTATION_SPEED = 4;
-        const BULLET_SPEED = 10;
-        const ENEMY_SPAWN_RATE = 100; // frames
-        const BUILDING_SPAWN_RATE = 200; // frames
-        const CLOUD_SPAWN_RATE = 50; // frames
-        
-        // Game variables
-        let canvas, ctx;
-        let gameRunning = false;
-        let score = 0;
-        let health = 100;
-        let plane = {
-            x: 100,
-            y: 300,
-            width: 40,
-            height: 30,
-            speedX: 0,
-            speedY: 0,
-            angle: 0,
-            cooldown: 0
-        };
-        
-        let bullets = [];
-        let enemies = [];
-        let buildings = [];
-        let clouds = [];
-        let explosions = [];
-        let keys = {};
-        let lastEnemySpawn = 0;
-        let lastBuildingSpawn = 0;
-        let lastCloudSpawn = 0;
-        let gameTime = 0;
-        let scrollX = 0;
-        
-        // Initialize game
-        function init() {
-            canvas = document.getElementById('gameCanvas');
-            ctx = canvas.getContext('2d');
-            
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
-            
-            // Event listeners
-            document.addEventListener('keydown', handleKeyDown);
-            document.addEventListener('keyup', handleKeyUp);
-            
-            // Button listeners
-            document.getElementById('startButton').addEventListener('click', startGame);
-            document.getElementById('restartButton').addEventListener('click', startGame);
-            
-            // Touch controls
-            document.getElementById('leftBtn').addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                keys.ArrowLeft = true;
-            });
-            document.getElementById('leftBtn').addEventListener('touchend', (e) => {
-                e.preventDefault();
-                keys.ArrowLeft = false;
-            });
-            document.getElementById('leftBtn').addEventListener('mousedown', () => {
-                keys.ArrowLeft = true;
-            });
-            document.getElementById('leftBtn').addEventListener('mouseup', () => {
-                keys.ArrowLeft = false;
-            });
-            
-            document.getElementById('rightBtn').addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                keys.ArrowRight = true;
-            });
-            document.getElementById('rightBtn').addEventListener('touchend', (e) => {
-                e.preventDefault();
-                keys.ArrowRight = false;
-            });
-            document.getElementById('rightBtn').addEventListener('mousedown', () => {
-                keys.ArrowRight = true;
-            });
-            document.getElementById('rightBtn').addEventListener('mouseup', () => {
-                keys.ArrowRight = false;
-            });
-            
-            document.getElementById('upBtn').addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                keys.ArrowUp = true;
-            });
-            document.getElementById('upBtn').addEventListener('touchend', (e) => {
-                e.preventDefault();
-                keys.ArrowUp = false;
-            });
-            document.getElementById('upBtn').addEventListener('mousedown', () => {
-                keys.ArrowUp = true;
-            });
-            document.getElementById('upBtn').addEventListener('mouseup', () => {
-                keys.ArrowUp = false;
-            });
-            
-            document.getElementById('shootBtn').addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                keys[' '] = true;
-            });
-            document.getElementById('shootBtn').addEventListener('touchend', (e) => {
-                e.preventDefault();
-                keys[' '] = false;
-            });
-            document.getElementById('shootBtn').addEventListener('mousedown', () => {
-                keys[' '] = true;
-            });
-            document.getElementById('shootBtn').addEventListener('mouseup', () => {
-                keys[' '] = false;
-            });
-        }
-        
-        // Resize canvas to fit window
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        
-        // Handle keyboard input
-        function handleKeyDown(e) {
-            keys[e.key] = true;
-        }
-        
-        function handleKeyUp(e) {
-            keys[e.key] = false;
-        }
-        
-        // Start game
-        function startGame() {
-            document.getElementById('startScreen').style.display = 'none';
-            document.getElementById('gameOverScreen').style.display = 'none';
-            
-            // Reset game state
-            score = 0;
-            health = 100;
-            updateScore();
-            updateHealth();
-            
-            plane = {
-                x: 100,
-                y: 300,
-                width: 40,
-                height: 30,
-                speedX: 0,
-                speedY: 0,
-                angle: 0,
-                cooldown: 0
-            };
-            
-            bullets = [];
-            enemies = [];
-            buildings = [];
-            clouds = [];
-            explosions = [];
-            keys = {};
-            lastEnemySpawn = 0;
-            lastBuildingSpawn = 0;
-            lastCloudSpawn = 0;
-            gameTime = 0;
-            scrollX = 0;
-            
-            gameRunning = true;
-            requestAnimationFrame(gameLoop);
-        }
-        
-        // Game over
-        function gameOver() {
-            gameRunning = false;
-            document.getElementById('finalScore').textContent = `Score: ${score}`;
-            document.getElementById('gameOverScreen').style.display = 'flex';
-            
-            // Send score to Telegram bot if in Web App
-            if (tg.initDataUnsafe?.user?.id) {
-                tg.sendData(JSON.stringify({ score: score }));
-            }
-        }
-        
-        // Main game loop
-        function gameLoop() {
-            if (!gameRunning) return;
-            
-            update();
-            render();
-            
-            requestAnimationFrame(gameLoop);
-        }
-        
-        // Update game state
-        function update() {
-            gameTime++;
-            
-            // Update plane
-            if (keys.ArrowLeft) {
-                plane.angle -= ROTATION_SPEED;
-            }
-            if (keys.ArrowRight) {
-                plane.angle += ROTATION_SPEED;
-            }
-            
-            // Limit rotation
-            plane.angle = Math.max(-45, Math.min(45, plane.angle));
-            
-            // Apply thrust
-            if (keys.ArrowUp) {
-                const rad = (plane.angle * Math.PI) / 180;
-                plane.speedX += Math.sin(rad) * THRUST;
-                plane.speedY -= Math.cos(rad) * THRUST;
-            }
-            
-            // Apply gravity
-            plane.speedY += GRAVITY;
-            
-            // Update position
-            plane.x += plane.speedX;
-            plane.y += plane.speedY;
-            
-            // Screen wrapping
-            if (plane.y < 0) plane.y = 0;
-            if (plane.y > canvas.height - plane.height) {
-                plane.y = canvas.height - plane.height;
-                plane.speedY = 0;
-            }
-            
-            // Shooting
-            if (plane.cooldown > 0) {
-                plane.cooldown--;
-            }
-            
-            if (keys[' '] && plane.cooldown === 0) {
-                shoot();
-                plane.cooldown = 10;
-            }
-            
-            // Update bullets
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                bullets[i].x += bullets[i].speedX;
-                bullets[i].y += bullets[i].speedY;
-                
-                // Remove bullets that are off screen
-                if (bullets[i].x > canvas.width || bullets[i].x < 0 || 
-                    bullets[i].y > canvas.height || bullets[i].y < 0) {
-                    bullets.splice(i, 1);
-                }
-            }
-            
-            // Spawn enemies
-            if (gameTime - lastEnemySpawn > ENEMY_SPAWN_RATE) {
-                spawnEnemy();
-                lastEnemySpawn = gameTime;
-            }
-            
-            // Update enemies
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                enemies[i].x -= enemies[i].speed;
-                
-                // Check collision with bullets
-                for (let j = bullets.length - 1; j >= 0; j--) {
-                    if (checkCollision(bullets[j], enemies[i])) {
-                        // Create explosion
-                        explosions.push({
-                            x: enemies[i].x + enemies[i].width / 2,
-                            y: enemies[i].y + enemies[i].height / 2,
-                            radius: 20,
-                            life: 30
-                        });
-                        
-                        // Remove bullet and enemy
-                        bullets.splice(j, 1);
-                        enemies.splice(i, 1);
-                        
-                        // Increase score
-                        score += 10;
-                        updateScore();
-                        break;
-                    }
-                }
-                
-                // Remove enemies that are off screen
-                if (enemies[i].x < -enemies[i].width) {
-                    enemies.splice(i, 1);
-                }
-            }
-            
-            // Spawn buildings
-            if (gameTime - lastBuildingSpawn > BUILDING_SPAWN_RATE) {
-                spawnBuilding();
-                lastBuildingSpawn = gameTime;
-            }
-            
-            // Update buildings (scrolling)
-            for (let i = buildings.length - 1; i >= 0; i--) {
-                buildings[i].x -= 2;
-                
-                // Check collision with plane
-                if (checkCollision(plane, buildings[i])) {
-                    takeDamage(10);
-                }
-                
-                // Remove buildings that are off screen
-                if (buildings[i].x < -buildings[i].width) {
-                    buildings.splice(i, 1);
-                }
-            }
-            
-            // Spawn clouds
-            if (gameTime - lastCloudSpawn > CLOUD_SPAWN_RATE) {
-                spawnCloud();
-                lastCloudSpawn = gameTime;
-            }
-            
-            // Update clouds
-            for (let i = clouds.length - 1; i >= 0; i--) {
-                clouds[i].x -= clouds[i].speed;
-                
-                // Remove clouds that are off screen
-                if (clouds[i].x < -clouds[i].width) {
-                    clouds.splice(i, 1);
-                }
-            }
-            
-            // Update explosions
-            for (let i = explosions.length - 1; i >= 0; i--) {
-                explosions[i].life--;
-                if (explosions[i].life <= 0) {
-                    explosions.splice(i, 1);
-                }
-            }
-            
-            // Check if plane hit the ground or ceiling
-            if (plane.y <= 0 || plane.y >= canvas.height - plane.height) {
-                takeDamage(1);
-            }
-            
-            // Update scroll position (parallax background)
-            scrollX += plane.speedX * 0.1;
-        }
-        
-        // Render game
-        function render() {
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw sky gradient
-            const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            skyGradient.addColorStop(0, '#1a1a2e');
-            skyGradient.addColorStop(1, '#16213e');
-            ctx.fillStyle = skyGradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw stars (parallax)
-            drawStars();
-            
-            // Draw clouds
-            for (const cloud of clouds) {
-                drawCloud(cloud.x, cloud.y, cloud.width, cloud.height);
-            }
-            
-            // Draw buildings
-            for (const building of buildings) {
-                drawBuilding(building.x, building.y, building.width, building.height);
-            }
-            
-            // Draw enemies
-            for (const enemy of enemies) {
-                drawEnemy(enemy.x, enemy.y, enemy.width, enemy.height);
-            }
-            
-            // Draw bullets
-            for (const bullet of bullets) {
-                drawBullet(bullet.x, bullet.y);
-            }
-            
-            // Draw explosions
-            for (const explosion of explosions) {
-                drawExplosion(explosion.x, explosion.y, explosion.radius, explosion.life / 30);
-            }
-            
-            // Draw plane
-            drawPlane(plane.x, plane.y, plane.width, plane.height, plane.angle);
-        }
-        
-        // Draw plane
-        function drawPlane(x, y, width, height, angle) {
-            ctx.save();
-            ctx.translate(x + width / 2, y + height / 2);
-            ctx.rotate((angle * Math.PI) / 180);
-            
-            // Plane body
-            ctx.fillStyle = '#e0e0e0';
-            ctx.beginPath();
-            ctx.moveTo(-width / 2, 0);
-            ctx.lineTo(width / 2, -height / 3);
-            ctx.lineTo(width / 2, height / 3);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Cockpit
-            ctx.fillStyle = '#4fc3f7';
-            ctx.beginPath();
-            ctx.arc(width / 4, 0, height / 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Wings
-            ctx.fillStyle = '#b0bec5';
-            ctx.fillRect(width / 4, -height / 2, width / 2, height / 8);
-            ctx.fillRect(width / 4, height / 2 - height / 8, width / 2, height / 8);
-            
-            // Tail
-            ctx.fillStyle = '#b0bec5';
-            ctx.fillRect(-width / 2, -height / 4, width / 4, height / 8);
-            ctx.fillRect(-width / 2, height / 4 - height / 8, width / 4, height / 8);
-            
-            ctx.restore();
-        }
-        
-        // Draw enemy
-        function drawEnemy(x, y, width, height) {
-            ctx.save();
-            ctx.translate(x + width / 2, y + height / 2);
-            
-            // Enemy body
-            ctx.fillStyle = '#f44336';
-            ctx.beginPath();
-            ctx.moveTo(-width / 2, 0);
-            ctx.lineTo(width / 2, -height / 3);
-            ctx.lineTo(width / 2, height / 3);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Cockpit
-            ctx.fillStyle = '#ff9800';
-            ctx.beginPath();
-            ctx.arc(-width / 4, 0, height / 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Wings
-            ctx.fillStyle = '#d32f2f';
-            ctx.fillRect(-width / 2, -height / 2, width / 2, height / 8);
-            ctx.fillRect(-width / 2, height / 2 - height / 8, width / 2, height / 8);
-            
-            // Tail
-            ctx.fillStyle = '#d32f2f';
-            ctx.fillRect(width / 4, -height / 4, width / 4, height / 8);
-            ctx.fillRect(width / 4, height / 4 - height / 8, width / 4, height / 8);
-            
-            ctx.restore();
-        }
-        
-        // Draw bullet
-        function drawBullet(x, y) {
-            ctx.fillStyle = '#ffeb3b';
-            ctx.beginPath();
-            ctx.arc(x, y, 3, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        
-        // Draw building
-        function drawBuilding(x, y, width, height) {
-            // Base
-            ctx.fillStyle = '#37474f';
-            ctx.fillRect(x, y, width, height);
-            
-            // Windows
-            ctx.fillStyle = '#ffeb3b';
-            const windowWidth = width / 5;
-            const windowHeight = height / 10;
-            const windowSpacing = windowWidth * 1.5;
-            
-            for (let wy = y + 10; wy < y + height - 10; wy += windowSpacing) {
-                for (let wx = x + 10; wx < x + width - 10; wx += windowSpacing) {
-                    ctx.fillRect(wx, wy, windowWidth, windowHeight);
-                }
-            }
-        }
-        
-        // Draw cloud
-        function drawCloud(x, y, width, height) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            
-            const segments = 5;
-            const segmentWidth = width / segments;
-            
-            for (let i = 0; i < segments; i++) {
-                const segmentX = x + i * segmentWidth;
-                const segmentY = y + Math.sin(i * 0.5) * (height / 4);
-                const segmentHeight = height * (0.7 + Math.sin(i * 0.8) * 0.3);
-                
-                ctx.beginPath();
-                ctx.ellipse(
-                    segmentX + segmentWidth / 2,
-                    segmentY + segmentHeight / 2,
-                    segmentWidth / 2,
-                    segmentHeight / 2,
-                    0, 0, Math.PI * 2
-                );
-                ctx.fill();
-            }
-        }
-        
-        // Draw explosion
-        function drawExplosion(x, y, radius, intensity) {
-            const gradient = ctx.createRadialGradient(
-                x, y, 0,
-                x, y, radius * intensity
-            );
-            gradient.addColorStop(0, `rgba(255, ${Math.floor(100 + 155 * intensity)}, 0, ${intensity})`);
-            gradient.addColorStop(1, `rgba(255, 0, 0, 0)`);
-            
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(x, y, radius * intensity, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        
-        // Draw stars
-        function drawStars() {
-            ctx.fillStyle = 'white';
-            
-            // Create a consistent star pattern based on scrollX
-            const starDensity = 0.0005;
-            const starCount = canvas.width * canvas.height * starDensity;
-            
-            for (let i = 0; i < starCount; i++) {
-                // Use a pseudo-random seed based on i and scrollX for consistent positioning
-                const seed = i + Math.floor(scrollX / 100);
-                const x = (seed * 123456789) % canvas.width;
-                const y = (seed * 987654321) % canvas.height;
-                const size = (seed * 135792468) % 2 + 1;
-                
-                // Some stars twinkle
-                const twinkle = (seed * 11235813) % 100;
-                if (twinkle < 30) {
-                    const alpha = 0.3 + 0.7 * Math.abs(Math.sin(gameTime * 0.05 + seed));
-                    ctx.globalAlpha = alpha;
-                } else {
-                    ctx.globalAlpha = 0.8;
-                }
-                
-                ctx.fillRect(x, y, size, size);
-            }
-            
-            ctx.globalAlpha = 1;
-        }
-        
-        // Spawn enemy
-        function spawnEnemy() {
-            const height = 30 + Math.random() * 20;
-            const width = height * 1.3;
-            
-            enemies.push({
-                x: canvas.width,
-                y: Math.random() * (canvas.height - height - 100) + 50,
-                width: width,
-                height: height,
-                speed: 2 + Math.random() * 3
-            });
-        }
-        
-        // Spawn building
-        function spawnBuilding() {
-            const height = 100 + Math.random() * 200;
-            const width = 40 + Math.random() * 60;
-            
-            buildings.push({
-                x: canvas.width,
-                y: canvas.height - height,
-                width: width,
-                height: height
-            });
-        }
-        
-        // Spawn cloud
-        function spawnCloud() {
-            const width = 100 + Math.random() * 150;
-            const height = 30 + Math.random() * 50;
-            
-            clouds.push({
-                x: canvas.width,
-                y: Math.random() * (canvas.height / 2),
-                width: width,
-                height: height,
-                speed: 0.5 + Math.random() * 1
-            });
-        }
-        
-        // Shoot bullet
-        function shoot() {
-            const rad = (plane.angle * Math.PI) / 180;
-            const bulletX = plane.x + plane.width / 2 + Math.sin(rad) * 20;
-            const bulletY = plane.y + plane.height / 2 - Math.cos(rad) * 20;
-            
-            bullets.push({
-                x: bulletX,
-                y: bulletY,
-                speedX: plane.speedX + Math.sin(rad) * BULLET_SPEED,
-                speedY: plane.speedY - Math.cos(rad) * BULLET_SPEED
-            });
-        }
-        
-        // Check collision between two objects
-        function checkCollision(obj1, obj2) {
-            return obj1.x < obj2.x + obj2.width &&
-                   obj1.x + obj1.width > obj2.x &&
-                   obj1.y < obj2.y + obj2.height &&
-                   obj1.y + obj1.height > obj2.y;
-        }
-        
-        // Take damage
-        function takeDamage(amount) {
-            health -= amount;
-            updateHealth();
-            
-            // Create small explosion
-            explosions.push({
-                x: plane.x + plane.width / 2,
-                y: plane.y + plane.height / 2,
-                radius: 15,
-                life: 20
-            });
-            
-            if (health <= 0) {
-                // Create big explosion
-                explosions.push({
-                    x: plane.x + plane.width / 2,
-                    y: plane.y + plane.height / 2,
-                    radius: 40,
-                    life: 40
-                });
-                
-                gameOver();
-            }
-        }
-        
-        // Update score display
-        function updateScore() {
-            document.getElementById('scoreDisplay').textContent = `Score: ${score}`;
-        }
-        
-        // Update health display
-        function updateHealth() {
-            const healthFill = document.getElementById('healthFill');
-            const percent = Math.max(0, health) / 100;
-            healthFill.style.width = `${percent * 100}%`;
-            
-            // Change color based on health
-            if (percent < 0.3) {
-                healthFill.style.backgroundColor = '#f44336';
-            } else if (percent < 0.6) {
-                healthFill.style.backgroundColor = '#ff9800';
-            } else {
-                healthFill.style.backgroundColor = '#4caf50';
-            }
-        }
-        
-        // Initialize game when loaded
-        window.onload = init;
-    </script>
-</body>
-</html>
+        <div id="ui-overlay">
+            <div id="score-display">SCORE: 0</div>
+            <div id="health-display">HEALTH: 100%</div>
+            <div id="ammo-display">AMMO: 10</div>
+            <div id="fuel-display">FU
