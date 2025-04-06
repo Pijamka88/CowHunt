@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Starfield Sopwith</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             margin: 0;
@@ -17,12 +16,15 @@
         canvas {
             display: block;
         }
-        #gameContainer {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
+        #gameUI {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-size: 16px;
+            text-shadow: 0 0 5px #0ff;
         }
-        #startScreen, #gameOverScreen {
+        #startScreen {
             position: absolute;
             top: 0;
             left: 0;
@@ -32,151 +34,120 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            z-index: 100;
+        }
+        #startScreen h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #0ff;
+        }
+        #startScreen button {
+            padding: 10px 20px;
+            font-size: 1.2em;
+            background-color: #003366;
+            color: #fff;
+            border: 2px solid #0ff;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        #startScreen button:hover {
+            background-color: #0066cc;
+        }
+        #controls {
+            margin-top: 20px;
             text-align: center;
         }
         #gameOverScreen {
-            display: none;
-        }
-        button {
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 10px 2px;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-        .score-display {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            font-size: 16px;
-        }
-        .controls {
-            position: absolute;
-            bottom: 20px;
+            top: 0;
+            left: 0;
             width: 100%;
-            display: flex;
-            justify-content: space-around;
-        }
-        .control-btn {
-            width: 60px;
-            height: 60px;
-            background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            display: flex;
+            height: 100%;
+            display: none;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            color: white;
-            font-size: 24px;
-            user-select: none;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            z-index: 100;
+        }
+        #gameOverScreen h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #f00;
         }
     </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <canvas id="gameCanvas"></canvas>
-        
-        <div class="score-display">
-            <div>Score: <span id="score">0</span></div>
-            <div>Lives: <span id="lives">3</span></div>
-            <div>Level: <span id="level">1</span></div>
+    <canvas id="gameCanvas"></canvas>
+    <div id="gameUI">
+        <div>Score: <span id="score">0</span></div>
+        <div>Health: <span id="health">100</span></div>
+        <div>Fuel: <span id="fuel">100</span></div>
+        <div>Enemies: <span id="enemies">5</span></div>
+    </div>
+    
+    <div id="startScreen">
+        <h1>STARFIELD SOPWITH</h1>
+        <p>A space combat game inspired by Sopwith (1984)</p>
+        <button id="startButton">START GAME</button>
+        <div id="controls">
+            <p>Controls:</p>
+            <p>WASD or Arrow Keys - Move</p>
+            <p>Space - Fire</p>
+            <p>R - Restart</p>
         </div>
-        
-        <div id="startScreen">
-            <h1>STARFIELD SOPWITH</h1>
-            <p>Fly through the starfield, avoid asteroids and destroy enemy ships!</p>
-            <button id="startButton">START GAME</button>
-            <div class="controls" style="position: relative; margin-top: 20px;">
-                <div>←→ : Move</div>
-                <div>↑ : Thrust</div>
-                <div>Space : Fire</div>
-            </div>
-        </div>
-        
-        <div id="gameOverScreen">
-            <h1>GAME OVER</h1>
-            <p>Your score: <span id="finalScore">0</span></p>
-            <button id="restartButton">PLAY AGAIN</button>
-        </div>
-        
-        <div class="controls">
-            <div class="control-btn" id="leftBtn">←</div>
-            <div class="control-btn" id="upBtn">↑</div>
-            <div class="control-btn" id="rightBtn">→</div>
-            <div class="control-btn" id="fireBtn">⚡</div>
-        </div>
+    </div>
+    
+    <div id="gameOverScreen">
+        <h1>GAME OVER</h1>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <button id="restartButton">PLAY AGAIN</button>
     </div>
 
     <script>
-        // Telegram Web App initialization
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        
         // Game constants
         const GAME_WIDTH = 800;
         const GAME_HEIGHT = 600;
-        const PLAYER_WIDTH = 20;
-        const PLAYER_HEIGHT = 15;
+        const PLAYER_SPEED = 5;
+        const PLAYER_ROTATION_SPEED = 0.1;
         const BULLET_SPEED = 10;
-        const ENEMY_SIZE = 15;
-        const ASTEROID_MIN_SIZE = 10;
-        const ASTEROID_MAX_SIZE = 30;
+        const ENEMY_SPEED = 2;
         const STAR_COUNT = 100;
-        const LEVEL_SCORE_INCREASE = 1000;
+        const PLANET_COUNT = 3;
+        const FUEL_CONSUMPTION = 0.05;
+        const FUEL_REFILL_RATE = 0.1;
         
         // Game variables
         let canvas, ctx;
         let gameRunning = false;
         let score = 0;
-        let lives = 3;
-        let level = 1;
+        let playerHealth = 100;
+        let playerFuel = 100;
+        let enemiesRemaining = 5;
         let player = {
             x: GAME_WIDTH / 2,
             y: GAME_HEIGHT / 2,
-            width: PLAYER_WIDTH,
-            height: PLAYER_HEIGHT,
-            speedX: 0,
-            speedY: 0,
+            width: 20,
+            height: 10,
             angle: 0,
+            velocity: { x: 0, y: 0 },
             thrusting: false,
-            cooldown: 0
+            bullets: []
         };
         
-        let bullets = [];
         let enemies = [];
-        let asteroids = [];
         let stars = [];
+        let planets = [];
+        let explosions = [];
         let keys = {};
         let lastTime = 0;
-        let enemySpawnTimer = 0;
-        let asteroidSpawnTimer = 0;
-        let bgOffset = 0;
+        let gameTime = 0;
         
-        // DOM elements
-        const startScreen = document.getElementById('startScreen');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const startButton = document.getElementById('startButton');
-        const restartButton = document.getElementById('restartButton');
-        const scoreDisplay = document.getElementById('score');
-        const livesDisplay = document.getElementById('lives');
-        const levelDisplay = document.getElementById('level');
-        const finalScoreDisplay = document.getElementById('finalScore');
-        
-        // Control buttons
-        const leftBtn = document.getElementById('leftBtn');
-        const rightBtn = document.getElementById('rightBtn');
-        const upBtn = document.getElementById('upBtn');
-        const fireBtn = document.getElementById('fireBtn');
-        
-        // Initialize the game
+        // Initialize game
         function init() {
             canvas = document.getElementById('gameCanvas');
             ctx = canvas.getContext('2d');
@@ -185,534 +156,287 @@
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
             
-            // Initialize stars for background
-            initStars();
-            
             // Event listeners
-            startButton.addEventListener('click', startGame);
-            restartButton.addEventListener('click', startGame);
+            document.addEventListener('keydown', keyDown);
+            document.addEventListener('keyup', keyUp);
+            document.getElementById('startButton').addEventListener('click', startGame);
+            document.getElementById('restartButton').addEventListener('click', restartGame);
             
-            // Keyboard controls
-            window.addEventListener('keydown', (e) => {
-                keys[e.key] = true;
-                
-                // Prevent default for arrow keys and space
-                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
-                    e.preventDefault();
-                }
-            });
+            // Touch controls for mobile
+            canvas.addEventListener('touchstart', handleTouchStart, false);
+            canvas.addEventListener('touchmove', handleTouchMove, false);
+            canvas.addEventListener('touchend', handleTouchEnd, false);
             
-            window.addEventListener('keyup', (e) => {
-                keys[e.key] = false;
-            });
+            // Initialize stars
+            for (let i = 0; i < STAR_COUNT; i++) {
+                stars.push({
+                    x: Math.random() * GAME_WIDTH,
+                    y: Math.random() * GAME_HEIGHT,
+                    size: Math.random() * 2 + 1,
+                    speed: Math.random() * 2 + 1
+                });
+            }
             
-            // Touch controls
-            leftBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                keys['ArrowLeft'] = true;
-            });
+            // Initialize planets
+            for (let i = 0; i < PLANET_COUNT; i++) {
+                planets.push({
+                    x: Math.random() * GAME_WIDTH,
+                    y: Math.random() * GAME_HEIGHT,
+                    radius: Math.random() * 30 + 20,
+                    color: `hsl(${Math.random() * 360}, 70%, 50%)`
+                });
+            }
             
-            leftBtn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                keys['ArrowLeft'] = false;
-            });
-            
-            rightBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                keys['ArrowRight'] = true;
-            });
-            
-            rightBtn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                keys['ArrowRight'] = false;
-            });
-            
-            upBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                keys['ArrowUp'] = true;
-                player.thrusting = true;
-            });
-            
-            upBtn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                keys['ArrowUp'] = false;
-                player.thrusting = false;
-            });
-            
-            fireBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                keys[' '] = true;
-            });
-            
-            fireBtn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                keys[' '] = false;
-            });
-            
-            // Mouse controls for testing on desktop
-            leftBtn.addEventListener('mousedown', () => { keys['ArrowLeft'] = true; });
-            leftBtn.addEventListener('mouseup', () => { keys['ArrowLeft'] = false; });
-            leftBtn.addEventListener('mouseleave', () => { keys['ArrowLeft'] = false; });
-            
-            rightBtn.addEventListener('mousedown', () => { keys['ArrowRight'] = true; });
-            rightBtn.addEventListener('mouseup', () => { keys['ArrowRight'] = false; });
-            rightBtn.addEventListener('mouseleave', () => { keys['ArrowRight'] = false; });
-            
-            upBtn.addEventListener('mousedown', () => { 
-                keys['ArrowUp'] = true; 
-                player.thrusting = true;
-            });
-            upBtn.addEventListener('mouseup', () => { 
-                keys['ArrowUp'] = false; 
-                player.thrusting = false;
-            });
-            upBtn.addEventListener('mouseleave', () => { 
-                keys['ArrowUp'] = false; 
-                player.thrusting = false;
-            });
-            
-            fireBtn.addEventListener('mousedown', () => { keys[' '] = true; });
-            fireBtn.addEventListener('mouseup', () => { keys[' '] = false; });
-            fireBtn.addEventListener('mouseleave', () => { keys[' '] = false; });
+            // Start game loop
+            requestAnimationFrame(gameLoop);
         }
         
         function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        
-        function initStars() {
-            stars = [];
-            for (let i = 0; i < STAR_COUNT; i++) {
-                stars.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    size: Math.random() * 2 + 1,
-                    speed: Math.random() * 3 + 1
-                });
-            }
+            // Scale canvas to window size but maintain aspect ratio
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            const scale = Math.min(windowWidth / GAME_WIDTH, windowHeight / GAME_HEIGHT);
+            
+            canvas.width = GAME_WIDTH;
+            canvas.height = GAME_HEIGHT;
+            canvas.style.width = `${GAME_WIDTH * scale}px`;
+            canvas.style.height = `${GAME_HEIGHT * scale}px`;
         }
         
         function startGame() {
-            // Reset game state
+            document.getElementById('startScreen').style.display = 'none';
+            resetGame();
             gameRunning = true;
+        }
+        
+        function restartGame() {
+            document.getElementById('gameOverScreen').style.display = 'none';
+            resetGame();
+            gameRunning = true;
+        }
+        
+        function resetGame() {
             score = 0;
-            lives = 3;
-            level = 1;
+            playerHealth = 100;
+            playerFuel = 100;
+            enemiesRemaining = 5;
+            
             player = {
                 x: GAME_WIDTH / 2,
                 y: GAME_HEIGHT / 2,
-                width: PLAYER_WIDTH,
-                height: PLAYER_HEIGHT,
-                speedX: 0,
-                speedY: 0,
+                width: 20,
+                height: 10,
                 angle: 0,
+                velocity: { x: 0, y: 0 },
                 thrusting: false,
-                cooldown: 0
+                bullets: []
             };
-            bullets = [];
+            
             enemies = [];
-            asteroids = [];
-            enemySpawnTimer = 0;
-            asteroidSpawnTimer = 0;
+            explosions = [];
             
-            // Update displays
-            scoreDisplay.textContent = score;
-            livesDisplay.textContent = lives;
-            levelDisplay.textContent = level;
+            // Create initial enemies
+            for (let i = 0; i < enemiesRemaining; i++) {
+                spawnEnemy();
+            }
             
-            // Hide screens
-            startScreen.style.display = 'none';
-            gameOverScreen.style.display = 'none';
-            
-            // Start game loop
-            lastTime = 0;
-            requestAnimationFrame(gameLoop);
+            updateUI();
         }
         
-        function gameOver() {
-            gameRunning = false;
-            finalScoreDisplay.textContent = score;
-            gameOverScreen.style.display = 'flex';
+        function spawnEnemy() {
+            // Spawn enemy at edge of screen
+            let x, y;
+            if (Math.random() < 0.5) {
+                x = Math.random() < 0.5 ? 0 : GAME_WIDTH;
+                y = Math.random() * GAME_HEIGHT;
+            } else {
+                x = Math.random() * GAME_WIDTH;
+                y = Math.random() < 0.5 ? 0 : GAME_HEIGHT;
+            }
+            
+            enemies.push({
+                x: x,
+                y: y,
+                width: 20,
+                height: 10,
+                angle: Math.random() * Math.PI * 2,
+                speed: ENEMY_SPEED,
+                health: 30,
+                lastShot: 0,
+                shootDelay: Math.random() * 1000 + 1000
+            });
         }
         
         function gameLoop(timestamp) {
-            if (!gameRunning) return;
-            
+            if (!lastTime) lastTime = timestamp;
             const deltaTime = timestamp - lastTime;
             lastTime = timestamp;
+            gameTime += deltaTime;
             
-            update(deltaTime);
-            render();
+            // Clear canvas
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            
+            // Draw stars
+            drawStars(deltaTime);
+            
+            // Draw planets
+            drawPlanets();
+            
+            if (gameRunning) {
+                // Update game state
+                updatePlayer(deltaTime);
+                updateBullets();
+                updateEnemies(deltaTime);
+                updateExplosions(deltaTime);
+                
+                // Check collisions
+                checkCollisions();
+                
+                // Spawn new enemies if needed
+                if (enemies.length < 3 && enemiesRemaining > 0) {
+                    if (Math.random() < 0.01) {
+                        spawnEnemy();
+                    }
+                }
+                
+                // Update UI
+                updateUI();
+                
+                // Check game over conditions
+                if (playerHealth <= 0) {
+                    gameOver(false);
+                } else if (enemiesRemaining === 0 && enemies.length === 0) {
+                    gameOver(true);
+                }
+            }
+            
+            // Draw game objects
+            drawPlayer();
+            drawBullets();
+            drawEnemies();
+            drawExplosions();
             
             requestAnimationFrame(gameLoop);
         }
         
-        function update(deltaTime) {
-            // Update player
-            if (keys['ArrowLeft']) {
-                player.angle -= 0.1;
-            }
-            if (keys['ArrowRight']) {
-                player.angle += 0.1;
-            }
-            
-            player.thrusting = keys['ArrowUp'] || false;
-            
-            if (player.thrusting) {
-                const thrust = 0.05;
-                player.speedX += Math.sin(player.angle) * thrust;
-                player.speedY -= Math.cos(player.angle) * thrust;
+        function drawStars(deltaTime) {
+            ctx.fillStyle = 'white';
+            for (let star of stars) {
+                // Stars move based on player velocity to create parallax effect
+                star.x -= player.velocity.x * 0.1;
+                star.y -= player.velocity.y * 0.1;
                 
-                // Limit speed
-                const maxSpeed = 5;
-                const speed = Math.sqrt(player.speedX * player.speedX + player.speedY * player.speedY);
-                if (speed > maxSpeed) {
-                    player.speedX = (player.speedX / speed) * maxSpeed;
-                    player.speedY = (player.speedY / speed) * maxSpeed;
+                // Wrap stars around screen
+                if (star.x < 0) star.x = GAME_WIDTH;
+                if (star.x > GAME_WIDTH) star.x = 0;
+                if (star.y < 0) star.y = GAME_HEIGHT;
+                if (star.y > GAME_HEIGHT) star.y = 0;
+                
+                // Twinkle effect
+                const twinkle = Math.sin(gameTime * 0.001 + star.x * star.y) * 0.5 + 0.5;
+                ctx.globalAlpha = twinkle;
+                ctx.fillRect(star.x, star.y, star.size, star.size);
+            }
+            ctx.globalAlpha = 1;
+        }
+        
+        function drawPlanets() {
+            for (let planet of planets) {
+                // Draw planet
+                ctx.beginPath();
+                ctx.arc(planet.x, planet.y, planet.radius, 0, Math.PI * 2);
+                ctx.fillStyle = planet.color;
+                ctx.fill();
+                
+                // Draw craters
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                for (let i = 0; i < 5; i++) {
+                    const angle = Math.PI * 2 * (i / 5);
+                    const dist = planet.radius * 0.7;
+                    const craterX = planet.x + Math.cos(angle) * dist;
+                    const craterY = planet.y + Math.sin(angle) * dist;
+                    const craterSize = planet.radius * 0.2;
+                    
+                    ctx.beginPath();
+                    ctx.arc(craterX, craterY, craterSize, 0, Math.PI * 2);
+                    ctx.fill();
                 }
+            }
+        }
+        
+        function updatePlayer(deltaTime) {
+            // Rotation
+            if (keys['ArrowLeft'] || keys['a']) {
+                player.angle -= PLAYER_ROTATION_SPEED;
+            }
+            if (keys['ArrowRight'] || keys['d']) {
+                player.angle += PLAYER_ROTATION_SPEED;
+            }
+            
+            // Thrust
+            player.thrusting = false;
+            if ((keys['ArrowUp'] || keys['w']) && playerFuel > 0) {
+                player.velocity.x += Math.cos(player.angle) * PLAYER_SPEED * (deltaTime / 1000);
+                player.velocity.y += Math.sin(player.angle) * PLAYER_SPEED * (deltaTime / 1000);
+                player.thrusting = true;
+                playerFuel -= FUEL_CONSUMPTION * (deltaTime / 16.67);
+            } else {
+                // Refuel when not thrusting
+                playerFuel = Math.min(100, playerFuel + FUEL_REFILL_RATE * (deltaTime / 16.67));
             }
             
             // Apply friction
-            player.speedX *= 0.98;
-            player.speedY *= 0.98;
+            player.velocity.x *= 0.98;
+            player.velocity.y *= 0.98;
             
             // Update position
-            player.x += player.speedX;
-            player.y += player.speedY;
+            player.x += player.velocity.x;
+            player.y += player.velocity.y;
             
             // Wrap around screen
-            if (player.x < -player.width) player.x = canvas.width;
-            if (player.x > canvas.width) player.x = -player.width;
-            if (player.y < -player.height) player.y = canvas.height;
-            if (player.y > canvas.height) player.y = -player.height;
+            if (player.x < 0) player.x = GAME_WIDTH;
+            if (player.x > GAME_WIDTH) player.x = 0;
+            if (player.y < 0) player.y = GAME_HEIGHT;
+            if (player.y > GAME_HEIGHT) player.y = 0;
             
-            // Update bullets
-            if (keys[' '] && player.cooldown <= 0) {
-                bullets.push({
-                    x: player.x + Math.sin(player.angle) * (player.width / 2),
-                    y: player.y - Math.cos(player.angle) * (player.height / 2),
-                    speedX: Math.sin(player.angle) * BULLET_SPEED + player.speedX,
-                    speedY: -Math.cos(player.angle) * BULLET_SPEED + player.speedY,
-                    angle: player.angle
-                });
-                player.cooldown = 10;
+            // Fire bullets
+            if ((keys[' '] || keys['Spacebar']) && gameTime - player.lastShot > 300) {
+                fireBullet();
+                player.lastShot = gameTime;
             }
-            
-            if (player.cooldown > 0) {
-                player.cooldown--;
-            }
-            
-            // Update bullets
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                bullets[i].x += bullets[i].speedX;
-                bullets[i].y += bullets[i].speedY;
-                
-                // Remove bullets that are off screen
-                if (bullets[i].x < 0 || bullets[i].x > canvas.width || 
-                    bullets[i].y < 0 || bullets[i].y > canvas.height) {
-                    bullets.splice(i, 1);
-                }
-            }
-            
-            // Spawn enemies
-            enemySpawnTimer -= deltaTime;
-            if (enemySpawnTimer <= 0) {
-                const side = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
-                let x, y, angle;
-                
-                switch (side) {
-                    case 0: // top
-                        x = Math.random() * canvas.width;
-                        y = -ENEMY_SIZE;
-                        angle = Math.random() * Math.PI; // Pointing downward
-                        break;
-                    case 1: // right
-                        x = canvas.width + ENEMY_SIZE;
-                        y = Math.random() * canvas.height;
-                        angle = Math.PI + Math.random() * Math.PI; // Pointing left
-                        break;
-                    case 2: // bottom
-                        x = Math.random() * canvas.width;
-                        y = canvas.height + ENEMY_SIZE;
-                        angle = Math.PI + Math.random() * Math.PI; // Pointing upward
-                        break;
-                    case 3: // left
-                        x = -ENEMY_SIZE;
-                        y = Math.random() * canvas.height;
-                        angle = Math.random() * Math.PI; // Pointing right
-                        break;
-                }
-                
-                enemies.push({
-                    x: x,
-                    y: y,
-                    size: ENEMY_SIZE,
-                    speed: 1 + Math.random() * 1 + level * 0.2,
-                    angle: angle,
-                    health: 1 + Math.floor(level / 3)
-                });
-                
-                enemySpawnTimer = 2000 - level * 100; // Faster spawning as level increases
-                if (enemySpawnTimer < 500) enemySpawnTimer = 500;
-            }
-            
-            // Update enemies
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                enemies[i].x += Math.sin(enemies[i].angle) * enemies[i].speed;
-                enemies[i].y -= Math.cos(enemies[i].angle) * enemies[i].speed;
-                
-                // Remove enemies that are far off screen
-                if (enemies[i].x < -ENEMY_SIZE * 2 || enemies[i].x > canvas.width + ENEMY_SIZE * 2 || 
-                    enemies[i].y < -ENEMY_SIZE * 2 || enemies[i].y > canvas.height + ENEMY_SIZE * 2) {
-                    enemies.splice(i, 1);
-                }
-            }
-            
-            // Spawn asteroids
-            asteroidSpawnTimer -= deltaTime;
-            if (asteroidSpawnTimer <= 0) {
-                const side = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
-                let x, y, angle;
-                
-                switch (side) {
-                    case 0: // top
-                        x = Math.random() * canvas.width;
-                        y = -ASTEROID_MAX_SIZE;
-                        angle = Math.random() * Math.PI; // Pointing downward
-                        break;
-                    case 1: // right
-                        x = canvas.width + ASTEROID_MAX_SIZE;
-                        y = Math.random() * canvas.height;
-                        angle = Math.PI + Math.random() * Math.PI; // Pointing left
-                        break;
-                    case 2: // bottom
-                        x = Math.random() * canvas.width;
-                        y = canvas.height + ASTEROID_MAX_SIZE;
-                        angle = Math.PI + Math.random() * Math.PI; // Pointing upward
-                        break;
-                    case 3: // left
-                        x = -ASTEROID_MAX_SIZE;
-                        y = Math.random() * canvas.height;
-                        angle = Math.random() * Math.PI; // Pointing right
-                        break;
-                }
-                
-                const size = ASTEROID_MIN_SIZE + Math.random() * (ASTEROID_MAX_SIZE - ASTEROID_MIN_SIZE);
-                
-                asteroids.push({
-                    x: x,
-                    y: y,
-                    size: size,
-                    speed: 0.5 + Math.random() * 1,
-                    angle: angle,
-                    rotation: Math.random() * Math.PI * 2,
-                    rotationSpeed: (Math.random() - 0.5) * 0.02
-                });
-                
-                asteroidSpawnTimer = 3000 - level * 100; // Faster spawning as level increases
-                if (asteroidSpawnTimer < 1000) asteroidSpawnTimer = 1000;
-            }
-            
-            // Update asteroids
-            for (let i = asteroids.length - 1; i >= 0; i--) {
-                asteroids[i].x += Math.sin(asteroids[i].angle) * asteroids[i].speed;
-                asteroids[i].y -= Math.cos(asteroids[i].angle) * asteroids[i].speed;
-                asteroids[i].rotation += asteroids[i].rotationSpeed;
-                
-                // Remove asteroids that are far off screen
-                if (asteroids[i].x < -ASTEROID_MAX_SIZE * 2 || asteroids[i].x > canvas.width + ASTEROID_MAX_SIZE * 2 || 
-                    asteroids[i].y < -ASTEROID_MAX_SIZE * 2 || asteroids[i].y > canvas.height + ASTEROID_MAX_SIZE * 2) {
-                    asteroids.splice(i, 1);
-                }
-            }
-            
-            // Collision detection: bullets vs enemies
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                for (let j = enemies.length - 1; j >= 0; j--) {
-                    const dx = bullets[i].x - enemies[j].x;
-                    const dy = bullets[i].y - enemies[j].y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance < enemies[j].size) {
-                        // Hit!
-                        enemies[j].health--;
-                        bullets.splice(i, 1);
-                        
-                        if (enemies[j].health <= 0) {
-                            score += 100 * level;
-                            enemies.splice(j, 1);
-                        } else {
-                            score += 50;
-                        }
-                        
-                        scoreDisplay.textContent = score;
-                        
-                        // Check for level up
-                        if (score >= level * LEVEL_SCORE_INCREASE) {
-                            level++;
-                            levelDisplay.textContent = level;
-                        }
-                        
-                        break;
-                    }
-                }
-            }
-            
-            // Collision detection: bullets vs asteroids
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                for (let j = asteroids.length - 1; j >= 0; j--) {
-                    const dx = bullets[i].x - asteroids[j].x;
-                    const dy = bullets[i].y - asteroids[j].y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance < asteroids[j].size) {
-                        // Hit asteroid - bullet is destroyed
-                        bullets.splice(i, 1);
-                        score += 10;
-                        scoreDisplay.textContent = score;
-                        break;
-                    }
-                }
-            }
-            
-            // Collision detection: player vs enemies
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                const dx = player.x - enemies[i].x;
-                const dy = player.y - enemies[i].y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                if (distance < (player.width / 2 + enemies[i].size)) {
-                    // Collision with enemy
-                    lives--;
-                    livesDisplay.textContent = lives;
-                    enemies.splice(i, 1);
-                    
-                    if (lives <= 0) {
-                        gameOver();
-                        return;
-                    }
-                }
-            }
-            
-            // Collision detection: player vs asteroids
-            for (let i = asteroids.length - 1; i >= 0; i--) {
-                const dx = player.x - asteroids[i].x;
-                const dy = player.y - asteroids[i].y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                if (distance < (player.width / 2 + asteroids[i].size)) {
-                    // Collision with asteroid
-                    lives--;
-                    livesDisplay.textContent = lives;
-                    asteroids.splice(i, 1);
-                    
-                    if (lives <= 0) {
-                        gameOver();
-                        return;
-                    }
-                }
-            }
-            
-            // Update background offset for parallax effect
-            bgOffset += player.speedY * 0.1;
         }
         
-        function render() {
-            // Clear canvas
-            ctx.fillStyle = 'black';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw starfield background
-            ctx.fillStyle = 'white';
-            for (let i = 0; i < stars.length; i++) {
-                // Parallax effect based on star speed
-                const y = (stars[i].y + bgOffset * stars[i].speed) % canvas.height;
-                ctx.globalAlpha = stars[i].speed / 4;
-                ctx.fillRect(stars[i].x, y, stars[i].size, stars[i].size);
-            }
-            ctx.globalAlpha = 1;
-            
-            // Draw bullets
-            ctx.fillStyle = 'yellow';
-            for (let i = 0; i < bullets.length; i++) {
-                ctx.save();
-                ctx.translate(bullets[i].x, bullets[i].y);
-                ctx.rotate(bullets[i].angle);
-                ctx.fillRect(0, -1, 10, 2);
-                ctx.restore();
-            }
-            
-            // Draw enemies
-            ctx.fillStyle = 'red';
-            for (let i = 0; i < enemies.length; i++) {
-                ctx.save();
-                ctx.translate(enemies[i].x, enemies[i].y);
-                ctx.rotate(enemies[i].angle);
-                
-                // Simple enemy ship
-                ctx.beginPath();
-                ctx.moveTo(enemies[i].size, 0);
-                ctx.lineTo(-enemies[i].size, -enemies[i].size / 2);
-                ctx.lineTo(-enemies[i].size / 2, 0);
-                ctx.lineTo(-enemies[i].size, enemies[i].size / 2);
-                ctx.closePath();
-                ctx.fill();
-                
-                // Health indicator
-                if (enemies[i].health > 1) {
-                    ctx.fillStyle = 'white';
-                    ctx.font = '10px Arial';
-                    ctx.fillText(enemies[i].health, -5, 5);
-                    ctx.fillStyle = 'red';
-                }
-                
-                ctx.restore();
-            }
-            
-            // Draw asteroids
-            ctx.fillStyle = '#8B4513'; // Brown color for asteroids
-            for (let i = 0; i < asteroids.length; i++) {
-                ctx.save();
-                ctx.translate(asteroids[i].x, asteroids[i].y);
-                ctx.rotate(asteroids[i].rotation);
-                
-                // Draw irregular asteroid shape
-                ctx.beginPath();
-                ctx.moveTo(asteroids[i].size, 0);
-                for (let j = 1; j <= 8; j++) {
-                    const angle = (j / 8) * Math.PI * 2;
-                    const radius = asteroids[i].size * (0.7 + Math.random() * 0.3);
-                    ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
-                }
-                ctx.closePath();
-                ctx.fill();
-                
-                ctx.restore();
-            }
-            
-            // Draw player
+        function drawPlayer() {
             ctx.save();
             ctx.translate(player.x, player.y);
             ctx.rotate(player.angle);
             
-            // Player ship
-            ctx.fillStyle = 'lime';
+            // Draw ship body
+            ctx.fillStyle = '#00ffff';
             ctx.beginPath();
-            ctx.moveTo(PLAYER_WIDTH / 2, 0);
-            ctx.lineTo(-PLAYER_WIDTH / 2, -PLAYER_HEIGHT / 2);
-            ctx.lineTo(-PLAYER_WIDTH / 4, 0);
-            ctx.lineTo(-PLAYER_WIDTH / 2, PLAYER_HEIGHT / 2);
+            ctx.moveTo(player.width / 2, 0);
+            ctx.lineTo(-player.width / 2, -player.height / 2);
+            ctx.lineTo(-player.width / 4, 0);
+            ctx.lineTo(-player.width / 2, player.height / 2);
             ctx.closePath();
             ctx.fill();
             
-            // Thruster effect
+            // Draw cockpit
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(player.width / 4, 0, player.height / 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw thrust
             if (player.thrusting) {
-                ctx.fillStyle = 'orange';
+                const flameSize = Math.random() * 5 + 5;
+                ctx.fillStyle = `hsl(${Math.random() * 30 + 20}, 100%, 50%)`;
                 ctx.beginPath();
-                ctx.moveTo(-PLAYER_WIDTH / 2, -PLAYER_HEIGHT / 4);
-                ctx.lineTo(-PLAYER_WIDTH / 2 - 10, 0);
-                ctx.lineTo(-PLAYER_WIDTH / 2, PLAYER_HEIGHT / 4);
+                ctx.moveTo(-player.width / 2, -player.height / 4);
+                ctx.lineTo(-player.width / 2 - flameSize, 0);
+                ctx.lineTo(-player.width / 2, player.height / 4);
                 ctx.closePath();
                 ctx.fill();
             }
@@ -720,7 +444,488 @@
             ctx.restore();
         }
         
-        // Initialize the game when the page loads
+        function fireBullet() {
+            const bulletSpeed = BULLET_SPEED;
+            const angle = player.angle;
+            
+            player.bullets.push({
+                x: player.x + Math.cos(angle) * player.width / 2,
+                y: player.y + Math.sin(angle) * player.width / 2,
+                velocity: {
+                    x: Math.cos(angle) * bulletSpeed + player.velocity.x,
+                    y: Math.sin(angle) * bulletSpeed + player.velocity.y
+                },
+                time: gameTime
+            });
+        }
+        
+        function updateBullets() {
+            // Update player bullets
+            for (let i = player.bullets.length - 1; i >= 0; i--) {
+                const bullet = player.bullets[i];
+                bullet.x += bullet.velocity.x;
+                bullet.y += bullet.velocity.y;
+                
+                // Remove bullets that are off-screen or too old
+                if (bullet.x < 0 || bullet.x > GAME_WIDTH || 
+                    bullet.y < 0 || bullet.y > GAME_HEIGHT ||
+                    gameTime - bullet.time > 2000) {
+                    player.bullets.splice(i, 1);
+                }
+            }
+        }
+        
+        function drawBullets() {
+            ctx.fillStyle = '#ffff00';
+            for (let bullet of player.bullets) {
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        function updateEnemies(deltaTime) {
+            for (let enemy of enemies) {
+                // Simple AI: move toward player
+                const dx = player.x - enemy.x;
+                const dy = player.y - enemy.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 150) {
+                    // Move toward player
+                    enemy.angle = Math.atan2(dy, dx);
+                    enemy.x += Math.cos(enemy.angle) * enemy.speed;
+                    enemy.y += Math.sin(enemy.angle) * enemy.speed;
+                } else {
+                    // Circle around player
+                    enemy.angle += 0.02;
+                    enemy.x += Math.cos(enemy.angle) * enemy.speed;
+                    enemy.y += Math.sin(enemy.angle) * enemy.speed;
+                }
+                
+                // Wrap around screen
+                if (enemy.x < 0) enemy.x = GAME_WIDTH;
+                if (enemy.x > GAME_WIDTH) enemy.x = 0;
+                if (enemy.y < 0) enemy.y = GAME_HEIGHT;
+                if (enemy.y > GAME_HEIGHT) enemy.y = 0;
+                
+                // Shoot at player
+                if (gameTime - enemy.lastShot > enemy.shootDelay && dist < 300) {
+                    const bulletAngle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+                    
+                    explosions.push({
+                        x: enemy.x + Math.cos(enemy.angle) * enemy.width / 2,
+                        y: enemy.y + Math.sin(enemy.angle) * enemy.width / 2,
+                        size: 5,
+                        time: gameTime,
+                        duration: 100
+                    });
+                    
+                    enemy.bullets = enemy.bullets || [];
+                    enemy.bullets.push({
+                        x: enemy.x + Math.cos(enemy.angle) * enemy.width / 2,
+                        y: enemy.y + Math.sin(enemy.angle) * enemy.width / 2,
+                        velocity: {
+                            x: Math.cos(bulletAngle) * BULLET_SPEED * 0.8,
+                            y: Math.sin(bulletAngle) * BULLET_SPEED * 0.8
+                        },
+                        time: gameTime
+                    });
+                    
+                    enemy.lastShot = gameTime;
+                    enemy.shootDelay = Math.random() * 1000 + 1000;
+                }
+                
+                // Update enemy bullets
+                if (enemy.bullets) {
+                    for (let i = enemy.bullets.length - 1; i >= 0; i--) {
+                        const bullet = enemy.bullets[i];
+                        bullet.x += bullet.velocity.x;
+                        bullet.y += bullet.velocity.y;
+                        
+                        // Remove bullets that are off-screen or too old
+                        if (bullet.x < 0 || bullet.x > GAME_WIDTH || 
+                            bullet.y < 0 || bullet.y > GAME_HEIGHT ||
+                            gameTime - bullet.time > 2000) {
+                            enemy.bullets.splice(i, 1);
+                        }
+                    }
+                }
+            }
+        }
+        
+        function drawEnemies() {
+            for (let enemy of enemies) {
+                ctx.save();
+                ctx.translate(enemy.x, enemy.y);
+                ctx.rotate(enemy.angle);
+                
+                // Draw enemy ship body
+                ctx.fillStyle = '#ff5555';
+                ctx.beginPath();
+                ctx.moveTo(enemy.width / 2, 0);
+                ctx.lineTo(-enemy.width / 2, -enemy.height / 2);
+                ctx.lineTo(-enemy.width / 4, 0);
+                ctx.lineTo(-enemy.width / 2, enemy.height / 2);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Draw cockpit
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(enemy.width / 4, 0, enemy.height / 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+                
+                // Draw enemy bullets
+                if (enemy.bullets) {
+                    ctx.fillStyle = '#ff0000';
+                    for (let bullet of enemy.bullets) {
+                        ctx.beginPath();
+                        ctx.arc(bullet.x, bullet.y, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+        
+        function updateExplosions(deltaTime) {
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                const explosion = explosions[i];
+                if (gameTime - explosion.time > explosion.duration) {
+                    explosions.splice(i, 1);
+                }
+            }
+        }
+        
+        function drawExplosions() {
+            for (let explosion of explosions) {
+                const progress = (gameTime - explosion.time) / explosion.duration;
+                const size = explosion.size * (1 - progress);
+                const alpha = 1 - progress;
+                
+                ctx.fillStyle = `rgba(255, ${Math.floor(100 + 155 * progress)}, 0, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(explosion.x, explosion.y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        function checkCollisions() {
+            // Check player bullets hitting enemies
+            for (let i = player.bullets.length - 1; i >= 0; i--) {
+                const bullet = player.bullets[i];
+                
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    
+                    if (circleRectCollision(
+                        bullet.x, bullet.y, 2,
+                        enemy.x - enemy.width / 2, enemy.y - enemy.height / 2, 
+                        enemy.width, enemy.height, enemy.angle
+                    )) {
+                        // Hit enemy
+                        enemy.health -= 10;
+                        
+                        // Create explosion
+                        explosions.push({
+                            x: bullet.x,
+                            y: bullet.y,
+                            size: 10,
+                            time: gameTime,
+                            duration: 200
+                        });
+                        
+                        // Remove bullet
+                        player.bullets.splice(i, 1);
+                        
+                        // Check if enemy destroyed
+                        if (enemy.health <= 0) {
+                            // Big explosion
+                            explosions.push({
+                                x: enemy.x,
+                                y: enemy.y,
+                                size: 30,
+                                time: gameTime,
+                                duration: 500
+                            });
+                            
+                            enemies.splice(j, 1);
+                            enemiesRemaining--;
+                            score += 100;
+                        } else {
+                            score += 10;
+                        }
+                        
+                        break;
+                    }
+                }
+            }
+            
+            // Check enemy bullets hitting player
+            for (let enemy of enemies) {
+                if (enemy.bullets) {
+                    for (let i = enemy.bullets.length - 1; i >= 0; i--) {
+                        const bullet = enemy.bullets[i];
+                        
+                        if (circleRectCollision(
+                            bullet.x, bullet.y, 2,
+                            player.x - player.width / 2, player.y - player.height / 2, 
+                            player.width, player.height, player.angle
+                        )) {
+                            // Hit player
+                            playerHealth -= 10;
+                            
+                            // Create explosion
+                            explosions.push({
+                                x: bullet.x,
+                                y: bullet.y,
+                                size: 10,
+                                time: gameTime,
+                                duration: 200
+                            });
+                            
+                            // Remove bullet
+                            enemy.bullets.splice(i, 1);
+                        }
+                    }
+                }
+            }
+            
+            // Check player colliding with enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                
+                if (rectRectCollision(
+                    player.x - player.width / 2, player.y - player.height / 2, 
+                    player.width, player.height, player.angle,
+                    enemy.x - enemy.width / 2, enemy.y - enemy.height / 2, 
+                    enemy.width, enemy.height, enemy.angle
+                )) {
+                    // Collision with enemy
+                    playerHealth -= 20;
+                    
+                    // Big explosion
+                    explosions.push({
+                        x: (player.x + enemy.x) / 2,
+                        y: (player.y + enemy.y) / 2,
+                        size: 30,
+                        time: gameTime,
+                        duration: 500
+                    });
+                    
+                    // Remove enemy
+                    enemies.splice(i, 1);
+                    enemiesRemaining--;
+                    score += 50;
+                }
+            }
+            
+            // Check collisions with planets
+            for (let planet of planets) {
+                // Player collision
+                if (circleCircleCollision(
+                    player.x, player.y, player.width / 2,
+                    planet.x, planet.y, planet.radius
+                )) {
+                    playerHealth -= 1; // Continuous damage when colliding
+                }
+                
+                // Enemy collisions
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const enemy = enemies[i];
+                    
+                    if (circleCircleCollision(
+                        enemy.x, enemy.y, enemy.width / 2,
+                        planet.x, planet.y, planet.radius
+                    )) {
+                        // Destroy enemy
+                        explosions.push({
+                            x: enemy.x,
+                            y: enemy.y,
+                            size: 30,
+                            time: gameTime,
+                            duration: 500
+                        });
+                        
+                        enemies.splice(i, 1);
+                        enemiesRemaining--;
+                        score += 50;
+                    }
+                }
+                
+                // Bullet collisions
+                for (let i = player.bullets.length - 1; i >= 0; i--) {
+                    const bullet = player.bullets[i];
+                    
+                    if (circleCircleCollision(
+                        bullet.x, bullet.y, 2,
+                        planet.x, planet.y, planet.radius
+                    )) {
+                        // Remove bullet
+                        player.bullets.splice(i, 1);
+                    }
+                }
+                
+                // Enemy bullet collisions
+                for (let enemy of enemies) {
+                    if (enemy.bullets) {
+                        for (let i = enemy.bullets.length - 1; i >= 0; i--) {
+                            const bullet = enemy.bullets[i];
+                            
+                            if (circleCircleCollision(
+                                bullet.x, bullet.y, 2,
+                                planet.x, planet.y, planet.radius
+                            )) {
+                                // Remove bullet
+                                enemy.bullets.splice(i, 1);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        function circleRectCollision(cx, cy, cr, rx, ry, rw, rh, angle) {
+            // Transform circle center to rectangle's local space
+            const cos = Math.cos(-angle);
+            const sin = Math.sin(-angle);
+            
+            const dx = cx - (rx + rw / 2);
+            const dy = cy - (ry + rh / 2);
+            
+            const localX = dx * cos - dy * sin;
+            const localY = dx * sin + dy * cos;
+            
+            // Find closest point on rectangle to circle
+            const closestX = Math.max(-rw / 2, Math.min(localX, rw / 2));
+            const closestY = Math.max(-rh / 2, Math.min(localY, rh / 2));
+            
+            // Calculate distance between circle center and closest point
+            const distanceX = localX - closestX;
+            const distanceY = localY - closestY;
+            
+            // Check if distance is less than circle radius
+            return (distanceX * distanceX + distanceY * distanceY) < (cr * cr);
+        }
+        
+        function rectRectCollision(x1, y1, w1, h1, a1, x2, y2, w2, h2, a2) {
+            // Simple AABB collision for performance
+            // Not perfect for rotated rectangles but good enough for this game
+            const expand = 0.8; // Reduce size for more forgiving collision
+            return x1 < x2 + w2 * expand &&
+                   x1 + w1 * expand > x2 &&
+                   y1 < y2 + h2 * expand &&
+                   y1 + h1 * expand > y2;
+        }
+        
+        function circleCircleCollision(x1, y1, r1, x2, y2, r2) {
+            const dx = x1 - x2;
+            const dy = y1 - y2;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < r1 + r2;
+        }
+        
+        function updateUI() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('health').textContent = Math.max(0, Math.floor(playerHealth));
+            document.getElementById('fuel').textContent = Math.max(0, Math.floor(playerFuel));
+            document.getElementById('enemies').textContent = enemiesRemaining;
+        }
+        
+        function gameOver(victory) {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = score;
+            
+            if (victory) {
+                document.querySelector('#gameOverScreen h1').textContent = 'VICTORY!';
+                document.querySelector('#gameOverScreen h1').style.textShadow = '0 0 10px #0f0';
+            } else {
+                document.querySelector('#gameOverScreen h1').textContent = 'GAME OVER';
+                document.querySelector('#gameOverScreen h1').style.textShadow = '0 0 10px #f00';
+            }
+            
+            document.getElementById('gameOverScreen').style.display = 'flex';
+        }
+        
+        function keyDown(e) {
+            keys[e.key] = true;
+            
+            // Restart game
+            if (e.key === 'r' && !gameRunning) {
+                restartGame();
+            }
+        }
+        
+        function keyUp(e) {
+            keys[e.key] = false;
+        }
+        
+        // Touch controls
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchMoveX = 0;
+        let touchMoveY = 0;
+        let isTouching = false;
+        
+        function handleTouchStart(e) {
+            e.preventDefault();
+            isTouching = true;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchMoveX = touchStartX;
+            touchMoveY = touchStartY;
+        }
+        
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (isTouching) {
+                touchMoveX = e.touches[0].clientX;
+                touchMoveY = e.touches[0].clientY;
+                
+                // Calculate direction
+                const dx = touchMoveX - touchStartX;
+                const dy = touchMoveY - touchStartY;
+                
+                // Reset keys
+                keys['ArrowUp'] = false;
+                keys['ArrowLeft'] = false;
+                keys['ArrowRight'] = false;
+                
+                // Thrust if moving up
+                if (dy < -20) {
+                    keys['ArrowUp'] = true;
+                }
+                
+                // Rotate based on x movement
+                if (dx < -20) {
+                    keys['ArrowLeft'] = true;
+                } else if (dx > 20) {
+                    keys['ArrowRight'] = true;
+                }
+            }
+        }
+        
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            isTouching = false;
+            keys['ArrowUp'] = false;
+            keys['ArrowLeft'] = false;
+            keys['ArrowRight'] = false;
+            
+            // Fire if touch was short and didn't move much
+            const dx = touchMoveX - touchStartX;
+            const dy = touchMoveY - touchStartY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < 20) {
+                keys[' '] = true;
+                setTimeout(() => { keys[' '] = false; }, 100);
+            }
+        }
+        
+        // Start the game when loaded
         window.onload = init;
     </script>
 </body>
