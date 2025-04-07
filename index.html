@@ -1,988 +1,1173 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Космический Soplike</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>Galactic Cow Hunt</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body {
             margin: 0;
-            padding: 0;
             overflow: hidden;
-            background-color: #000;
-            font-family: 'Arial', sans-serif;
             touch-action: none;
+            background: #000;
+            font-family: 'Arial', sans-serif;
             user-select: none;
-            -webkit-user-select: none;
         }
         #gameCanvas {
+            background: #000;
             display: block;
-            background-color: #000033;
         }
-        #startScreen, #gameOverScreen, #pauseScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background-color: rgba(0, 0, 51, 0.8);
-            color: #fff;
-            z-index: 10;
+        .menu {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            color: white;
+            text-align: center;
+            border-radius: 15px;
+            border: 2px solid #9b59b6;
+            z-index: 1000;
+            max-width: 80%;
+            box-shadow: 0 0 20px rgba(155, 89, 182, 0.5);
         }
-        #gameOverScreen, #pauseScreen {
-            display: none;
+        .menu h1 {
+            color: #9b59b6;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 0px #ff69b4, 5px 5px 10px rgba(255, 105, 180, 0.5);
+            font-size: 2.5em;
         }
-        h1 {
-            color: #4fc3f7;
-            text-shadow: 0 0 10px #4fc3f7;
+        .menu p {
+            font-size: 1.2em;
             margin-bottom: 20px;
         }
-        button {
-            background-color: #4fc3f7;
-            color: #000;
-            border: none;
-            padding: 10px 20px;
-            margin: 10px;
-            font-size: 16px;
+        .menu button {
+            padding: 12px 25px;
+            font-size: 18px;
+            margin-top: 20px;
             cursor: pointer;
-            border-radius: 5px;
+            background: linear-gradient(to bottom, #3498db, #2980b9);
+            border: none;
+            color: white;
+            border-radius: 8px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .menu button:hover {
+            background: linear-gradient(to bottom, #3cb0fd, #3498db);
+            transform: scale(1.05);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+        }
+        #topHUD {
+            position: fixed;
+            top: 10px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 18px;
+            border-bottom: 1px solid #9b59b6;
+        }
+        #bottomHUD {
+            position: fixed;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 18px;
+            border-top: 1px solid #9b59b6;
+        }
+        .hearts {
+            display: flex;
+            gap: 10px;
+        }
+        .heart {
+            width: 24px;
+            height: 24px;
+            background-color: #ff0000;
+            mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>');
+            -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>');
+            mask-repeat: no-repeat;
+            -webkit-mask-repeat: no-repeat;
+            mask-position: center;
+            -webkit-mask-position: center;
             transition: all 0.3s;
         }
-        button:hover {
-            background-color: #29b6f6;
-            transform: scale(1.05);
+        .heart.burned {
+            background-color: #777;
         }
-        #scoreDisplay {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: #fff;
-            font-size: 18px;
-            z-index: 5;
-        }
-        #healthDisplay {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            color: #fff;
-            font-size: 18px;
-            z-index: 5;
-        }
-        .controls {
-            position: absolute;
-            bottom: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            z-index: 5;
-        }
-        .control-btn {
-            width: 60px;
-            height: 60px;
-            background-color: rgba(79, 195, 247, 0.3);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        #reloading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.5);
             color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
             font-size: 24px;
-            touch-action: manipulation;
+            z-index: 100;
+            display: none;
+        }
+        .bonus {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background-color: #ff0000;
+            border-radius: 50%;
+            mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>');
+            -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>');
+            mask-repeat: no-repeat;
+            -webkit-mask-repeat: no-repeat;
+            mask-position: center;
+            -webkit-mask-position: center;
+            border: 2px solid white;
+            box-shadow: 0 0 10px #ff0000;
         }
     </style>
 </head>
 <body>
-    <div id="scoreDisplay">Очки: 0</div>
-    <div id="healthDisplay">Здоровье: 100%</div>
-    
-    <canvas id="gameCanvas"></canvas>
-    
-    <div id="startScreen">
-        <h1>КОСМИЧЕСКИЙ SOPLIKE</h1>
-        <p>Управляйте звездолетом, уничтожайте врагов и избегайте астероидов!</p>
-        <button id="startButton">СТАРТ</button>
-        <div style="margin-top: 20px;">
-            <p>Управление:</p>
-            <p>← → - Движение</p>
-            <p>Пробел - Огонь</p>
-            <p>P - Пауза</p>
-        </div>
-    </div>
-    
-    <div id="gameOverScreen">
-        <h1>ИГРА ОКОНЧЕНА</h1>
-        <p id="finalScore">Ваш счет: 0</p>
-        <button id="restartButton">Играть снова</button>
-    </div>
-    
-    <div id="pauseScreen">
-        <h1>ПАУЗА</h1>
-        <button id="resumeButton">Продолжить</button>
-        <button id="restartPauseButton">Заново</button>
-    </div>
-    
-    <div class="controls">
-        <div class="control-btn" id="leftBtn">←</div>
-        <div class="control-btn" id="rightBtn">→</div>
-        <div class="control-btn" id="fireBtn">⚡</div>
+    <div id="mainMenu" class="menu">
+        <h1>Galactic Cow Hunt</h1>
+        <p>Уничтожьте инопланетных коров в скафандрах!</p>
+        <button id="startButton" onclick="startGame()">Начать игру</button>
     </div>
 
+    <div id="gameOverMenu" class="menu" style="display: none;">
+        <h1>Миссия завершена!</h1>
+        <p>Попаданий: <span id="finalHits">0</span></p>
+        <p>Промахов: <span id="finalMisses">0</span></p>
+        <p>Счет: <span id="finalScore">0</span></p>
+        <button onclick="startGame()">Попробовать снова</button>
+    </div>
+
+    <div id="topHUD">
+        <div id="score">Score: 0</div>
+        <div id="timer">1:00</div>
+        <div class="hearts" id="lives">
+            <div class="heart"></div>
+            <div class="heart"></div>
+            <div class="heart"></div>
+        </div>
+    </div>
+
+    <div id="bottomHUD">
+        <div id="ammo">Ammo: 5/5</div>
+        <div id="stats">Hits: 0 | Misses: 0</div>
+        <div id="level">Level: 1</div>
+    </div>
+
+    <div id="reloading">Reloading...</div>
+
+    <canvas id="gameCanvas"></canvas>
+
     <script>
-        // Инициализация Telegram Web App
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        
-        // Основные переменные игры
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const startScreen = document.getElementById('startScreen');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const pauseScreen = document.getElementById('pauseScreen');
         const startButton = document.getElementById('startButton');
-        const restartButton = document.getElementById('restartButton');
-        const resumeButton = document.getElementById('resumeButton');
-        const restartPauseButton = document.getElementById('restartPauseButton');
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        const healthDisplay = document.getElementById('healthDisplay');
-        const finalScore = document.getElementById('finalScore');
         
-        // Элементы управления для мобильных устройств
-        const leftBtn = document.getElementById('leftBtn');
-        const rightBtn = document.getElementById('rightBtn');
-        const fireBtn = document.getElementById('fireBtn');
-        
-        // Размеры canvas
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        
-        // Игровые переменные
-        let gameRunning = false;
-        let gamePaused = false;
-        let score = 0;
-        let health = 100;
-        let level = 1;
-        let enemies = [];
-        let bullets = [];
-        let enemyBullets = [];
-        let asteroids = [];
+        // Game state
+        let gameActive = false;
+        let cows = [];
+        let deadCows = [];
+        let shots = [];
         let explosions = [];
         let stars = [];
-        let clouds = [];
-        let lastEnemySpawn = 0;
-        let lastAsteroidSpawn = 0;
-        let keys = {};
-        let touchControls = {
-            left: false,
-            right: false,
-            fire: false
+        let planets = [];
+        let bonuses = [];
+        let nebula = null;
+        let score = 0;
+        let lives = 3;
+        let timeLeft = 60;
+        let hits = 0;
+        let misses = 0;
+        let ammo = 5;
+        let isReloading = false;
+        let gameTimer;
+        let lastTime = 0;
+        let level = 1;
+        let spawnBonusTimer = 0;
+
+        // Configuration
+        const config = {
+            cowSpeed: 1.5 + level * 0.2,
+            spawnInterval: 2000 - level * 150,
+            maxCows: 3 + Math.floor(level / 2),
+            cowWidth: 60,
+            cowHeight: 40,
+            reloadTime: 2000,
+            starCount: 100,
+            planetCount: 5,
+            bonusSpawnInterval: 10000,
+            bonusLifeTime: 8000
         };
-        
-        // Размеры игрового мира (больше чем canvas для прокрутки)
-        const worldWidth = canvas.width * 3;
-        const worldHeight = canvas.height;
-        
-        // Камера (видимая область)
-        const camera = {
-            x: 0,
-            y: 0,
-            width: canvas.width,
-            height: canvas.height,
-            target: null,
-            follow: function(target) {
-                this.target = target;
+
+        // Cow types
+        const cowTypes = [
+            { 
+                name: "Purple",
+                bodyColor: '#8e44ad',
+                helmetColor: 'rgba(155, 89, 182, 0.3)',
+                wingColor: '#9b59b6',
+                score: 100,
+                speedMultiplier: 1.0
             },
-            update: function() {
-                if (this.target) {
-                    this.x = this.target.x - this.width / 2;
-                    // Ограничиваем камеру в пределах игрового мира
-                    this.x = Math.max(0, Math.min(this.x, worldWidth - this.width));
-                }
+            { 
+                name: "Red",
+                bodyColor: '#e74c3c',
+                helmetColor: 'rgba(231, 76, 60, 0.3)',
+                wingColor: '#f39c12',
+                score: 150,
+                speedMultiplier: 1.2
+            },
+            { 
+                name: "Blue",
+                bodyColor: '#3498db',
+                helmetColor: 'rgba(52, 152, 219, 0.3)',
+                wingColor: '#1abc9c',
+                score: 200,
+                speedMultiplier: 1.4
+            },
+            { 
+                name: "Yellow",
+                bodyColor: '#f1c40f',
+                helmetColor: 'rgba(241, 196, 15, 0.3)',
+                wingColor: '#e67e22',
+                score: 250,
+                speedMultiplier: 1.6
             }
-        };
-        
-        // Игрок
-        const player = {
-            x: 100,
-            y: canvas.height / 2,
-            width: 40,
-            height: 20,
-            speed: 5,
-            color: '#4fc3f7',
-            gravity: 0.2,
-            velocityY: 0,
-            canShoot: true,
-            lastShot: 0,
-            shootDelay: 300,
-            draw: function() {
-                ctx.save();
-                ctx.translate(this.x - camera.x, this.y);
-                
-                // Корпус корабля
-                ctx.fillStyle = this.color;
-                ctx.beginPath();
-                ctx.moveTo(0, 0);
-                ctx.lineTo(this.width, -this.height/2);
-                ctx.lineTo(this.width, this.height/2);
-                ctx.closePath();
-                ctx.fill();
-                
-                // Кабина
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.arc(this.width/2, 0, 5, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Двигатель (анимация)
-                ctx.fillStyle = ['#ff5722', '#ff9800', '#ffeb3b'][Math.floor(Date.now() / 100) % 3];
-                ctx.beginPath();
-                ctx.moveTo(0, -5);
-                ctx.lineTo(-10, 0);
-                ctx.lineTo(0, 5);
-                ctx.closePath();
-                ctx.fill();
-                
-                ctx.restore();
-            },
-            update: function() {
-                // Движение влево/вправо
-                if (keys.ArrowLeft || touchControls.left) {
-                    this.x -= this.speed;
-                }
-                if (keys.ArrowRight || touchControls.right) {
-                    this.x += this.speed;
-                }
-                
-                // Гравитация и движение по вертикали
-                this.velocityY += this.gravity;
-                this.y += this.velocityY;
-                
-                // Ограничение движения в пределах мира
-                this.x = Math.max(0, Math.min(this.x, worldWidth));
-                this.y = Math.max(this.height/2, Math.min(this.y, canvas.height - this.height/2));
-                
-                // Стрельба
-                if ((keys[' '] || touchControls.fire) && this.canShoot && Date.now() - this.lastShot > this.shootDelay) {
-                    bullets.push({
-                        x: this.x + this.width,
-                        y: this.y,
-                        width: 10,
-                        height: 3,
-                        speed: 10,
-                        color: '#ffeb3b'
-                    });
-                    this.lastShot = Date.now();
-                }
-            },
-            takeDamage: function(amount) {
-                health -= amount;
-                healthDisplay.textContent = `Здоровье: ${Math.max(0, health)}%`;
-                
-                // Визуальный эффект повреждения
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                if (health <= 0) {
-                    gameOver();
-                }
-            }
-        };
-        
-        // Инициализация звездного фона
+        ];
+
+        // Initialize stars
         function initStars() {
             stars = [];
-            for (let i = 0; i < 200; i++) {
+            for (let i = 0; i < config.starCount; i++) {
                 stars.push({
-                    x: Math.random() * worldWidth,
+                    x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
-                    size: Math.random() * 2 + 1,
-                    speed: Math.random() * 0.5 + 0.1,
-                    alpha: Math.random()
+                    size: Math.random() * 4 + 2,
+                    alpha: Math.random() * 0.7 + 0.3,
+                    hue: Math.random() > 0.5 ? 180 + Math.random() * 30 : 40 + Math.random() * 30,
+                    blinkSpeed: Math.random() * 0.02 + 0.01,
+                    blinkPhase: Math.random() * Math.PI * 2
                 });
             }
         }
-        
-        // Инициализация облаков (космической пыли)
-        function initClouds() {
-            clouds = [];
-            for (let i = 0; i < 20; i++) {
-                clouds.push({
-                    x: Math.random() * worldWidth,
-                    y: Math.random() * canvas.height,
-                    width: Math.random() * 100 + 50,
-                    height: Math.random() * 50 + 20,
-                    speed: Math.random() * 0.2 + 0.1,
-                    alpha: Math.random() * 0.3 + 0.1
+
+        // Initialize planets
+        function initPlanets() {
+            planets = [];
+            for (let i = 0; i < config.planetCount; i++) {
+                let validPosition = false;
+                let x, y, radius;
+                
+                while (!validPosition) {
+                    x = Math.random() * canvas.width;
+                    y = Math.random() * canvas.height;
+                    radius = Math.random() * 50 + 30;
+                    validPosition = true;
+                    
+                    // Check for collisions with other planets
+                    for (const planet of planets) {
+                        const dx = x - planet.x;
+                        const dy = y - planet.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < radius + planet.radius + 20) {
+                            validPosition = false;
+                            break;
+                        }
+                    }
+                }
+                
+                planets.push({
+                    x: x,
+                    y: y,
+                    radius: radius,
+                    color: `hsl(${Math.floor(Math.random() * 60) + 200}, 70%, 50%)`,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.01,
+                    continents: []
+                });
+                
+                // Add continents to planet
+                const continentCount = Math.floor(Math.random() * 4) + 2;
+                for (let j = 0; j < continentCount; j++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const width = Math.random() * 0.4 + 0.2;
+                    const height = Math.random() * 0.4 + 0.2;
+                    const color = `hsl(${Math.floor(Math.random() * 60) + 100}, 70%, 30%)`;
+                    
+                    planets[i].continents.push({
+                        angle: angle,
+                        width: width,
+                        height: height,
+                        color: color
+                    });
+                }
+            }
+        }
+
+        // Nebula
+        class Nebula {
+            constructor() {
+                this.points = [];
+                this.radius = Math.max(canvas.width, canvas.height) * 0.8;
+                this.centerX = canvas.width / 2;
+                this.centerY = canvas.height / 2;
+                
+                // Create nebula points
+                for (let i = 0; i < 50; i++) {
+                    this.points.push({
+                        x: this.centerX + (Math.random() - 0.5) * this.radius,
+                        y: this.centerY + (Math.random() - 0.5) * this.radius,
+                        size: Math.random() * 100 + 50,
+                        alpha: Math.random() * 0.1 + 0.05,
+                        hue: 200 + Math.random() * 40
+                    });
+                }
+            }
+            
+            draw() {
+                this.points.forEach(point => {
+                    const gradient = ctx.createRadialGradient(
+                        point.x, point.y, 0,
+                        point.x, point.y, point.size
+                    );
+                    gradient.addColorStop(0, `hsla(${point.hue}, 80%, 60%, ${point.alpha})`);
+                    gradient.addColorStop(1, 'hsla(200, 80%, 60%, 0)');
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(point.x, point.y, point.size, 0, Math.PI * 2);
+                    ctx.fill();
                 });
             }
         }
-        
-        // Отрисовка фона
-        function drawBackground() {
-            // Космический градиент
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#000033');
-            gradient.addColorStop(1, '#000011');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Облака (космическая пыль)
-            ctx.save();
-            clouds.forEach(cloud => {
-                ctx.globalAlpha = cloud.alpha;
-                ctx.fillStyle = '#1a237e';
-                ctx.fillRect(cloud.x - camera.x * cloud.speed, cloud.y, cloud.width, cloud.height);
-            });
-            ctx.restore();
-            
-            // Звезды
-            ctx.save();
-            stars.forEach(star => {
-                ctx.globalAlpha = star.alpha;
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(
-                    star.x - camera.x * star.speed, 
-                    star.y, 
-                    star.size, 
-                    star.size
-                );
-            });
-            ctx.restore();
-        }
-        
-        // Создание врагов
-        function spawnEnemy() {
-            const types = ['fighter', 'bomber', 'scout'];
-            const type = types[Math.floor(Math.random() * types.length)];
-            
-            let enemy;
-            const x = Math.min(worldWidth, player.x + canvas.width + Math.random() * 300);
-            const y = Math.random() * (canvas.height - 100) + 50;
-            
-            switch (type) {
-                case 'fighter':
-                    enemy = {
-                        x: x,
-                        y: y,
-                        width: 30,
-                        height: 20,
-                        speed: 2 + Math.random() * level * 0.2,
-                        color: '#f44336',
-                        health: 2,
-                        shootDelay: 1500,
-                        lastShot: 0,
-                        movePattern: function() {
-                            this.y += Math.sin(Date.now() / 1000) * 1.5;
-                        },
-                        canShoot: function() {
-                            return Date.now() - this.lastShot > this.shootDelay && 
-                                   this.x > player.x && 
-                                   Math.abs(this.y - player.y) < 100;
-                        },
-                        points: 100
-                    };
-                    break;
-                    
-                case 'bomber':
-                    enemy = {
-                        x: x,
-                        y: y,
-                        width: 50,
-                        height: 30,
-                        speed: 1 + Math.random() * level * 0.1,
-                        color: '#9c27b0',
-                        health: 5,
-                        shootDelay: 3000,
-                        lastShot: 0,
-                        movePattern: function() {
-                            // Бомбардировщики летят прямо
-                        },
-                        canShoot: function() {
-                            return Date.now() - this.lastShot > this.shootDelay && 
-                                   this.x > player.x;
-                        },
-                        points: 200
-                    };
-                    break;
-                    
-                case 'scout':
-                    enemy = {
-                        x: x,
-                        y: y,
-                        width: 20,
-                        height: 15,
-                        speed: 3 + Math.random() * level * 0.3,
-                        color: '#00bcd4',
-                        health: 1,
-                        shootDelay: 1000,
-                        lastShot: 0,
-                        movePattern: function() {
-                            // Разведчики двигаются зигзагом
-                            this.x -= this.speed * 1.5;
-                            this.y += Math.sin(Date.now() / 500) * 3;
-                        },
-                        canShoot: function() {
-                            return Date.now() - this.lastShot > this.shootDelay && 
-                                   this.x > player.x && 
-                                   Math.abs(this.y - player.y) < 80;
-                        },
-                        points: 50
-                    };
-                    break;
+
+        class Cow {
+            constructor() {
+                this.width = config.cowWidth;
+                this.height = config.cowHeight;
+                this.type = Math.floor(Math.random() * cowTypes.length);
+                this.reset();
+                this.alive = true;
+                this.wingPhase = Math.random() * Math.PI * 2;
+                this.wingSpeed = Math.random() * 0.05 + 0.05;
+                this.legPhase = Math.random() * Math.PI * 2;
+                this.legSpeed = Math.random() * 0.1 + 0.1;
+                this.blinkTimer = 0;
+                this.blinkInterval = Math.random() * 2000 + 1000;
+                this.isBlinking = false;
+                this.blinkDuration = 200;
+                this.eyeClosed = false;
             }
-            
-            enemies.push(enemy);
-        }
-        
-        // Создание астероидов
-        function spawnAsteroid() {
-            const sizes = ['small', 'medium', 'large'];
-            const size = sizes[Math.floor(Math.random() * sizes.length)];
-            
-            let asteroid;
-            const x = Math.min(worldWidth, player.x + canvas.width + Math.random() * 300);
-            const y = Math.random() * (canvas.height - 100) + 50;
-            
-            switch (size) {
-                case 'small':
-                    asteroid = {
-                        x: x,
-                        y: y,
-                        radius: 10,
-                        speed: 3 + Math.random() * level * 0.3,
-                        color: '#795548',
-                        rotation: Math.random() * Math.PI * 2,
-                        rotationSpeed: (Math.random() - 0.5) * 0.1,
-                        health: 1,
-                        points: 20
-                    };
-                    break;
-                    
-                case 'medium':
-                    asteroid = {
-                        x: x,
-                        y: y,
-                        radius: 20,
-                        speed: 2 + Math.random() * level * 0.2,
-                        color: '#5d4037',
-                        rotation: Math.random() * Math.PI * 2,
-                        rotationSpeed: (Math.random() - 0.5) * 0.05,
-                        health: 3,
-                        points: 50
-                    };
-                    break;
-                    
-                case 'large':
-                    asteroid = {
-                        x: x,
-                        y: y,
-                        radius: 35,
-                        speed: 1 + Math.random() * level * 0.1,
-                        color: '#3e2723',
-                        rotation: Math.random() * Math.PI * 2,
-                        rotationSpeed: (Math.random() - 0.5) * 0.02,
-                        health: 5,
-                        points: 100
-                    };
-                    break;
+
+            reset() {
+                // Random direction (left to right or right to left)
+                this.direction = Math.random() > 0.5 ? 1 : -1;
+                
+                const speed = (Math.random() * config.cowSpeed + config.cowSpeed * 0.5) * cowTypes[this.type].speedMultiplier;
+                
+                if (this.direction === 1) {
+                    // Left to right
+                    this.x = -this.width;
+                    this.y = Math.random() * (canvas.height - 100) + 50;
+                    this.vx = speed;
+                    this.vy = (Math.random() - 0.5) * config.cowSpeed * 0.5;
+                } else {
+                    // Right to left
+                    this.x = canvas.width + this.width;
+                    this.y = Math.random() * (canvas.height - 100) + 50;
+                    this.vx = -speed;
+                    this.vy = (Math.random() - 0.5) * config.cowSpeed * 0.5;
+                }
+                
+                this.color = cowTypes[this.type].bodyColor;
+                this.helmetColor = cowTypes[this.type].helmetColor;
+                this.wingColor = cowTypes[this.type].wingColor;
+                this.score = cowTypes[this.type].score;
+                this.alive = true;
+                this.rotation = 0;
+                this.targetY = this.y;
+                this.moveTimer = 0;
+                this.moveInterval = Math.random() * 3000 + 1000;
             }
-            
-            asteroids.push(asteroid);
-        }
-        
-        // Отрисовка врагов
-        function drawEnemies() {
-            enemies.forEach(enemy => {
-                ctx.save();
-                ctx.translate(enemy.x - camera.x, enemy.y);
+
+            die() {
+                this.alive = false;
+                this.vy = 2; // Start falling
+                this.vx = (Math.random() - 0.5) * 2;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.2;
                 
-                // Корпус вражеского корабля
-                ctx.fillStyle = enemy.color;
-                ctx.beginPath();
-                ctx.moveTo(0, 0);
-                ctx.lineTo(-enemy.width, -enemy.height/2);
-                ctx.lineTo(-enemy.width, enemy.height/2);
-                ctx.closePath();
-                ctx.fill();
-                
-                // Окно/кабина
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.arc(-enemy.width/2, 0, 3, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Двигатель
-                ctx.fillStyle = '#ff5722';
-                ctx.beginPath();
-                ctx.moveTo(0, -3);
-                ctx.lineTo(5, 0);
-                ctx.lineTo(0, 3);
-                ctx.closePath();
-                ctx.fill();
-                
-                ctx.restore();
-            });
-        }
-        
-        // Отрисовка астероидов
-        function drawAsteroids() {
-            asteroids.forEach(asteroid => {
-                ctx.save();
-                ctx.translate(asteroid.x - camera.x, asteroid.y);
-                ctx.rotate(asteroid.rotation);
-                
-                ctx.fillStyle = asteroid.color;
-                ctx.beginPath();
-                
-                // Неровная форма астероида
-                for (let i = 0; i < 8; i++) {
-                    const angle = (i / 8) * Math.PI * 2;
-                    const radius = asteroid.radius * (0.8 + Math.random() * 0.4);
-                    const x = Math.cos(angle) * radius;
-                    const y = Math.sin(angle) * radius;
+                // Chance to spawn bonus
+                if (Math.random() < 0.2) {
+                    bonuses.push({
+                        x: this.x,
+                        y: this.y,
+                        width: 24,
+                        height: 24,
+                        type: 'life',
+                        spawnTime: Date.now()
+                    });
+                }
+            }
+
+            update(deltaTime) {
+                if (this.alive) {
+                    // Update blinking
+                    this.blinkTimer += deltaTime;
+                    if (this.blinkTimer > this.blinkInterval) {
+                        this.isBlinking = true;
+                        this.blinkTimer = 0;
+                        this.blinkInterval = Math.random() * 2000 + 1000;
+                    }
                     
-                    if (i === 0) {
-                        ctx.moveTo(x, y);
+                    if (this.isBlinking) {
+                        if (this.blinkTimer > this.blinkDuration) {
+                            this.isBlinking = false;
+                            this.eyeClosed = false;
+                        } else if (this.blinkTimer > this.blinkDuration / 2) {
+                            this.eyeClosed = true;
+                        }
+                    }
+                    
+                    // Update movement
+                    this.moveTimer += deltaTime;
+                    if (this.moveTimer > this.moveInterval) {
+                        this.targetY = Math.random() * (canvas.height - 100) + 50;
+                        this.moveTimer = 0;
+                        this.moveInterval = Math.random() * 3000 + 1000;
+                    }
+                    
+                    // Smooth movement to targetY
+                    const dy = this.targetY - this.y;
+                    this.vy += dy * 0.001;
+                    this.vy = Math.max(Math.min(this.vy, 1), -1);
+                    
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.wingPhase += this.wingSpeed;
+                    this.legPhase += this.legSpeed;
+                    
+                    // Reset if out of bounds
+                    if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
+                        (this.direction === -1 && this.x < -this.width*2)) {
+                        this.reset();
+                    }
+                    
+                    // Bounce on top/bottom
+                    if (this.y < this.height/2 || this.y > canvas.height - this.height/2) {
+                        this.vy *= -1;
+                    }
+                } else {
+                    // Dead cow falls
+                    this.y += this.vy;
+                    this.x += this.vx;
+                    this.vy *= 1.05; // Accelerate
+                    this.rotation += this.rotationSpeed;
+                    
+                    // Remove if out of screen
+                    if (this.y > canvas.height + this.height*2) {
+                        const index = deadCows.indexOf(this);
+                        if (index !== -1) deadCows.splice(index, 1);
+                    }
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                
+                if (this.alive) {
+                    // Draw body (horizontal)
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+                    
+                    // Draw head (vertical)
+                    ctx.save();
+                    ctx.translate(this.direction === 1 ? -this.width/2 : this.width/2, 0);
+                    ctx.rotate(Math.PI/2);
+                    
+                    // Head shape
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 15, 20, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Helmet
+                    ctx.fillStyle = this.helmetColor;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 18, 23, 0, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.fill();
+                    
+                    // Eyes
+                    const eyeY = -5;
+                    const eyeX = 8;
+                    
+                    // Left eye
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.ellipse(-eyeX, eyeY, 5, 4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    if (!this.eyeClosed) {
+                        ctx.fillStyle = 'black';
+                        ctx.beginPath();
+                        ctx.ellipse(-eyeX + 2, eyeY - 1, 2, 2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Eye highlight
+                        ctx.fillStyle = 'white';
+                        ctx.beginPath();
+                        ctx.ellipse(-eyeX + 3, eyeY - 2, 1, 1, 0, 0, Math.PI * 2);
+                        ctx.fill();
                     } else {
-                        ctx.lineTo(x, y);
+                        // Closed eye
+                        ctx.strokeStyle = 'black';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(-eyeX - 4, eyeY);
+                        ctx.lineTo(-eyeX + 4, eyeY);
+                        ctx.stroke();
                     }
-                }
-                
-                ctx.closePath();
-                ctx.fill();
-                
-                // Текстура астероида
-                ctx.fillStyle = '#4e342e';
-                for (let i = 0; i < 3; i++) {
-                    const x = (Math.random() - 0.5) * asteroid.radius * 1.5;
-                    const y = (Math.random() - 0.5) * asteroid.radius * 1.5;
-                    const size = Math.random() * 3 + 1;
-                    ctx.fillRect(x, y, size, size);
+                    
+                    // Right eye
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.ellipse(eyeX, eyeY, 5, 4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    if (!this.eyeClosed) {
+                        ctx.fillStyle = 'black';
+                        ctx.beginPath();
+                        ctx.ellipse(eyeX + 2, eyeY - 1, 2, 2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Eye highlight
+                        ctx.fillStyle = 'white';
+                        ctx.beginPath();
+                        ctx.ellipse(eyeX + 3, eyeY - 2, 1, 1, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        // Closed eye
+                        ctx.strokeStyle = 'black';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(eyeX - 4, eyeY);
+                        ctx.lineTo(eyeX + 4, eyeY);
+                        ctx.stroke();
+                    }
+                    
+                    // Nose (beige with nostrils)
+                    ctx.fillStyle = '#f5d5a0';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 10, 8, 6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Nostrils
+                    ctx.fillStyle = 'black';
+                    ctx.beginPath();
+                    ctx.ellipse(-3, 10, 1.5, 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(3, 10, 1.5, 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Horns (like buffalo)
+                    ctx.fillStyle = '#a67c52';
+                    ctx.beginPath();
+                    ctx.moveTo(-10, -15);
+                    ctx.lineTo(-20, -25);
+                    ctx.lineTo(-15, -30);
+                    ctx.lineTo(-5, -20);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(10, -15);
+                    ctx.lineTo(20, -25);
+                    ctx.lineTo(15, -30);
+                    ctx.lineTo(5, -20);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.restore();
+                    
+                    // Wings
+                    const wingYOffset = Math.sin(this.wingPhase) * 10;
+                    ctx.fillStyle = this.wingColor;
+                    
+                    // Left wing
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width/2, 0);
+                    ctx.lineTo(-this.width/2 - 20, -this.height/2 + wingYOffset);
+                    ctx.lineTo(-this.width/2 - 20, this.height/2 + wingYOffset);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Right wing
+                    ctx.beginPath();
+                    ctx.moveTo(this.width/2, 0);
+                    ctx.lineTo(this.width/2 + 20, -this.height/2 + wingYOffset);
+                    ctx.lineTo(this.width/2 + 20, this.height/2 + wingYOffset);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Legs with animation
+                    const legOffset = Math.sin(this.legPhase) * 5;
+                    ctx.fillStyle = this.color;
+                    
+                    // Front legs
+                    ctx.fillRect(
+                        -this.width/2 + 10, 
+                        this.height/2 - 5, 
+                        8, 
+                        15 + (this.direction === 1 ? legOffset : -legOffset)
+                    );
+                    ctx.fillRect(
+                        -this.width/2 + 25, 
+                        this.height/2 - 5, 
+                        8, 
+                        15 + (this.direction === 1 ? -legOffset : legOffset)
+                    );
+                    
+                    // Back legs
+                    ctx.fillRect(
+                        this.width/2 - 35, 
+                        this.height/2 - 5, 
+                        8, 
+                        15 + (this.direction === 1 ? legOffset : -legOffset)
+                    );
+                    ctx.fillRect(
+                        this.width/2 - 20, 
+                        this.height/2 - 5, 
+                        8, 
+                        15 + (this.direction === 1 ? -legOffset : legOffset)
+                    );
+                    
+                    // Hooves (black squares)
+                    ctx.fillStyle = '#000';
+                    const hoofSize = 10;
+                    
+                    // Front hooves
+                    ctx.fillRect(
+                        -this.width/2 + 8, 
+                        this.height/2 + 10 + (this.direction === 1 ? legOffset : -legOffset), 
+                        hoofSize, 
+                        5
+                    );
+                    ctx.fillRect(
+                        -this.width/2 + 23, 
+                        this.height/2 + 10 + (this.direction === 1 ? -legOffset : legOffset), 
+                        hoofSize, 
+                        5
+                    );
+                    
+                    // Back hooves
+                    ctx.fillRect(
+                        this.width/2 - 37, 
+                        this.height/2 + 10 + (this.direction === 1 ? legOffset : -legOffset), 
+                        hoofSize, 
+                        5
+                    );
+                    ctx.fillRect(
+                        this.width/2 - 22, 
+                        this.height/2 + 10 + (this.direction === 1 ? -legOffset : legOffset), 
+                        hoofSize, 
+                        5
+                    );
+                } else {
+                    // Dead cow - simpler representation
+                    ctx.fillStyle = '#333';
+                    ctx.fillRect(-this.width/4, -this.height/4, this.width/2, this.height/2);
                 }
                 
                 ctx.restore();
-            });
+            }
         }
-        
-        // Отрисовка пуль
-        function drawBullets() {
-            bullets.forEach(bullet => {
-                ctx.fillStyle = bullet.color;
-                ctx.fillRect(bullet.x - camera.x, bullet.y - bullet.height/2, bullet.width, bullet.height);
-            });
+
+        class Explosion {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.particles = [];
+                this.color = color;
+                
+                // Create particles
+                for (let i = 0; i < 15; i++) {
+                    this.particles.push({
+                        x: 0,
+                        y: 0,
+                        vx: (Math.random() - 0.5) * 5,
+                        vy: (Math.random() - 0.5) * 5,
+                        size: Math.random() * 5 + 2,
+                        alpha: 1
+                    });
+                }
+            }
             
-            enemyBullets.forEach(bullet => {
-                ctx.fillStyle = '#ff5252';
-                ctx.fillRect(bullet.x - camera.x, bullet.y - bullet.height/2, bullet.width, bullet.height);
-            });
+            update() {
+                this.particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.alpha -= 0.03;
+                    p.size *= 0.98;
+                });
+                
+                return this.particles[0].alpha > 0;
+            }
+            
+            draw() {
+                this.particles.forEach(p => {
+                    ctx.fillStyle = `rgba(${this.color}, ${p.alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(this.x + p.x, this.y + p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
         }
-        
-        // Отрисовка взрывов
-        function drawExplosions() {
-            explosions.forEach(explosion => {
-                const progress = (Date.now() - explosion.startTime) / explosion.duration;
-                if (progress >= 1) return;
-                
-                const radius = explosion.radius * progress;
-                const alpha = 1 - progress;
-                
-                ctx.save();
-                ctx.globalAlpha = alpha;
-                
-                const gradient = ctx.createRadialGradient(
-                    explosion.x - camera.x, explosion.y, 0,
-                    explosion.x - camera.x, explosion.y, radius
-                );
-                gradient.addColorStop(0, '#ffeb3b');
-                gradient.addColorStop(0.5, '#ff9800');
-                gradient.addColorStop(1, '#f44336');
-                
-                ctx.fillStyle = gradient;
+
+        class Shot {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 5;
+                this.alpha = 1;
+            }
+
+            draw() {
                 ctx.beginPath();
-                ctx.arc(explosion.x - camera.x, explosion.y, radius, 0, Math.PI * 2);
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
                 ctx.fill();
-                
-                ctx.restore();
-            });
-        }
-        
-        // Обновление состояния игры
-        function updateGame() {
-            if (gamePaused) return;
-            
-            // Обновление игрока
-            player.update();
-            
-            // Обновление камеры
-            camera.follow(player);
-            camera.update();
-            
-            // Обновление пуль игрока
-            bullets.forEach((bullet, index) => {
-                bullet.x += bullet.speed;
-                
-                // Удаление пуль за пределами экрана
-                if (bullet.x - camera.x > canvas.width + 50) {
-                    bullets.splice(index, 1);
-                    return;
-                }
-                
-                // Проверка столкновений пуль с врагами
-                enemies.forEach((enemy, enemyIndex) => {
-                    if (bullet.x > enemy.x - enemy.width && 
-                        bullet.x < enemy.x + enemy.width &&
-                        bullet.y > enemy.y - enemy.height/2 && 
-                        bullet.y < enemy.y + enemy.height/2) {
-                        
-                        // Создание взрыва
-                        explosions.push({
-                            x: enemy.x,
-                            y: enemy.y,
-                            radius: 30,
-                            startTime: Date.now(),
-                            duration: 500
-                        });
-                        
-                        enemy.health--;
-                        bullets.splice(index, 1);
-                        
-                        if (enemy.health <= 0) {
-                            score += enemy.points;
-                            scoreDisplay.textContent = `Очки: ${score}`;
-                            enemies.splice(enemyIndex, 1);
-                            
-                            // Шанс 20% на выпадение бонуса здоровья
-                            if (Math.random() < 0.2) {
-                                health = Math.min(100, health + 10);
-                                healthDisplay.textContent = `Здоровье: ${health}%`;
-                                
-                                // Визуальный эффект восстановления здоровья
-                                ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
-                                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                            }
-                        }
-                        
-                        return;
-                    }
-                });
-                
-                // Проверка столкновений пуль с астероидами
-                asteroids.forEach((asteroid, asteroidIndex) => {
-                    const dx = bullet.x - asteroid.x;
-                    const dy = bullet.y - asteroid.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance < asteroid.radius) {
-                        // Создание взрыва
-                        explosions.push({
-                            x: asteroid.x,
-                            y: asteroid.y,
-                            radius: 20,
-                            startTime: Date.now(),
-                            duration: 400
-                        });
-                        
-                        asteroid.health--;
-                        bullets.splice(index, 1);
-                        
-                        if (asteroid.health <= 0) {
-                            score += asteroid.points;
-                            scoreDisplay.textContent = `Очки: ${score}`;
-                            asteroids.splice(asteroidIndex, 1);
-                        }
-                        
-                        return;
-                    }
-                });
-            });
-            
-            // Обновление врагов
-            enemies.forEach((enemy, index) => {
-                enemy.x -= enemy.speed;
-                enemy.movePattern();
-                
-                // Удаление врагов за пределами экрана
-                if (enemy.x + enemy.width < camera.x) {
-                    enemies.splice(index, 1);
-                    return;
-                }
-                
-                // Стрельба врагов
-                if (enemy.canShoot()) {
-                    enemyBullets.push({
-                        x: enemy.x - enemy.width,
-                        y: enemy.y,
-                        width: 10,
-                        height: 3,
-                        speed: -7,
-                        color: '#ff5252'
-                    });
-                    enemy.lastShot = Date.now();
-                }
-                
-                // Проверка столкновений игрока с врагами
-                if (player.x + player.width > enemy.x - enemy.width && 
-                    player.x < enemy.x + enemy.width &&
-                    player.y + player.height/2 > enemy.y - enemy.height/2 && 
-                    player.y - player.height/2 < enemy.y + enemy.height/2) {
-                    
-                    // Создание взрыва
-                    explosions.push({
-                        x: enemy.x,
-                        y: enemy.y,
-                        radius: 40,
-                        startTime: Date.now(),
-                        duration: 600
-                    });
-                    
-                    player.takeDamage(15);
-                    enemies.splice(index, 1);
-                    return;
-                }
-            });
-            
-            // Обновление вражеских пуль
-            enemyBullets.forEach((bullet, index) => {
-                bullet.x += bullet.speed;
-                
-                // Удаление пуль за пределами экрана
-                if (bullet.x + bullet.width < camera.x) {
-                    enemyBullets.splice(index, 1);
-                    return;
-                }
-                
-                // Проверка столкновений с игроком
-                if (bullet.x > player.x && 
-                    bullet.x < player.x + player.width &&
-                    bullet.y > player.y - player.height/2 && 
-                    bullet.y < player.y + player.height/2) {
-                    
-                    player.takeDamage(5);
-                    enemyBullets.splice(index, 1);
-                    return;
-                }
-            });
-            
-            // Обновление астероидов
-            asteroids.forEach((asteroid, index) => {
-                asteroid.x -= asteroid.speed;
-                asteroid.rotation += asteroid.rotationSpeed;
-                
-                // Удаление астероидов за пределами экрана
-                if (asteroid.x + asteroid.radius < camera.x) {
-                    asteroids.splice(index, 1);
-                    return;
-                }
-                
-                // Проверка столкновений игрока с астероидами
-                const dx = player.x - asteroid.x;
-                const dy = player.y - asteroid.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                if (distance < asteroid.radius + player.width/2) {
-                    // Создание взрыва
-                    explosions.push({
-                        x: asteroid.x,
-                        y: asteroid.y,
-                        radius: 50,
-                        startTime: Date.now(),
-                        duration: 700
-                    });
-                    
-                    player.takeDamage(20);
-                    asteroids.splice(index, 1);
-                    return;
-                }
-            });
-            
-            // Обновление взрывов
-            explosions = explosions.filter(explosion => {
-                return (Date.now() - explosion.startTime) < explosion.duration;
-            });
-            
-            // Спавн новых врагов
-            if (Date.now() - lastEnemySpawn > 2000 - level * 100) {
-                spawnEnemy();
-                lastEnemySpawn = Date.now();
             }
-            
-            // Спавн новых астероидов
-            if (Date.now() - lastAsteroidSpawn > 3000 - level * 150) {
-                spawnAsteroid();
-                lastAsteroidSpawn = Date.now();
-            }
-            
-            // Увеличение уровня каждые 2000 очков
-            if (score >= level * 2000) {
-                level++;
-                
-                // Визуальный эффект нового уровня
-                ctx.fillStyle = 'rgba(79, 195, 247, 0.3)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            update() {
+                this.radius += 1;
+                this.alpha -= 0.1;
             }
         }
-        
-        // Основной игровой цикл
-        function gameLoop() {
-            if (!gameRunning) return;
-            
-            // Очистка canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Отрисовка фона
-            drawBackground();
-            
-            // Обновление состояния игры
-            updateGame();
-            
-            // Отрисовка игровых объектов
-            drawEnemies();
-            drawAsteroids();
-            drawBullets();
-            drawExplosions();
-            player.draw();
-            
-            // Продолжение цикла
-            requestAnimationFrame(gameLoop);
-        }
-        
-        // Начало игры
+
         function startGame() {
-            // Сброс состояния игры
-            score = 0;
-            health = 100;
-            level = 1;
-            enemies = [];
-            bullets = [];
-            enemyBullets = [];
-            asteroids = [];
+            gameActive = true;
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('gameOverMenu').style.display = 'none';
+            
+            // Reset game state
+            cows = [];
+            deadCows = [];
+            shots = [];
             explosions = [];
+            bonuses = [];
+            nebula = new Nebula();
+            score = 0;
+            lives = 3;
+            timeLeft = 60;
+            hits = 0;
+            misses = 0;
+            ammo = 5;
+            isReloading = false;
+            level = 1;
+            spawnBonusTimer = 0;
             
-            // Обновление интерфейса
-            scoreDisplay.textContent = `Очки: ${score}`;
-            healthDisplay.textContent = `Здоровье: ${health}%`;
-            
-            // Инициализация фона
             initStars();
-            initClouds();
+            initPlanets();
+            updateHUD();
+            resizeCanvas();
             
-            // Позиционирование игрока
-            player.x = 100;
-            player.y = canvas.height / 2;
-            player.velocityY = 0;
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                updateHUD();
+                if (timeLeft <= 0) endGame();
+            }, 1000);
             
-            // Запуск игры
-            gameRunning = true;
-            gamePaused = false;
-            startScreen.style.display = 'none';
-            gameOverScreen.style.display = 'none';
-            
-            // Запуск игрового цикла
+            spawnCow();
+            lastTime = performance.now();
             gameLoop();
         }
-        
-        // Пауза игры
-        function pauseGame() {
-            if (!gameRunning) return;
-            
-            gamePaused = true;
-            pauseScreen.style.display = 'flex';
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(gameTimer);
+            document.getElementById('gameOverMenu').style.display = 'block';
+            document.getElementById('finalHits').textContent = hits;
+            document.getElementById('finalMisses').textContent = misses;
+            document.getElementById('finalScore').textContent = score;
         }
-        
-        // Продолжение игры
-        function resumeGame() {
-            gamePaused = false;
-            pauseScreen.style.display = 'none';
+
+        function updateHUD() {
+            // Update hearts
+            const hearts = document.querySelectorAll('.heart');
+            hearts.forEach((heart, index) => {
+                if (index < lives) {
+                    heart.classList.remove('burned');
+                } else {
+                    heart.classList.add('burned');
+                }
+            });
             
-            // Перезапуск игрового цикла, если игра не на паузе
-            if (gameRunning && !gamePaused) {
-                gameLoop();
+            // Update timer
+            document.getElementById('timer').textContent = `${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2, '0')}`;
+            
+            // Update score
+            document.getElementById('score').textContent = `Score: ${score}`;
+            
+            // Update ammo
+            document.getElementById('ammo').textContent = `Ammo: ${ammo}/5`;
+            
+            // Update stats
+            document.getElementById('stats').textContent = `Hits: ${hits} | Misses: ${misses}`;
+            
+            // Update level
+            document.getElementById('level').textContent = `Level: ${level}`;
+        }
+
+        function spawnCow() {
+            if (!gameActive) return;
+            
+            // Count only alive cows
+            const aliveCows = cows.filter(cow => cow.alive);
+            
+            if (aliveCows.length < config.maxCows) {
+                const cow = new Cow();
+                cows.push(cow);
+            }
+            
+            setTimeout(spawnCow, config.spawnInterval);
+        }
+
+        function checkHit(x, y) {
+            let hit = false;
+            
+            for (let i = 0; i < cows.length; i++) {
+                const cow = cows[i];
+                
+                if (!cow.alive) continue;
+                
+                // Create rotated hitbox for cow
+                ctx.save();
+                ctx.translate(cow.x, cow.y);
+                ctx.rotate(cow.rotation);
+                
+                const left = -cow.width/2;
+                const right = cow.width/2;
+                const top = -cow.height/2;
+                const bottom = cow.height/2;
+                
+                // Transform point to cow's local space
+                const localX = x - cow.x;
+                const localY = y - cow.y;
+                const rotatedX = localX * Math.cos(-cow.rotation) - localY * Math.sin(-cow.rotation);
+                const rotatedY = localX * Math.sin(-cow.rotation) + localY * Math.cos(-cow.rotation);
+                
+                ctx.restore();
+                
+                if (rotatedX >= left && rotatedX <= right && rotatedY >= top && rotatedY <= bottom) {
+                    // Create green explosion
+                    const color = '100, 255, 100';
+                    explosions.push(new Explosion(cow.x, cow.y, color));
+                    
+                    cow.die();
+                    deadCows.push(cow);
+                    
+                    score += cow.score;
+                    hits++;
+                    
+                    // Check for level up
+                    if (hits % 10 === 0) {
+                        level++;
+                        document.getElementById('level').textContent = `Level: ${level}`;
+                    }
+                    
+                    updateHUD();
+                    shots.push(new Shot(x, y));
+                    hit = true;
+                    break;
+                }
+            }
+            
+            if (!hit && ammo > 0) {
+                misses++;
+                lives--;
+                
+                // Burn one heart
+                if (lives >= 0) {
+                    const hearts = document.querySelectorAll('.heart');
+                    if (hearts[lives]) {
+                        hearts[lives].classList.add('burned');
+                    }
+                }
+                
+                if (lives <= 0) endGame();
+                updateHUD();
             }
         }
-        
-        // Конец игры
-        function gameOver() {
-            gameRunning = false;
-            finalScore.textContent = `Ваш счет: ${score}`;
-            gameOverScreen.style.display = 'flex';
+
+        function drawBackground() {
+            // Draw space background
+            ctx.fillStyle = '#001f3f';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Отправка счета в Telegram (если игра запущена в WebApp)
-            if (tg.initDataUnsafe?.user?.id) {
-                tg.sendData(JSON.stringify({
-                    score: score,
-                    level: level
-                }));
-            }
+            // Draw nebula
+            nebula.draw();
+            
+            // Draw stars behind planets
+            stars.forEach(star => {
+                star.blinkPhase += star.blinkSpeed;
+                const alpha = star.alpha * (0.7 + 0.3 * Math.sin(star.blinkPhase));
+                
+                ctx.fillStyle = `hsla(${star.hue}, 100%, 80%, ${alpha})`;
+                
+                // Draw 4-pointed star
+                ctx.save();
+                ctx.translate(star.x, star.y);
+                ctx.rotate(Math.PI/4);
+                
+                ctx.beginPath();
+                ctx.rect(-star.size/2, -star.size/2, star.size, star.size);
+                ctx.fill();
+                
+                ctx.rotate(Math.PI/2);
+                ctx.beginPath();
+                ctx.rect(-star.size/2, -star.size/2, star.size, star.size);
+                ctx.fill();
+                
+                ctx.restore();
+            });
+            
+            // Draw planets
+            planets.forEach(planet => {
+                planet.rotation += planet.rotationSpeed;
+                
+                // Draw planet body
+                ctx.fillStyle = planet.color;
+                ctx.beginPath();
+                ctx.arc(planet.x, planet.y, planet.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw continents
+                ctx.save();
+                ctx.translate(planet.x, planet.y);
+                ctx.rotate(planet.rotation);
+                
+                planet.continents.forEach(continent => {
+                    ctx.fillStyle = continent.color;
+                    ctx.beginPath();
+                    ctx.ellipse(
+                        Math.cos(continent.angle) * planet.radius * 0.7,
+                        Math.sin(continent.angle) * planet.radius * 0.7,
+                        planet.radius * continent.width,
+                        planet.radius * continent.height,
+                        0, 0, Math.PI * 2
+                    );
+                    ctx.fill();
+                });
+                
+                ctx.restore();
+            });
         }
-        
-        // Обработчики событий
-        startButton.addEventListener('click', startGame);
-        restartButton.addEventListener('click', startGame);
-        restartPauseButton.addEventListener('click', startGame);
-        resumeButton.addEventListener('click', resumeGame);
-        
-        // Обработка клавиатуры
-        window.addEventListener('keydown', (e) => {
-            keys[e.key] = true;
+
+        function drawBonuses() {
+            const now = Date.now();
+            bonuses.forEach((bonus, index) => {
+                // Remove if expired
+                if (now - bonus.spawnTime > config.bonusLifeTime) {
+                    bonuses.splice(index, 1);
+                    return;
+                }
+                
+                // Draw pulsing effect
+                const pulse = 0.8 + 0.2 * Math.sin(now * 0.005);
+                
+                ctx.save();
+                ctx.translate(bonus.x, bonus.y);
+                
+                // Draw circle background
+                ctx.fillStyle = `rgba(255, 0, 0, ${0.5 * pulse})`;
+                ctx.beginPath();
+                ctx.arc(0, 0, bonus.width/2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw heart
+                ctx.fillStyle = `rgba(255, 255, 255, ${pulse})`;
+                ctx.beginPath();
+                ctx.moveTo(0, -bonus.height/4);
+                ctx.bezierCurveTo(
+                    -bonus.width/4, -bonus.height/2,
+                    -bonus.width/2, 0,
+                    0, bonus.height/4
+                );
+                ctx.bezierCurveTo(
+                    bonus.width/2, 0,
+                    bonus.width/4, -bonus.height/2,
+                    0, -bonus.height/4
+                );
+                ctx.fill();
+                
+                ctx.restore();
+            });
+        }
+
+        function checkBonusCollision(x, y) {
+            const now = Date.now();
+            bonuses.forEach((bonus, index) => {
+                const dx = x - bonus.x;
+                const dy = y - bonus.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < bonus.width/2) {
+                    if (bonus.type === 'life' && lives < 3) {
+                        lives++;
+                        updateHUD();
+                    }
+                    
+                    bonuses.splice(index, 1);
+                }
+            });
+        }
+
+        function gameLoop(timestamp) {
+            if (!gameActive) return;
             
-            // Пауза по клавише P
-            if (e.key === 'p' && gameRunning && !gamePaused) {
-                pauseGame();
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            drawBackground();
+            
+            // Update and draw cows
+            cows.forEach(cow => {
+                cow.update(deltaTime);
+                cow.draw();
+            });
+            
+            // Update and draw dead cows
+            deadCows.forEach(cow => {
+                cow.update(deltaTime);
+                cow.draw();
+            });
+            
+            // Update and draw shots
+            shots.forEach((shot, index) => {
+                shot.update();
+                shot.draw();
+                if (shot.alpha <= 0) shots.splice(index, 1);
+            });
+            
+            // Update and draw explosions
+            explosions.forEach((explosion, index) => {
+                if (!explosion.update()) {
+                    explosions.splice(index, 1);
+                } else {
+                    explosion.draw();
+                }
+            });
+            
+            // Spawn bonuses randomly
+            spawnBonusTimer += deltaTime;
+            if (spawnBonusTimer > config.bonusSpawnInterval) {
+                if (Math.random() < 0.3) {
+                    bonuses.push({
+                        x: Math.random() * (canvas.width - 100) + 50,
+                        y: Math.random() * (canvas.height - 100) + 50,
+                        width: 24,
+                        height: 24,
+                        type: 'life',
+                        spawnTime: Date.now()
+                    });
+                }
+                spawnBonusTimer = 0;
             }
-        });
-        
-        window.addEventListener('keyup', (e) => {
-            keys[e.key] = false;
-        });
-        
-        // Обработка сенсорного управления
-        leftBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            touchControls.left = true;
-        });
-        
-        leftBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            touchControls.left = false;
-        });
-        
-        rightBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            touchControls.right = true;
-        });
-        
-        rightBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            touchControls.right = false;
-        });
-        
-        fireBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            touchControls.fire = true;
-        });
-        
-        fireBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            touchControls.fire = false;
-        });
-        
-        // Обработка изменения размера окна
-        window.addEventListener('resize', () => {
+            
+            // Draw and check bonuses
+            drawBonuses();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-        });
-        
-        // Инициализация игры при загрузке
-        window.addEventListener('load', () => {
-            // Если игра запущена в Telegram WebApp, скрываем стандартную кнопку "Start"
-            if (tg.platform !== 'unknown') {
-                startButton.textContent = 'НАЧАТЬ ИГРУ';
+            initStars();
+            initPlanets();
+            if (nebula) {
+                nebula = new Nebula();
             }
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if (!gameActive) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (isReloading) return;
+            
+            // Check for bonus collision first
+            checkBonusCollision(x, y);
+            
+            if (ammo > 0) {
+                ammo--;
+                checkHit(x, y);
+                shots.push(new Shot(x, y));
+                
+                if (ammo <= 0) {
+                    startReload();
+                }
+            } else {
+                misses++;
+                lives--;
+                
+                // Burn one heart
+                if (lives >= 0) {
+                    const hearts = document.querySelectorAll('.heart');
+                    if (hearts[lives]) {
+                        hearts[lives].classList.add('burned');
+                    }
+                }
+                
+                if (lives <= 0) endGame();
+                startReload();
+            }
+            updateHUD();
         });
+
+        function startReload() {
+            if (isReloading) return;
+            
+            isReloading = true;
+            document.getElementById('reloading').style.display = 'block';
+            
+            setTimeout(() => {
+                ammo = 5;
+                isReloading = false;
+                document.getElementById('reloading').style.display = 'none';
+                updateHUD();
+            }, config.reloadTime);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Initialize for Telegram
+        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        }
+        
+        // Check button click
+        startButton.addEventListener('click', startGame);
     </script>
 </body>
 </html>
