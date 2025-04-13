@@ -3,235 +3,367 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Эволюционный Тамагочи</title>
+    <title>Medieval Tamagotchi</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        :root {
+            --primary-color: #8B4513;
+            --secondary-color: #A0522D;
+            --dark-color: #5D2906;
+            --light-color: #D2B48C;
+            --highlight-color: #CD853F;
+            --text-color: #FFF8DC;
+        }
+        
         body {
-            font-family: Arial, sans-serif;
-            margin: 0;
+            font-family: 'Times New Roman', serif;
+            max-width: 600px;
+            margin: 0 auto;
             padding: 0;
-            background-color: #f5f5f5;
-            color: #333;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
+            background-color: var(--dark-color);
+            color: var(--text-color);
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><path fill="%235D2906" d="M0 0h100v100H0z"/><path fill="%233D1D08" d="M0 20h100v5H0zM0 40h100v5H0zM0 60h100v5H0zM0 80h100v5H0zM20 0h5v100h-5zM40 0h5v100h-5zM60 0h5v100h-5zM80 0h5v100h-5z"/></svg>');
+            background-size: 40px 40px;
         }
         
-        #pet-count {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background-color: rgba(255, 255, 255, 0.8);
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-weight: bold;
-        }
-        
-        #pet-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+        #main-menu, #game-screen, #evolution-screen, #collection-screen {
+            background-color: var(--primary-color);
             padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 0 0 2px var(--highlight-color);
+            margin: 20px auto;
+            display: none;
+            border: 8px solid transparent;
+            border-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="%23A0522D" d="M12 2L2 7v10l10 5 10-5V7L12 2z"/><path fill="%23D2B48C" d="M12 2l10 5v10L12 22V2z"/></svg>') 10 stretch;
         }
         
-        .pet {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            position: relative;
-            margin: 20px;
+        h1, h2, h3 {
+            color: var(--text-color);
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            font-weight: bold;
+            font-style: italic;
+            letter-spacing: 1px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            background: linear-gradient(to right, var(--light-color), var(--highlight-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        button {
+            background-color: var(--secondary-color);
+            border: none;
+            color: var(--text-color);
+            padding: 12px 20px;
+            text-align: center;
+            font-family: 'Times New Roman', serif;
+            font-size: 18px;
+            margin: 8px 4px;
+            cursor: pointer;
+            border-radius: 5px;
             transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border: 2px solid var(--dark-color);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
         }
         
-        .pet::before {
-            content: "";
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            background-color: white;
-            border-radius: 50%;
-            top: 20px;
-            left: 20px;
+        button:hover {
+            background-color: var(--highlight-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
         
-        .pet::after {
-            content: "";
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            background-color: #333;
-            border-radius: 50%;
-            top: 30px;
-            left: 30px;
+        button:disabled {
+            background-color: #5D2906;
+            color: #7a5c3c;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
         
         .stats {
-            width: 100%;
-            max-width: 300px;
-            margin-top: 20px;
-        }
-        
-        .stat {
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            display: inline-block;
-            width: 70px;
+            margin: 15px 0;
+            padding: 15px;
+            background-color: rgba(90, 40, 10, 0.7);
+            border-radius: 8px;
+            border: 2px solid var(--highlight-color);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
         }
         
         .progress-container {
-            display: inline-block;
-            width: calc(100% - 80px);
-            height: 10px;
-            background-color: #ddd;
+            width: 100%;
+            background-color: var(--dark-color);
             border-radius: 5px;
+            margin: 8px 0;
+            height: 20px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
             overflow: hidden;
         }
         
         .progress-bar {
             height: 100%;
-            background-color: #4CAF50;
-            transition: width 0.3s;
+            border-radius: 5px;
+            background: linear-gradient(to right, #8B0000, #FF4500);
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            font-size: 12px;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+            transition: width 0.5s;
         }
         
-        #actions {
+        .pet-container {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .pet-item {
+            position: relative;
+            border: 3px solid var(--highlight-color);
+            border-radius: 10px;
             padding: 10px;
-            background-color: white;
-            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
-        }
-        
-        button {
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            padding: 10px 15px;
-            margin: 5px;
-            border-radius: 5px;
+            background-color: rgba(139, 69, 19, 0.7);
             cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        
-        button:hover {
-            background-color: #45a049;
-        }
-        
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        
-        #evolution-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s;
+            width: 80px;
+            height: 100px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
+            justify-content: space-between;
+        }
+        
+        .pet-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px var(--highlight-color);
+            background-color: rgba(139, 69, 19, 0.9);
+        }
+        
+        .pet-item.selected {
+            border-color: gold;
+            box-shadow: 0 0 15px gold;
+            background-color: rgba(205, 133, 63, 0.9);
+        }
+        
+        .pet-item.dead {
+            opacity: 0.6;
+            filter: grayscale(70%);
+        }
+        
+        .pet-emoji {
+            font-size: 36px;
+            margin-bottom: 5px;
+            animation: float 2s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .pet-level {
+            font-size: 14px;
+            background-color: var(--dark-color);
+            color: gold;
+            padding: 2px 6px;
+            border-radius: 10px;
+            position: absolute;
+            top: 5px;
+            right: 5px;
+        }
+        
+        .pet-type {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .actions-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 5px;
+        }
+        
+        .pet-counter {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
             z-index: 100;
+            border: 1px solid var(--highlight-color);
+        }
+        
+        .evolution-animation {
+            font-size: 48px;
+            text-align: center;
+            margin: 20px 0;
+            animation: pulse 1s infinite;
+        }
+        
+        .hidden {
             display: none;
         }
         
-        .evolution-pet {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            margin: 10px;
-            display: inline-block;
+        #pet-display {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
         }
         
-        #menu-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: white;
+        #current-pet {
+            position: relative;
+        }
+        
+        #pet-emoji {
+            font-size: 64px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .health-indicator {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background-color: red;
+            color: white;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
             align-items: center;
-            z-index: 100;
+            justify-content: center;
+            font-size: 12px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
         }
         
         .menu-button {
-            margin: 10px;
-            padding: 15px 30px;
-            font-size: 18px;
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            font-size: 20px;
+            padding: 15px;
+        }
+        
+        #about-text {
+            line-height: 1.6;
+            text-align: justify;
         }
     </style>
 </head>
 <body>
-    <div id="menu-screen">
-        <h1>Эволюционный Тамагочи</h1>
+    <div id="main-menu">
+        <h1>Medieval Tamagotchi</h1>
         <button id="new-game-btn" class="menu-button">Новая игра</button>
-        <button id="continue-btn" class="menu-button">Продолжить</button>
+        <button id="continue-game-btn" class="menu-button">Продолжить</button>
+        <button id="collection-btn" class="menu-button">Коллекция</button>
+        <button id="about-btn" class="menu-button">Об игре</button>
     </div>
     
-    <div id="pet-count">Питомцев: 0</div>
-    
-    <div id="pet-container">
-        <div class="pet" id="current-pet" style="background-color: #FF5733;"></div>
+    <div id="game-screen">
+        <h2 id="pet-type">Медвежонок</h2>
         
-        <div class="stats">
-            <div class="stat">
-                <span class="stat-label">Уровень:</span>
-                <span id="level">1</span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">Опыт:</span>
-                <div class="progress-container">
-                    <div id="exp-bar" class="progress-bar" style="width: 0%"></div>
-                </div>
-            </div>
-            <div class="stat">
-                <span class="stat-label">Здоровье:</span>
-                <div class="progress-container">
-                    <div id="health-bar" class="progress-bar" style="width: 100%"></div>
-                </div>
-            </div>
-            <div class="stat">
-                <span class="stat-label">Голод:</span>
-                <div class="progress-container">
-                    <div id="hunger-bar" class="progress-bar" style="width: 50%"></div>
-                </div>
-            </div>
-            <div class="stat">
-                <span class="stat-label">Энергия:</span>
-                <div class="progress-container">
-                    <div id="energy-bar" class="progress-bar" style="width: 80%"></div>
-                </div>
+        <div id="pet-display">
+            <div id="current-pet">
+                <div id="pet-emoji">🐻</div>
+                <div class="health-indicator" id="health-indicator">100</div>
             </div>
         </div>
-    </div>
-    
-    <div id="actions">
-        <button id="feed-btn">Покормить</button>
-        <button id="play-btn">Поиграть</button>
-        <button id="sleep-btn">Отдых</button>
-        <button id="heal-btn">Лечить</button>
-        <button id="train-btn">Тренировать</button>
+        
+        <div class="stats">
+            <div>Уровень: <span id="level">1</span></div>
+            <div>Опыт: <span id="exp">0</span>/<span id="exp-to-next">100</span></div>
+            <div class="progress-container">
+                <div id="exp-bar" class="progress-bar" style="width: 0%">0%</div>
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div>Здоровье: <span id="health">100</span>/<span id="max-health">100</span></div>
+            <div class="progress-container">
+                <div id="health-bar" class="progress-bar" style="width: 100%">100%</div>
+            </div>
+            
+            <div>Голод: <span id="hunger">50</span>/100</div>
+            <div class="progress-container">
+                <div id="hunger-bar" class="progress-bar" style="width: 50%">50%</div>
+            </div>
+            
+            <div>Энергия: <span id="energy">80</span>/100</div>
+            <div class="progress-container">
+                <div id="energy-bar" class="progress-bar" style="width: 80%">80%</div>
+            </div>
+            
+            <div>Счастье: <span id="happiness">70</span>/100</div>
+            <div class="progress-container">
+                <div id="happiness-bar" class="progress-bar" style="width: 70%">70%</div>
+            </div>
+        </div>
+        
+        <div class="actions-container">
+            <button id="feed-btn">🍗 Кормить</button>
+            <button id="play-btn">🎲 Играть</button>
+            <button id="sleep-btn">🛌 Спать</button>
+            <button id="heal-btn">💊 Лечить</button>
+            <button id="train-btn">⚔️ Тренировать</button>
+        </div>
+        
+        <div id="evolution-container" class="hidden">
+            <button id="evolve-btn">✨ Эволюционировать!</button>
+        </div>
+        
+        <button id="menu-btn" style="margin-top: 20px; width: 100%;">🏰 Меню</button>
     </div>
     
     <div id="evolution-screen">
         <h2>Эволюция!</h2>
-        <div>
-            <div id="old-pet" class="evolution-pet" style="background-color: #FF5733;"></div>
-            <span style="font-size: 24px;">→</span>
-            <div id="new-pet" class="evolution-pet" style="background-color: #33FF57;"></div>
-        </div>
-        <p>Ваш питомец эволюционировал!</p>
-        <button id="evolution-ok-btn">OK</button>
+        <div class="evolution-animation" id="evolution-emoji">🐻 ➔ 🐻‍❄️</div>
+        <p id="evolution-text">Ваш медвежонок достиг нового уровня и готов к эволюции!</p>
+        <button id="evolution-continue-btn">Продолжить</button>
     </div>
+    
+    <div id="collection-screen">
+        <h2>Ваша коллекция</h2>
+        <div class="pet-container" id="pets-container">
+            <!-- Питомцы будут добавляться здесь -->
+        </div>
+        <button id="collection-back-btn">Назад</button>
+    </div>
+    
+    <div id="about-screen" style="display: none; background-color: var(--primary-color); padding: 20px; border-radius: 10px; border: 8px solid transparent; border-image: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\"><path fill=\"%23A0522D\" d=\"M12 2L2 7v10l10 5 10-5V7L12 2z\"/><path fill=\"%23D2B48C\" d=\"M12 2l10 5v10L12 22V2z\"/></svg>') 10 stretch;">
+        <h2>Об игре</h2>
+        <div id="about-text">
+            <p>Medieval Tamagotchi - это игра в средневековом стиле, где вы ухаживаете за волшебными медвежатами.</p>
+            <p>Когда медвежонок достигает определенного уровня, он эволюционирует в более сильную форму и может разделиться, создав нового медвежонка.</p>
+            <p>Каждый медвежонок имеет:</p>
+            <ul>
+                <li>Здоровье - если упадет до 0, медвежонок умрет</li>
+                <li>Голод - уменьшается со временем</li>
+                <li>Энергию - тратится на действия</li>
+                <li>Счастье - влияет на скорость роста</li>
+            </ul>
+            <p>Цель - собрать всех возможных медвежат и достичь максимального уровня!</p>
+        </div>
+        <button id="about-back-btn">Назад</button>
+    </div>
+
+    <div id="pet-counter" class="hidden">Медвежат: 0</div>
 
     <script>
         // Инициализация Telegram Web App
@@ -243,53 +375,168 @@
             pets: [],
             currentPetIndex: 0,
             lastUpdate: Date.now(),
-            colors: ['#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3'],
+            unlockedSpecies: new Set(['brown']),
             version: 1
         };
         
-        // Виды питомцев и их эволюции
+        // Виды медвежат и их эволюции
         const speciesData = {
-            'egg': { requirements: { level: 0 }, next: ['basic'] },
-            'basic': { requirements: { level: 3 }, next: ['advanced1', 'advanced2'] },
-            'advanced1': { requirements: { level: 6 }, next: ['final1'] },
-            'advanced2': { requirements: { level: 6 }, next: ['final2'] },
-            'final1': { requirements: { level: 10 }, next: [] },
-            'final2': { requirements: { level: 10 }, next: [] }
+            'brown': {
+                name: 'Бурый медвежонок',
+                emoji: '🐻',
+                color: '#8B4513',
+                requirements: { level: 0 },
+                next: ['polar', 'black'],
+                stats: { health: 100, hunger: 50, energy: 80, happiness: 70 }
+            },
+            'polar': {
+                name: 'Белый медвежонок',
+                emoji: '🐻‍❄️',
+                color: '#F8F8FF',
+                requirements: { level: 3 },
+                next: ['golden', 'moon'],
+                stats: { health: 120, hunger: 60, energy: 90, happiness: 80 }
+            },
+            'black': {
+                name: 'Черный медвежонок',
+                emoji: '🐻',
+                color: '#000000',
+                requirements: { level: 3 },
+                next: ['specter', 'demon'],
+                stats: { health: 150, hunger: 70, energy: 70, happiness: 60 }
+            },
+            'golden': {
+                name: 'Золотой медвежонок',
+                emoji: '🐻',
+                color: '#FFD700',
+                requirements: { level: 6 },
+                next: ['phoenix'],
+                stats: { health: 150, hunger: 70, energy: 100, happiness: 90 }
+            },
+            'moon': {
+                name: 'Лунный медвежонок',
+                emoji: '🐻',
+                color: '#4682B4',
+                requirements: { level: 6 },
+                next: ['cosmic'],
+                stats: { health: 130, hunger: 80, energy: 80, happiness: 85 }
+            },
+            'specter': {
+                name: 'Медвежонок-призрак',
+                emoji: '🐻',
+                color: '#E6E6FA',
+                requirements: { level: 6 },
+                next: ['phantom'],
+                stats: { health: 200, hunger: 90, energy: 120, happiness: 70 }
+            },
+            'demon': {
+                name: 'Демонический медвежонок',
+                emoji: '🐻',
+                color: '#8B0000',
+                requirements: { level: 6 },
+                next: ['infernal'],
+                stats: { health: 180, hunger: 50, energy: 60, happiness: 75 }
+            },
+            'phoenix': {
+                name: 'Феникс-медвежонок',
+                emoji: '🐻',
+                color: '#FF4500',
+                requirements: { level: 10 },
+                next: [],
+                stats: { health: 250, hunger: 80, energy: 150, happiness: 100 }
+            },
+            'cosmic': {
+                name: 'Космический медвежонок',
+                emoji: '🐻',
+                color: '#9400D3',
+                requirements: { level: 10 },
+                next: [],
+                stats: { health: 200, hunger: 90, energy: 100, happiness: 95 }
+            },
+            'phantom': {
+                name: 'Фантомный медвежонок',
+                emoji: '🐻',
+                color: '#4B0082',
+                requirements: { level: 10 },
+                next: [],
+                stats: { health: 300, hunger: 100, energy: 150, happiness: 80 }
+            },
+            'infernal': {
+                name: 'Инфернальный медвежонок',
+                emoji: '🐻',
+                color: '#B22222',
+                requirements: { level: 10 },
+                next: [],
+                stats: { health: 220, hunger: 70, energy: 90, happiness: 90 }
+            }
         };
         
         // Элементы интерфейса
         const elements = {
-            menuScreen: document.getElementById('menu-screen'),
-            petCount: document.getElementById('pet-count'),
-            petContainer: document.getElementById('pet-container'),
-            currentPet: document.getElementById('current-pet'),
+            mainMenu: document.getElementById('main-menu'),
+            gameScreen: document.getElementById('game-screen'),
+            evolutionScreen: document.getElementById('evolution-screen'),
+            collectionScreen: document.getElementById('collection-screen'),
+            aboutScreen: document.getElementById('about-screen'),
+            petCounter: document.getElementById('pet-counter'),
+            
+            // Кнопки меню
+            newGameBtn: document.getElementById('new-game-btn'),
+            continueGameBtn: document.getElementById('continue-game-btn'),
+            collectionBtn: document.getElementById('collection-btn'),
+            aboutBtn: document.getElementById('about-btn'),
+            menuBtn: document.getElementById('menu-btn'),
+            collectionBackBtn: document.getElementById('collection-back-btn'),
+            aboutBackBtn: document.getElementById('about-back-btn'),
+            
+            // Игровые элементы
+            petType: document.getElementById('pet-type'),
+            petEmoji: document.getElementById('pet-emoji'),
+            healthIndicator: document.getElementById('health-indicator'),
             level: document.getElementById('level'),
+            exp: document.getElementById('exp'),
+            expToNext: document.getElementById('exp-to-next'),
             expBar: document.getElementById('exp-bar'),
+            health: document.getElementById('health'),
+            maxHealth: document.getElementById('max-health'),
             healthBar: document.getElementById('health-bar'),
+            hunger: document.getElementById('hunger'),
             hungerBar: document.getElementById('hunger-bar'),
+            energy: document.getElementById('energy'),
             energyBar: document.getElementById('energy-bar'),
+            happiness: document.getElementById('happiness'),
+            happinessBar: document.getElementById('happiness-bar'),
+            
+            // Кнопки действий
             feedBtn: document.getElementById('feed-btn'),
             playBtn: document.getElementById('play-btn'),
             sleepBtn: document.getElementById('sleep-btn'),
             healBtn: document.getElementById('heal-btn'),
             trainBtn: document.getElementById('train-btn'),
-            evolutionScreen: document.getElementById('evolution-screen'),
-            oldPet: document.getElementById('old-pet'),
-            newPet: document.getElementById('new-pet'),
-            evolutionOkBtn: document.getElementById('evolution-ok-btn'),
-            newGameBtn: document.getElementById('new-game-btn'),
-            continueBtn: document.getElementById('continue-btn')
+            
+            // Эволюция
+            evolveBtn: document.getElementById('evolve-btn'),
+            evolutionContainer: document.getElementById('evolution-container'),
+            evolutionEmoji: document.getElementById('evolution-emoji'),
+            evolutionText: document.getElementById('evolution-text'),
+            evolutionContinueBtn: document.getElementById('evolution-continue-btn'),
+            
+            // Коллекция
+            petsContainer: document.getElementById('pets-container')
         };
         
         // Инициализация игры
         function initGame() {
             loadGame();
             setupEventListeners();
+            updateMenu();
             
             if (gameState.pets.length > 0) {
-                showGame();
+                showGameScreen();
+                updateGameUI();
+                updatePetCounter();
             } else {
-                showMenu();
+                showMainMenu();
             }
             
             // Запускаем игровой цикл
@@ -300,7 +547,12 @@
         function setupEventListeners() {
             // Кнопки меню
             elements.newGameBtn.addEventListener('click', startNewGame);
-            elements.continueBtn.addEventListener('click', showGame);
+            elements.continueGameBtn.addEventListener('click', showGameScreen);
+            elements.collectionBtn.addEventListener('click', showCollectionScreen);
+            elements.aboutBtn.addEventListener('click', showAboutScreen);
+            elements.menuBtn.addEventListener('click', showMainMenu);
+            elements.collectionBackBtn.addEventListener('click', showMainMenu);
+            elements.aboutBackBtn.addEventListener('click', showMainMenu);
             
             // Игровые действия
             elements.feedBtn.addEventListener('click', () => performAction('feed'));
@@ -310,7 +562,8 @@
             elements.trainBtn.addEventListener('click', () => performAction('train'));
             
             // Эволюция
-            elements.evolutionOkBtn.addEventListener('click', finishEvolution);
+            elements.evolveBtn.addEventListener('click', startEvolution);
+            elements.evolutionContinueBtn.addEventListener('click', finishEvolution);
         }
         
         // Игровой цикл
@@ -329,29 +582,36 @@
             
             // Сохраняем игру после каждого обновления
             saveGame();
-            updateUI();
+            updateGameUI();
+            updatePetCounter();
         }
         
-        // Обновление состояния питомца
+        // Обновление состояния медвежонка
         function updatePet(pet, deltaTime, isActive) {
             // Уменьшаем показатели со временем
             if (isActive) {
                 pet.hunger = Math.max(0, pet.hunger - 0.5 * deltaTime);
                 pet.energy = Math.max(0, pet.energy - 0.3 * deltaTime);
+                pet.happiness = Math.max(0, pet.happiness - 0.2 * deltaTime);
                 
                 // Если голод или энергия на нуле, уменьшаем здоровье
                 if (pet.hunger <= 0 || pet.energy <= 0) {
                     pet.health = Math.max(0, pet.health - 1 * deltaTime);
                 }
+                
+                // Если здоровье на нуле, уменьшаем счастье
+                if (pet.health <= 0) {
+                    pet.happiness = Math.max(0, pet.happiness - 1 * deltaTime);
+                }
             }
             
-            // Проверяем, не умер ли питомец
+            // Проверяем, не умер ли медвежонок
             if (pet.health <= 0 && !pet.isDead) {
                 pet.isDead = true;
                 pet.deathTime = Date.now();
             }
             
-            // Если питомец мертв более 5 минут, удаляем его
+            // Если медвежонок мертв более 5 минут, удаляем его
             if (pet.isDead && Date.now() - pet.deathTime > 300000) {
                 const index = gameState.pets.indexOf(pet);
                 if (index !== -1) {
@@ -363,7 +623,7 @@
             }
         }
         
-        // Выполнение действия с питомцем
+        // Выполнение действия с медвежонком
         function performAction(action) {
             const pet = getCurrentPet();
             if (!pet || pet.isDead) return;
@@ -375,6 +635,7 @@
                     pet.exp += 5;
                     break;
                 case 'play':
+                    pet.happiness = Math.min(100, pet.happiness + 20);
                     pet.energy = Math.min(100, pet.energy - 10);
                     pet.hunger = Math.max(0, pet.hunger - 5);
                     pet.exp += 10;
@@ -385,7 +646,7 @@
                     pet.exp += 5;
                     break;
                 case 'heal':
-                    pet.health = Math.min(100, pet.health + 30);
+                    pet.health = Math.min(getSpeciesData(pet.species).stats.health, pet.health + 30);
                     pet.energy = Math.max(0, pet.energy - 15);
                     pet.exp += 5;
                     break;
@@ -397,7 +658,7 @@
             }
             
             checkLevelUp(pet);
-            updateUI();
+            updateGameUI();
             saveGame();
         }
         
@@ -412,8 +673,8 @@
                 // Проверяем, доступна ли эволюция
                 checkEvolution(pet);
                 
-                // Если уровень кратен 3, питомец может разделиться
-                if (pet.level % 3 === 0) {
+                // Если уровень кратен 3, медвежонок может разделиться
+                if (pet.level % 3 === 0 && gameState.pets.length < 10) {
                     reproducePet(pet);
                 }
             }
@@ -426,29 +687,38 @@
             
             for (const next of nextSpecies) {
                 if (pet.level >= speciesData[next].requirements.level) {
-                    startEvolution(pet, next);
+                    pet.canEvolve = true;
+                    elements.evolutionContainer.classList.remove('hidden');
                     return;
                 }
             }
         }
         
-        // Эволюция питомца
-        function startEvolution(pet, newSpecies) {
-            // Сохраняем текущий цвет
-            const oldColor = pet.color;
+        // Эволюция медвежонка
+        function startEvolution() {
+            const pet = getCurrentPet();
+            if (!pet || !pet.canEvolve) return;
             
-            // Генерируем новый цвет для эволюции
-            const availableColors = gameState.colors.filter(c => c !== oldColor);
-            const newColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+            const speciesInfo = speciesData[pet.species];
+            const possibleEvolutions = speciesInfo.next.filter(next => 
+                pet.level >= speciesData[next].requirements.level
+            );
             
-            // Показываем экран эволюции
-            elements.oldPet.style.backgroundColor = oldColor;
-            elements.newPet.style.backgroundColor = newColor;
-            elements.evolutionScreen.style.display = 'flex';
-            
-            // Сохраняем новые данные во временные свойства
-            pet.newSpecies = newSpecies;
-            pet.newColor = newColor;
+            if (possibleEvolutions.length > 0) {
+                // Выбираем случайную эволюцию из доступных
+                const newSpecies = possibleEvolutions[Math.floor(Math.random() * possibleEvolutions.length)];
+                const newSpeciesInfo = speciesData[newSpecies];
+                
+                // Показываем экран эволюции
+                showEvolutionScreen(pet, newSpecies);
+                
+                // Устанавливаем анимацию эволюции
+                elements.evolutionEmoji.textContent = `${speciesInfo.emoji} ➔ ${newSpeciesInfo.emoji}`;
+                elements.evolutionText.textContent = `Ваш ${speciesInfo.name} эволюционирует в ${newSpeciesInfo.name}!`;
+                
+                // Сохраняем новый вид во временное свойство
+                pet.newSpecies = newSpecies;
+            }
         }
         
         // Завершение эволюции
@@ -456,49 +726,57 @@
             const pet = getCurrentPet();
             if (!pet || !pet.newSpecies) return;
             
-            // Меняем вид и цвет питомца
+            // Меняем вид медвежонка
             pet.species = pet.newSpecies;
-            pet.color = pet.newColor;
             delete pet.newSpecies;
-            delete pet.newColor;
+            pet.canEvolve = false;
             
-            // Обновляем интерфейс
-            elements.evolutionScreen.style.display = 'none';
-            updateUI();
+            // Разблокируем новый вид в коллекции
+            gameState.unlockedSpecies.add(pet.species);
+            
+            // Обновляем статистику медвежонка
+            const speciesStats = speciesData[pet.species].stats;
+            pet.health = speciesStats.health;
+            pet.hunger = speciesStats.hunger;
+            pet.energy = speciesStats.energy;
+            pet.happiness = speciesStats.happiness;
+            
+            showGameScreen();
+            updateGameUI();
             saveGame();
         }
         
-        // Размножение питомца делением
+        // Размножение медвежонка делением
         function reproducePet(parentPet) {
-            // Генерируем новый цвет (отличный от родительского)
-            const availableColors = gameState.colors.filter(c => c !== parentPet.color);
-            if (availableColors.length === 0) return;
-            
-            const newColor = availableColors[Math.floor(Math.random() * availableColors.length)];
-            
-            // Создаем нового питомца
+            // Создаем нового медвежонка на основе родителя
             const newPet = {
                 species: parentPet.species,
-                color: newColor,
                 level: 1,
                 exp: 0,
-                health: 100,
-                hunger: 50,
-                energy: 80,
+                health: speciesData[parentPet.species].stats.health,
+                hunger: speciesData[parentPet.species].stats.hunger,
+                energy: speciesData[parentPet.species].stats.energy,
+                happiness: speciesData[parentPet.species].stats.happiness,
                 isDead: false,
+                canEvolve: false,
                 birthTime: Date.now()
             };
             
-            // Добавляем нового питомца в коллекцию
+            // Добавляем нового медвежонка в коллекцию
             gameState.pets.push(newPet);
             
             // Уведомляем пользователя
-            alert(`Ваш питомец достиг уровня ${parentPet.level} и разделился!`);
+            alert(`Ваш медвежонок достиг уровня ${parentPet.level} и разделился! Теперь у вас ${gameState.pets.length} медвежат!`);
         }
         
-        // Получение текущего питомца
+        // Получение текущего медвежонка
         function getCurrentPet() {
             return gameState.pets[gameState.currentPetIndex];
+        }
+        
+        // Получение данных о виде
+        function getSpeciesData(species) {
+            return speciesData[species] || speciesData['brown'];
         }
         
         // Получение опыта для уровня
@@ -506,100 +784,206 @@
             return 100 * Math.pow(level, 1.5);
         }
         
-        // Обновление интерфейса
-        function updateUI() {
+        // Обновление интерфейса игры
+        function updateGameUI() {
             const pet = getCurrentPet();
             if (!pet) return;
             
-            // Обновляем счетчик питомцев
-            elements.petCount.textContent = `Питомцев: ${gameState.pets.length}`;
+            const speciesInfo = getSpeciesData(pet.species);
             
-            // Обновляем внешний вид питомца
-            elements.currentPet.style.backgroundColor = pet.color;
-            if (pet.isDead) {
-                elements.currentPet.style.opacity = '0.5';
-            } else {
-                elements.currentPet.style.opacity = '1';
-            }
-            
-            // Обновляем статистику
+            // Обновляем основную информацию
+            elements.petType.textContent = speciesInfo.name;
+            elements.petEmoji.textContent = speciesInfo.emoji;
+            elements.petEmoji.style.color = speciesInfo.color;
             elements.level.textContent = pet.level;
+            elements.exp.textContent = Math.floor(pet.exp);
+            elements.expToNext.textContent = Math.floor(getExpForLevel(pet.level + 1));
             
+            // Обновляем прогресс-бары
             const expPercent = (pet.exp / getExpForLevel(pet.level + 1)) * 100;
             elements.expBar.style.width = `${expPercent}%`;
+            elements.expBar.textContent = `${Math.floor(expPercent)}%`;
             
-            elements.healthBar.style.width = `${pet.health}%`;
+            elements.health.textContent = Math.floor(pet.health);
+            elements.maxHealth.textContent = speciesInfo.stats.health;
+            const healthPercent = (pet.health / speciesInfo.stats.health) * 100;
+            elements.healthBar.style.width = `${healthPercent}%`;
+            elements.healthBar.textContent = `${Math.floor(healthPercent)}%`;
+            elements.healthIndicator.textContent = Math.floor(pet.health);
+            
+            elements.hunger.textContent = Math.floor(pet.hunger);
             elements.hungerBar.style.width = `${pet.hunger}%`;
-            elements.energyBar.style.width = `${pet.energy}%`;
+            elements.hungerBar.textContent = `${Math.floor(pet.hunger)}%`;
             
-            // Блокируем кнопки, если питомец мертв
+            elements.energy.textContent = Math.floor(pet.energy);
+            elements.energyBar.style.width = `${pet.energy}%`;
+            elements.energyBar.textContent = `${Math.floor(pet.energy)}%`;
+            
+            elements.happiness.textContent = Math.floor(pet.happiness);
+            elements.happinessBar.style.width = `${pet.happiness}%`;
+            elements.happinessBar.textContent = `${Math.floor(pet.happiness)}%`;
+            
+            // Блокируем кнопки, если медвежонок мертв
             if (pet.isDead) {
                 elements.feedBtn.disabled = true;
                 elements.playBtn.disabled = true;
                 elements.sleepBtn.disabled = true;
                 elements.healBtn.disabled = true;
                 elements.trainBtn.disabled = true;
+                elements.evolveBtn.disabled = true;
+                elements.petType.textContent = `${speciesInfo.name} (умер)`;
             } else {
                 elements.feedBtn.disabled = false;
                 elements.playBtn.disabled = false;
                 elements.sleepBtn.disabled = false;
                 elements.healBtn.disabled = false;
                 elements.trainBtn.disabled = false;
+                elements.evolveBtn.disabled = !pet.canEvolve;
             }
+        }
+        
+        // Обновление счетчика медвежат
+        function updatePetCounter() {
+            if (gameState.pets.length > 0) {
+                elements.petCounter.textContent = `Медвежат: ${gameState.pets.length}`;
+                elements.petCounter.classList.remove('hidden');
+            } else {
+                elements.petCounter.classList.add('hidden');
+            }
+        }
+        
+        // Обновление меню
+        function updateMenu() {
+            elements.continueGameBtn.disabled = gameState.pets.length === 0;
+            elements.collectionBtn.disabled = gameState.pets.length === 0;
+        }
+        
+        // Обновление экрана коллекции
+        function updateCollectionScreen() {
+            // Очищаем контейнер с медвежатами
+            elements.petsContainer.innerHTML = '';
+            
+            // Добавляем медвежат в коллекцию
+            gameState.pets.forEach((pet, index) => {
+                const speciesInfo = getSpeciesData(pet.species);
+                
+                const petElement = document.createElement('div');
+                petElement.className = `pet-item ${pet.isDead ? 'dead' : ''} ${index === gameState.currentPetIndex ? 'selected' : ''}`;
+                
+                petElement.innerHTML = `
+                    <div class="pet-emoji" style="color: ${speciesInfo.color}">${speciesInfo.emoji}</div>
+                    <div class="pet-level">${pet.level}</div>
+                    <div class="pet-type">${speciesInfo.name}</div>
+                `;
+                
+                petElement.addEventListener('click', () => {
+                    gameState.currentPetIndex = index;
+                    showGameScreen();
+                    updateGameUI();
+                });
+                
+                elements.petsContainer.appendChild(petElement);
+            });
         }
         
         // Начать новую игру
         function startNewGame() {
-            // Создаем нового питомца
+            // Создаем нового медвежонка
             const newPet = {
-                species: 'egg',
-                color: gameState.colors[0],
+                species: 'brown',
                 level: 1,
                 exp: 0,
                 health: 100,
                 hunger: 50,
                 energy: 80,
+                happiness: 70,
                 isDead: false,
+                canEvolve: false,
                 birthTime: Date.now()
             };
             
-            // Очищаем старых питомцев и добавляем нового
+            // Очищаем старых медвежат и добавляем нового
             gameState.pets = [newPet];
             gameState.currentPetIndex = 0;
+            gameState.unlockedSpecies = new Set(['brown']);
             gameState.lastUpdate = Date.now();
             
             // Сохраняем и показываем игру
             saveGame();
-            showGame();
+            showGameScreen();
+            updateGameUI();
+            updateMenu();
+            updatePetCounter();
         }
         
         // Сохранить игру
         function saveGame() {
-            localStorage.setItem('simpleTamagotchi', JSON.stringify(gameState));
+            // Преобразуем Set в массив для сохранения
+            const saveData = {
+                ...gameState,
+                unlockedSpecies: Array.from(gameState.unlockedSpecies)
+            };
+            localStorage.setItem('medievalTamagotchi', JSON.stringify(saveData));
         }
         
         // Загрузить игру
         function loadGame() {
-            const savedGame = localStorage.getItem('simpleTamagotchi');
+            const savedGame = localStorage.getItem('medievalTamagotchi');
             if (savedGame) {
                 const parsed = JSON.parse(savedGame);
                 
-                // Проверка версии сохранения
+                // Проверка версии сохранения для возможных миграций
                 if (parsed.version === gameState.version) {
                     gameState = parsed;
+                    
+                    // Восстанавливаем Set из массива
+                    if (Array.isArray(gameState.unlockedSpecies)) {
+                        gameState.unlockedSpecies = new Set(gameState.unlockedSpecies);
+                    }
                 }
             }
         }
         
-        // Показать меню
-        function showMenu() {
-            elements.menuScreen.style.display = 'flex';
+        // Скрыть все экраны
+        function hideAllScreens() {
+            elements.mainMenu.style.display = 'none';
+            elements.gameScreen.style.display = 'none';
+            elements.evolutionScreen.style.display = 'none';
+            elements.collectionScreen.style.display = 'none';
+            elements.aboutScreen.style.display = 'none';
         }
         
-        // Показать игру
-        function showGame() {
-            elements.menuScreen.style.display = 'none';
-            updateUI();
+        // Показать главное меню
+        function showMainMenu() {
+            hideAllScreens();
+            elements.mainMenu.style.display = 'block';
+            updateMenu();
+        }
+        
+        // Показать экран игры
+        function showGameScreen() {
+            hideAllScreens();
+            elements.gameScreen.style.display = 'block';
+            updateGameUI();
+        }
+        
+        // Показать экран коллекции
+        function showCollectionScreen() {
+            hideAllScreens();
+            elements.collectionScreen.style.display = 'block';
+            updateCollectionScreen();
+        }
+        
+        // Показать экран "Об игре"
+        function showAboutScreen() {
+            hideAllScreens();
+            elements.aboutScreen.style.display = 'block';
+        }
+        
+        // Показать экран эволюции
+        function showEvolutionScreen(pet, newSpecies) {
+            hideAllScreens();
+            elements.evolutionScreen.style.display = 'block';
         }
         
         // Инициализируем игру при загрузке
