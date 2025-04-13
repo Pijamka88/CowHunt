@@ -1,608 +1,834 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cosmic Cow Hunt</title>
+    <title>Эволюционный Тамагочи</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background: linear-gradient(to bottom, #000428, #004e92);
-            font-family: 'Arial', sans-serif;
-            touch-action: manipulation;
-            user-select: none;
-            -webkit-user-select: none;
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
         }
         
-        #gameCanvas {
-            display: block;
-            background: radial-gradient(ellipse at center, #1a2980 0%, #26d0ce 100%);
-            cursor: crosshair;
-        }
-        
-        #ui {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            font-size: 18px;
-            text-shadow: 1px 1px 2px black;
-            z-index: 100;
-        }
-        
-        #score {
-            font-weight: bold;
-            font-size: 24px;
-        }
-        
-        #ammo {
-            margin-top: 5px;
-        }
-        
-        #gameOver {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
+        #main-menu, #game-screen, #evolution-screen, #collection-screen {
+            background-color: white;
             padding: 20px;
             border-radius: 10px;
-            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
             display: none;
-            z-index: 200;
         }
         
-        #restartBtn {
-            background: linear-gradient(to bottom, #4CAF50, #45a049);
+        button {
+            background-color: #4CAF50;
             border: none;
             color: white;
-            padding: 10px 20px;
+            padding: 10px 15px;
             text-align: center;
             text-decoration: none;
             display: inline-block;
             font-size: 16px;
-            margin: 10px 2px;
+            margin: 5px 2px;
             cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .stats {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #f0f0f0;
             border-radius: 5px;
         }
         
-        #startScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            z-index: 300;
-        }
-        
-        #startBtn {
-            background: linear-gradient(to bottom, #2196F3, #0b7dda);
-            border: none;
-            color: white;
-            padding: 15px 30px;
+        .pet {
+            font-size: 24px;
             text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 18px;
-            margin: 20px 2px;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-        
-        h1 {
-            color: #ffeb3b;
-            text-shadow: 0 0 10px rgba(255, 235, 59, 0.5);
-            margin-bottom: 10px;
-        }
-        
-        .instructions {
-            text-align: center;
-            max-width: 80%;
-            margin-bottom: 20px;
-        }
-        
-        #cowPreview {
-            width: 100px;
-            height: 80px;
             margin: 20px 0;
+        }
+        
+        .progress-container {
+            width: 100%;
+            background-color: #ddd;
+            border-radius: 5px;
+            margin: 5px 0;
+        }
+        
+        .progress-bar {
+            height: 20px;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+        }
+        
+        .pet-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+        
+        .pet-item {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px;
+            width: 120px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .pet-item:hover {
+            transform: scale(1.05);
+        }
+        
+        h1, h2, h3 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        .menu-button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    
-    <div id="ui">
-        <div id="score">Score: 0</div>
-        <div id="ammo">Ammo: 10</div>
+    <div id="main-menu">
+        <h1>Эволюционный Тамагочи</h1>
+        <button id="new-game-btn" class="menu-button">Новая игра</button>
+        <button id="continue-game-btn" class="menu-button">Продолжить</button>
+        <button id="collection-btn" class="menu-button">Коллекция</button>
+        <button id="about-btn" class="menu-button">Об игре</button>
     </div>
     
-    <div id="gameOver">
-        <h2>Game Over</h2>
-        <p>Your score: <span id="finalScore">0</span></p>
-        <button id="restartBtn">Play Again</button>
-    </div>
-    
-    <div id="startScreen">
-        <h1>Cosmic Cow Hunt</h1>
-        <canvas id="cowPreview" width="100" height="80"></canvas>
-        <div class="instructions">
-            Shoot the cosmic cows flying across the screen!<br>
-            You have limited ammo, so aim carefully.
+    <div id="game-screen">
+        <h2 id="pet-name">Питомец</h2>
+        <div class="pet" id="pet-emoji">🐣</div>
+        
+        <div class="stats">
+            <div>Уровень: <span id="level">1</span></div>
+            <div>Опыт: <span id="exp">0</span>/<span id="exp-to-next">100</span></div>
+            <div class="progress-container">
+                <div id="exp-bar" class="progress-bar" style="width: 0%">0%</div>
+            </div>
         </div>
-        <button id="startBtn">Start Game</button>
+        
+        <div class="stats">
+            <div>Здоровье: <span id="health">100</span>/100</div>
+            <div class="progress-container">
+                <div id="health-bar" class="progress-bar" style="width: 100%">100%</div>
+            </div>
+            
+            <div>Голод: <span id="hunger">50</span>/100</div>
+            <div class="progress-container">
+                <div id="hunger-bar" class="progress-bar" style="width: 50%">50%</div>
+            </div>
+            
+            <div>Энергия: <span id="energy">80</span>/100</div>
+            <div class="progress-container">
+                <div id="energy-bar" class="progress-bar" style="width: 80%">80%</div>
+            </div>
+            
+            <div>Счастье: <span id="happiness">70</span>/100</div>
+            <div class="progress-container">
+                <div id="happiness-bar" class="progress-bar" style="width: 70%">70%</div>
+            </div>
+        </div>
+        
+        <div>
+            <button id="feed-btn">Покормить</button>
+            <button id="play-btn">Поиграть</button>
+            <button id="sleep-btn">Уложить спать</button>
+            <button id="heal-btn">Лечить</button>
+            <button id="train-btn">Тренировать</button>
+        </div>
+        
+        <div id="evolution-container" class="hidden">
+            <button id="evolve-btn">Эволюционировать!</button>
+        </div>
+        
+        <button id="menu-btn" style="margin-top: 20px;">Меню</button>
     </div>
     
+    <div id="evolution-screen">
+        <h2>Эволюция!</h2>
+        <div class="pet" id="evolution-emoji">🐣</div>
+        <p id="evolution-text">Ваш питомец достиг нового уровня и готов к эволюции!</p>
+        <button id="evolution-continue-btn">Продолжить</button>
+    </div>
+    
+    <div id="collection-screen">
+        <h2>Ваша коллекция</h2>
+        <div id="collection-stats">
+            <p>Всего питомцев: <span id="total-pets">0</span></p>
+            <p>Максимальный уровень: <span id="max-level">0</span></p>
+        </div>
+        <div class="pet-container" id="pets-container">
+            <!-- Питомцы будут добавляться здесь -->
+        </div>
+        <button id="collection-back-btn">Назад</button>
+    </div>
+    
+    <div id="about-screen" style="display: none; background-color: white; padding: 20px; border-radius: 10px;">
+        <h2>Об игре</h2>
+        <p>Эволюционный Тамагочи - это игра, где вы ухаживаете за питомцем, который развивается и эволюционирует.</p>
+        <p>Когда питомец достигает определенного уровня, он размножается делением, и вы можете получить нового питомца.</p>
+        <p>Цель - собрать всех возможных питомцев и достичь максимального уровня!</p>
+        <button id="about-back-btn">Назад</button>
+    </div>
+
     <script>
-        // Game variables
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const previewCanvas = document.getElementById('cowPreview');
-        const previewCtx = previewCanvas.getContext('2d');
-        const scoreElement = document.getElementById('score');
-        const ammoElement = document.getElementById('ammo');
-        const finalScoreElement = document.getElementById('finalScore');
-        const gameOverElement = document.getElementById('gameOver');
-        const startScreenElement = document.getElementById('startScreen');
-        const startBtn = document.getElementById('startBtn');
-        const restartBtn = document.getElementById('restartBtn');
+        // Инициализация Telegram Web App
+        const tg = window.Telegram.WebApp;
+        tg.expand();
         
-        let score = 0;
-        let ammo = 10;
-        let gameRunning = false;
-        let cows = [];
-        let explosions = [];
-        let lastCowTime = 0;
-        let animationFrameId;
-        let gameStartTime;
-        let difficultyInterval;
+        // Состояние игры
+        let gameState = {
+            pets: [],
+            currentPetIndex: 0,
+            lastUpdate: Date.now(),
+            unlockedSpecies: new Set(['egg']),
+            version: 1
+        };
         
-        // Resize canvas to full window
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
+        // Виды питомцев и их эволюции
+        const speciesData = {
+            'egg': {
+                name: 'Яйцо',
+                emoji: '🐣',
+                requirements: { level: 0 },
+                next: ['bird', 'reptile'],
+                stats: { health: 100, hunger: 50, energy: 80, happiness: 70 }
+            },
+            'bird': {
+                name: 'Птица',
+                emoji: '🐦',
+                requirements: { level: 3 },
+                next: ['eagle', 'penguin'],
+                stats: { health: 120, hunger: 60, energy: 90, happiness: 80 }
+            },
+            'reptile': {
+                name: 'Рептилия',
+                emoji: '🦎',
+                requirements: { level: 3 },
+                next: ['dragon', 'turtle'],
+                stats: { health: 150, hunger: 70, energy: 70, happiness: 60 }
+            },
+            'eagle': {
+                name: 'Орел',
+                emoji: '🦅',
+                requirements: { level: 6 },
+                next: ['phoenix'],
+                stats: { health: 150, hunger: 70, energy: 100, happiness: 90 }
+            },
+            'penguin': {
+                name: 'Пингвин',
+                emoji: '🐧',
+                requirements: { level: 6 },
+                next: ['emperor_penguin'],
+                stats: { health: 130, hunger: 80, energy: 80, happiness: 85 }
+            },
+            'dragon': {
+                name: 'Дракон',
+                emoji: '🐲',
+                requirements: { level: 6 },
+                next: ['elder_dragon'],
+                stats: { health: 200, hunger: 90, energy: 120, happiness: 70 }
+            },
+            'turtle': {
+                name: 'Черепаха',
+                emoji: '🐢',
+                requirements: { level: 6 },
+                next: ['ninja_turtle'],
+                stats: { health: 180, hunger: 50, energy: 60, happiness: 75 }
+            },
+            'phoenix': {
+                name: 'Феникс',
+                emoji: '🔥',
+                requirements: { level: 10 },
+                next: [],
+                stats: { health: 250, hunger: 80, energy: 150, happiness: 100 }
+            },
+            'emperor_penguin': {
+                name: 'Императорский пингвин',
+                emoji: '👑🐧',
+                requirements: { level: 10 },
+                next: [],
+                stats: { health: 200, hunger: 90, energy: 100, happiness: 95 }
+            },
+            'elder_dragon': {
+                name: 'Древний дракон',
+                emoji: '🐉',
+                requirements: { level: 10 },
+                next: [],
+                stats: { health: 300, hunger: 100, energy: 150, happiness: 80 }
+            },
+            'ninja_turtle': {
+                name: 'Черепашка-ниндзя',
+                emoji: '🐢💥',
+                requirements: { level: 10 },
+                next: [],
+                stats: { health: 220, hunger: 70, energy: 90, happiness: 90 }
+            }
+        };
         
-        // Initialize game
+        // Элементы интерфейса
+        const elements = {
+            mainMenu: document.getElementById('main-menu'),
+            gameScreen: document.getElementById('game-screen'),
+            evolutionScreen: document.getElementById('evolution-screen'),
+            collectionScreen: document.getElementById('collection-screen'),
+            aboutScreen: document.getElementById('about-screen'),
+            
+            // Кнопки меню
+            newGameBtn: document.getElementById('new-game-btn'),
+            continueGameBtn: document.getElementById('continue-game-btn'),
+            collectionBtn: document.getElementById('collection-btn'),
+            aboutBtn: document.getElementById('about-btn'),
+            menuBtn: document.getElementById('menu-btn'),
+            collectionBackBtn: document.getElementById('collection-back-btn'),
+            aboutBackBtn: document.getElementById('about-back-btn'),
+            
+            // Игровые элементы
+            petName: document.getElementById('pet-name'),
+            petEmoji: document.getElementById('pet-emoji'),
+            level: document.getElementById('level'),
+            exp: document.getElementById('exp'),
+            expToNext: document.getElementById('exp-to-next'),
+            expBar: document.getElementById('exp-bar'),
+            health: document.getElementById('health'),
+            healthBar: document.getElementById('health-bar'),
+            hunger: document.getElementById('hunger'),
+            hungerBar: document.getElementById('hunger-bar'),
+            energy: document.getElementById('energy'),
+            energyBar: document.getElementById('energy-bar'),
+            happiness: document.getElementById('happiness'),
+            happinessBar: document.getElementById('happiness-bar'),
+            
+            // Кнопки действий
+            feedBtn: document.getElementById('feed-btn'),
+            playBtn: document.getElementById('play-btn'),
+            sleepBtn: document.getElementById('sleep-btn'),
+            healBtn: document.getElementById('heal-btn'),
+            trainBtn: document.getElementById('train-btn'),
+            
+            // Эволюция
+            evolveBtn: document.getElementById('evolve-btn'),
+            evolutionContainer: document.getElementById('evolution-container'),
+            evolutionEmoji: document.getElementById('evolution-emoji'),
+            evolutionText: document.getElementById('evolution-text'),
+            evolutionContinueBtn: document.getElementById('evolution-continue-btn'),
+            
+            // Коллекция
+            petsContainer: document.getElementById('pets-container'),
+            totalPets: document.getElementById('total-pets'),
+            maxLevel: document.getElementById('max-level')
+        };
+        
+        // Инициализация игры
         function initGame() {
-            resizeCanvas();
-            cows = [];
-            explosions = [];
-            score = 0;
-            ammo = 10;
-            lastCowTime = 0;
-            scoreElement.textContent = `Score: ${score}`;
-            ammoElement.textContent = `Ammo: ${ammo}`;
-            gameStartTime = Date.now();
+            loadGame();
+            setupEventListeners();
+            updateMenu();
             
-            // Draw preview cow
-            drawCow(previewCtx, 50, 40, 0, 0, 0, false);
-            
-            // Start difficulty increase interval
-            if (difficultyInterval) clearInterval(difficultyInterval);
-            difficultyInterval = setInterval(increaseDifficulty, 30000);
-        }
-        
-        // Increase game difficulty over time
-        function increaseDifficulty() {
-            // Cows start moving faster and appear more frequently
-            Cow.prototype.maxSpeed += 0.5;
-            Cow.prototype.minSpeed += 0.5;
-        }
-        
-        // Cow class
-        class Cow {
-            constructor() {
-                this.width = 60;
-                this.height = 40;
-                this.x = Math.random() < 0.5 ? -this.width : canvas.width;
-                this.y = Math.random() * (canvas.height - this.height);
-                
-                // Determine direction based on starting side
-                this.direction = this.x < 0 ? 1 : -1;
-                
-                // Random speed between min and max
-                this.speed = Cow.prototype.minSpeed + Math.random() * (Cow.prototype.maxSpeed - Cow.prototype.minSpeed);
-                
-                // Animation variables
-                this.legFrame = 0;
-                this.legDirection = 1;
-                this.legAnimationSpeed = 0.2 + Math.random() * 0.3;
-                
-                // Hit flag
-                this.hit = false;
-                this.hitTime = 0;
+            if (gameState.pets.length > 0) {
+                showGameScreen();
+                updateGameUI();
+            } else {
+                showMainMenu();
             }
             
-            update() {
-                this.x += this.speed * this.direction;
+            // Запускаем игровой цикл
+            setInterval(gameLoop, 1000);
+        }
+        
+        // Настройка обработчиков событий
+        function setupEventListeners() {
+            // Кнопки меню
+            elements.newGameBtn.addEventListener('click', startNewGame);
+            elements.continueGameBtn.addEventListener('click', showGameScreen);
+            elements.collectionBtn.addEventListener('click', showCollectionScreen);
+            elements.aboutBtn.addEventListener('click', showAboutScreen);
+            elements.menuBtn.addEventListener('click', showMainMenu);
+            elements.collectionBackBtn.addEventListener('click', showMainMenu);
+            elements.aboutBackBtn.addEventListener('click', showMainMenu);
+            
+            // Игровые действия
+            elements.feedBtn.addEventListener('click', () => performAction('feed'));
+            elements.playBtn.addEventListener('click', () => performAction('play'));
+            elements.sleepBtn.addEventListener('click', () => performAction('sleep'));
+            elements.healBtn.addEventListener('click', () => performAction('heal'));
+            elements.trainBtn.addEventListener('click', () => performAction('train'));
+            
+            // Эволюция
+            elements.evolveBtn.addEventListener('click', startEvolution);
+            elements.evolutionContinueBtn.addEventListener('click', finishEvolution);
+        }
+        
+        // Игровой цикл
+        function gameLoop() {
+            if (gameState.pets.length === 0) return;
+            
+            const now = Date.now();
+            const deltaTime = (now - gameState.lastUpdate) / 1000; // в секундах
+            gameState.lastUpdate = now;
+            
+            // Обновляем всех питомцев (но активно только текущий)
+            gameState.pets.forEach((pet, index) => {
+                const isActive = index === gameState.currentPetIndex;
+                updatePet(pet, deltaTime, isActive);
+            });
+            
+            // Сохраняем игру после каждого обновления
+            saveGame();
+            updateGameUI();
+        }
+        
+        // Обновление состояния питомца
+        function updatePet(pet, deltaTime, isActive) {
+            // Уменьшаем показатели со временем
+            if (isActive) {
+                pet.hunger = Math.max(0, pet.hunger - 0.5 * deltaTime);
+                pet.energy = Math.max(0, pet.energy - 0.3 * deltaTime);
+                pet.happiness = Math.max(0, pet.happiness - 0.2 * deltaTime);
                 
-                // Update leg animation
-                this.legFrame += this.legAnimationSpeed;
-                if (this.legFrame >= 4 || this.legFrame <= 0) {
-                    this.legDirection *= -1;
-                    this.legFrame = Math.max(0, Math.min(4, this.legFrame));
+                // Если голод или энергия на нуле, уменьшаем здоровье
+                if (pet.hunger <= 0 || pet.energy <= 0) {
+                    pet.health = Math.max(0, pet.health - 1 * deltaTime);
                 }
-                this.legFrame += this.legDirection * this.legAnimationSpeed;
                 
-                // Check if hit
-                if (this.hit) {
-                    this.hitTime++;
-                    if (this.hitTime > 30) {
-                        return false; // Remove cow after hit animation
+                // Если здоровье на нуле, уменьшаем счастье
+                if (pet.health <= 0) {
+                    pet.happiness = Math.max(0, pet.happiness - 1 * deltaTime);
+                }
+            }
+            
+            // Проверяем, не умер ли питомец
+            if (pet.health <= 0 && !pet.isDead) {
+                pet.isDead = true;
+                pet.deathTime = Date.now();
+            }
+            
+            // Если питомец мертв более 5 минут, удаляем его
+            if (pet.isDead && Date.now() - pet.deathTime > 300000) {
+                const index = gameState.pets.indexOf(pet);
+                if (index !== -1) {
+                    gameState.pets.splice(index, 1);
+                    if (gameState.currentPetIndex >= index) {
+                        gameState.currentPetIndex = Math.max(0, gameState.currentPetIndex - 1);
                     }
                 }
-                
-                // Check if off screen
-                if ((this.direction > 0 && this.x > canvas.width) || 
-                    (this.direction < 0 && this.x < -this.width)) {
-                    return false;
-                }
-                
-                return true;
-            }
-            
-            draw(ctx) {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                
-                if (this.direction < 0) {
-                    ctx.scale(-1, 1);
-                    ctx.translate(-this.width, 0);
-                }
-                
-                // Draw cow body
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.ellipse(this.width * 0.5, this.height * 0.5, this.width * 0.4, this.height * 0.5, 0, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Draw head with helmet
-                ctx.fillStyle = 'rgba(200, 230, 255, 0.3)';
-                ctx.beginPath();
-                ctx.arc(this.width * 0.8, this.height * 0.4, this.height * 0.3, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = 'rgba(150, 200, 255, 0.7)';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                
-                // Draw horns on helmet
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                ctx.beginPath();
-                ctx.moveTo(this.width * 0.85, this.height * 0.25);
-                ctx.lineTo(this.width * 0.9, this.height * 0.15);
-                ctx.lineTo(this.width * 0.95, this.height * 0.2);
-                ctx.fill();
-                
-                ctx.beginPath();
-                ctx.moveTo(this.width * 0.85, this.height * 0.3);
-                ctx.lineTo(this.width * 0.9, this.height * 0.25);
-                ctx.lineTo(this.width * 0.95, this.height * 0.35);
-                ctx.fill();
-                
-                // Draw eyes
-                ctx.fillStyle = 'black';
-                ctx.beginPath();
-                ctx.arc(this.width * 0.75, this.height * 0.35, 3, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.beginPath();
-                ctx.arc(this.width * 0.75, this.height * 0.45, 3, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Draw nose
-                ctx.fillStyle = '#8B4513';
-                ctx.beginPath();
-                ctx.ellipse(this.width * 0.85, this.height * 0.55, 8, 5, 0, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Draw nostrils
-                ctx.fillStyle = 'black';
-                ctx.beginPath();
-                ctx.arc(this.width * 0.82, this.height * 0.55, 1.5, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.beginPath();
-                ctx.arc(this.width * 0.88, this.height * 0.55, 1.5, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Draw legs with animation
-                const legOffset = Math.sin(this.legFrame) * 3;
-                
-                // Front legs
-                ctx.fillStyle = 'white';
-                ctx.fillRect(this.width * 0.3, this.height * 0.7, 8, 15 + legOffset);
-                ctx.fillRect(this.width * 0.4, this.height * 0.7, 8, 15 - legOffset);
-                
-                // Back legs
-                ctx.fillRect(this.width * 0.2, this.height * 0.7, 8, 15 - legOffset);
-                ctx.fillRect(this.width * 0.5, this.height * 0.7, 8, 15 + legOffset);
-                
-                // If hit, draw explosion
-                if (this.hit) {
-                    const explosionSize = this.hitTime * 2;
-                    const gradient = ctx.createRadialGradient(
-                        this.width * 0.5, this.height * 0.5, 0,
-                        this.width * 0.5, this.height * 0.5, explosionSize
-                    );
-                    gradient.addColorStop(0, 'rgba(255, 255, 0, 0.8)');
-                    gradient.addColorStop(0.5, 'rgba(255, 100, 0, 0.6)');
-                    gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-                    
-                    ctx.fillStyle = gradient;
-                    ctx.beginPath();
-                    ctx.arc(this.width * 0.5, this.height * 0.5, explosionSize, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Draw "Moo!" text
-                    ctx.fillStyle = 'white';
-                    ctx.font = 'bold 12px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('MOO!', this.width * 0.5, this.height * 0.5 - explosionSize - 5);
-                }
-                
-                ctx.restore();
             }
         }
         
-        // Set default cow speed values
-        Cow.prototype.minSpeed = 2;
-        Cow.prototype.maxSpeed = 5;
+        // Выполнение действия с питомцем
+        function performAction(action) {
+            const pet = getCurrentPet();
+            if (!pet || pet.isDead) return;
+            
+            switch (action) {
+                case 'feed':
+                    pet.hunger = Math.min(100, pet.hunger + 30);
+                    pet.energy = Math.min(100, pet.energy - 5);
+                    pet.exp += 5;
+                    break;
+                case 'play':
+                    pet.happiness = Math.min(100, pet.happiness + 20);
+                    pet.energy = Math.min(100, pet.energy - 10);
+                    pet.hunger = Math.max(0, pet.hunger - 5);
+                    pet.exp += 10;
+                    break;
+                case 'sleep':
+                    pet.energy = Math.min(100, pet.energy + 40);
+                    pet.hunger = Math.max(0, pet.hunger - 10);
+                    pet.exp += 5;
+                    break;
+                case 'heal':
+                    pet.health = Math.min(getSpeciesData(pet.species).stats.health, pet.health + 30);
+                    pet.energy = Math.max(0, pet.energy - 15);
+                    pet.exp += 5;
+                    break;
+                case 'train':
+                    pet.energy = Math.max(0, pet.energy - 20);
+                    pet.hunger = Math.max(0, pet.hunger - 15);
+                    pet.exp += 20;
+                    break;
+            }
+            
+            checkLevelUp(pet);
+            updateGameUI();
+            saveGame();
+        }
         
-        // Draw a cow (used for preview)
-        function drawCow(ctx, x, y, legFrame, direction, hitTime, isHit) {
-            const cow = {
-                width: 60,
-                height: 40,
-                x: x - 30,
-                y: y - 20,
-                direction: direction,
-                legFrame: legFrame,
-                hit: isHit,
-                hitTime: hitTime,
-                speed: 0,
-                legAnimationSpeed: 0.3
+        // Проверка повышения уровня
+        function checkLevelUp(pet) {
+            const expNeeded = getExpForLevel(pet.level + 1);
+            
+            if (pet.exp >= expNeeded) {
+                pet.level++;
+                pet.exp -= expNeeded;
+                
+                // Проверяем, доступна ли эволюция
+                checkEvolution(pet);
+                
+                // Если уровень кратен 3, питомец может разделиться
+                if (pet.level % 3 === 0) {
+                    reproducePet(pet);
+                }
+            }
+        }
+        
+        // Проверка доступности эволюции
+        function checkEvolution(pet) {
+            const speciesInfo = speciesData[pet.species];
+            const nextSpecies = speciesInfo.next;
+            
+            for (const next of nextSpecies) {
+                if (pet.level >= speciesData[next].requirements.level) {
+                    pet.canEvolve = true;
+                    elements.evolutionContainer.classList.remove('hidden');
+                    return;
+                }
+            }
+        }
+        
+        // Эволюция питомца
+        function startEvolution() {
+            const pet = getCurrentPet();
+            if (!pet || !pet.canEvolve) return;
+            
+            const speciesInfo = speciesData[pet.species];
+            const possibleEvolutions = speciesInfo.next.filter(next => 
+                pet.level >= speciesData[next].requirements.level
+            );
+            
+            if (possibleEvolutions.length > 0) {
+                // Выбираем случайную эволюцию из доступных
+                const newSpecies = possibleEvolutions[Math.floor(Math.random() * possibleEvolutions.length)];
+                
+                // Показываем экран эволюции
+                showEvolutionScreen(pet, newSpecies);
+            }
+        }
+        
+        // Завершение эволюции
+        function finishEvolution() {
+            const pet = getCurrentPet();
+            if (!pet || !pet.newSpecies) return;
+            
+            // Меняем вид питомца
+            pet.species = pet.newSpecies;
+            delete pet.newSpecies;
+            pet.canEvolve = false;
+            
+            // Разблокируем новый вид в коллекции
+            gameState.unlockedSpecies.add(pet.species);
+            
+            // Обновляем статистику питомца
+            const speciesStats = speciesData[pet.species].stats;
+            pet.health = speciesStats.health;
+            pet.hunger = speciesStats.hunger;
+            pet.energy = speciesStats.energy;
+            pet.happiness = speciesStats.happiness;
+            
+            showGameScreen();
+            updateGameUI();
+            saveGame();
+        }
+        
+        // Размножение питомца делением
+        function reproducePet(parentPet) {
+            // Создаем нового питомца на основе родителя
+            const newPet = {
+                species: parentPet.species,
+                name: generatePetName(parentPet.species),
+                level: 1,
+                exp: 0,
+                health: speciesData[parentPet.species].stats.health,
+                hunger: speciesData[parentPet.species].stats.hunger,
+                energy: speciesData[parentPet.species].stats.energy,
+                happiness: speciesData[parentPet.species].stats.happiness,
+                isDead: false,
+                canEvolve: false,
+                birthTime: Date.now()
             };
             
-            const tempCow = new Cow();
-            Object.assign(tempCow, cow);
-            tempCow.draw(ctx);
+            // Добавляем нового питомца в коллекцию
+            gameState.pets.push(newPet);
+            
+            // Уведомляем пользователя
+            alert(`Ваш питомец ${parentPet.name} достиг уровня ${parentPet.level} и разделился! Теперь у вас есть ${newPet.name}!`);
         }
         
-        // Explosion class
-        class Explosion {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.radius = 5;
-                this.maxRadius = 30;
-                this.growthRate = 2;
-            }
+        // Генерация имени для питомца
+        function generatePetName(species) {
+            const names = {
+                'egg': ['Яйцо', 'Шар", "Сфера", "Овал'],
+                'bird': ['Чирик", "Крылышко", "Перышко", "Птиц'],
+                'reptile': ['Змеюка", "Чешуйка", "Ящер", "Гад'],
+                'eagle': ['Орлик", "Коготь", "Крылан", "Царь'],
+                'penguin': ['Пингви", "Льдинка", "Черноспин", "Фрак"],
+                'dragon': ['Дракоша", "Огнедыш", "Чешуй", "Крылан'],
+                'turtle': ['Тортилла", "Панцирь", "Медли", "Ниндзя'],
+                'phoenix': ['Феникс", "Возрожд", "Огнехвост", "Бессмерт'],
+                'emperor_penguin': ['Император", "Король", "Властитель", "Повелитель'],
+                'elder_dragon': ['Древний", "Мудрый", "Вечный", "Легендарный'],
+                'ninja_turtle': ['Леонардо", "Рафаэль", "Донателло", "Микеланджело"]
+            };
             
-            update() {
-                this.radius += this.growthRate;
-                return this.radius < this.maxRadius;
-            }
+            const speciesNames = names[species] || ['Питомец', 'Друг', 'Компаньон'];
+            const randomName = speciesNames[Math.floor(Math.random() * speciesNames.length)];
             
-            draw(ctx) {
-                const gradient = ctx.createRadialGradient(
-                    this.x, this.y, 0,
-                    this.x, this.y, this.radius
-                );
-                gradient.addColorStop(0, 'rgba(255, 255, 0, 0.8)');
-                gradient.addColorStop(0.5, 'rgba(255, 100, 0, 0.6)');
-                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            // Добавляем случайный номер для уникальности
+            return `${randomName}-${Math.floor(Math.random() * 1000)}`;
         }
         
-        // Check if point is inside cow
-        function isPointInCow(x, y, cow) {
-            // Simple bounding box check
-            return x >= cow.x && x <= cow.x + cow.width &&
-                   y >= cow.y && y <= cow.y + cow.height;
+        // Получение текущего питомца
+        function getCurrentPet() {
+            return gameState.pets[gameState.currentPetIndex];
         }
         
-        // Game loop
-        function gameLoop() {
-            if (!gameRunning) return;
-            
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw starry background
-            drawBackground();
-            
-            // Spawn new cows
-            const now = Date.now();
-            if (now - lastCowTime > 1000 && cows.length < 10 + Math.floor((now - gameStartTime) / 10000)) {
-                cows.push(new Cow());
-                lastCowTime = now;
-            }
-            
-            // Update and draw cows
-            cows = cows.filter(cow => {
-                const stillAlive = cow.update();
-                if (stillAlive) cow.draw(ctx);
-                return stillAlive;
-            });
-            
-            // Update and draw explosions
-            explosions = explosions.filter(explosion => {
-                const stillActive = explosion.update();
-                if (stillActive) explosion.draw(ctx);
-                return stillActive;
-            });
-            
-            // Continue game loop
-            animationFrameId = requestAnimationFrame(gameLoop);
+        // Получение данных о виде
+        function getSpeciesData(species) {
+            return speciesData[species] || speciesData['egg'];
         }
         
-        // Draw starry background
-        function drawBackground() {
-            // Draw gradient background
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#000428');
-            gradient.addColorStop(1, '#004e92');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw stars
-            ctx.fillStyle = 'white';
-            for (let i = 0; i < 100; i++) {
-                const x = Math.sin(i * 100) * canvas.width * 0.5 + canvas.width * 0.5;
-                const y = Math.cos(i * 100) * canvas.height * 0.5 + canvas.height * 0.5;
-                const size = Math.random() * 2;
-                ctx.beginPath();
-                ctx.arc(x, y, size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            
-            // Draw some planets in the distance
-            ctx.fillStyle = 'rgba(100, 100, 200, 0.2)';
-            ctx.beginPath();
-            ctx.arc(canvas.width * 0.2, canvas.height * 0.8, 50, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.fillStyle = 'rgba(200, 100, 100, 0.2)';
-            ctx.beginPath();
-            ctx.arc(canvas.width * 0.8, canvas.height * 0.2, 70, 0, Math.PI * 2);
-            ctx.fill();
+        // Получение опыта для уровня
+        function getExpForLevel(level) {
+            return 100 * Math.pow(level, 1.5);
         }
         
-        // Handle click/shoot
-        function handleShoot(e) {
-            if (!gameRunning || ammo <= 0) return;
+        // Обновление интерфейса игры
+        function updateGameUI() {
+            const pet = getCurrentPet();
+            if (!pet) return;
             
-            let x, y;
+            const speciesInfo = getSpeciesData(pet.species);
             
-            if (e.type === 'touchstart') {
-                x = e.touches[0].clientX;
-                y = e.touches[0].clientY;
+            // Обновляем основную информацию
+            elements.petName.textContent = pet.name;
+            elements.petEmoji.textContent = speciesInfo.emoji;
+            elements.level.textContent = pet.level;
+            elements.exp.textContent = Math.floor(pet.exp);
+            elements.expToNext.textContent = Math.floor(getExpForLevel(pet.level + 1));
+            
+            // Обновляем прогресс-бары
+            const expPercent = (pet.exp / getExpForLevel(pet.level + 1)) * 100;
+            elements.expBar.style.width = `${expPercent}%`;
+            elements.expBar.textContent = `${Math.floor(expPercent)}%`;
+            
+            elements.health.textContent = Math.floor(pet.health);
+            const healthPercent = (pet.health / speciesInfo.stats.health) * 100;
+            elements.healthBar.style.width = `${healthPercent}%`;
+            elements.healthBar.textContent = `${Math.floor(healthPercent)}%`;
+            
+            elements.hunger.textContent = Math.floor(pet.hunger);
+            elements.hungerBar.style.width = `${pet.hunger}%`;
+            elements.hungerBar.textContent = `${Math.floor(pet.hunger)}%`;
+            
+            elements.energy.textContent = Math.floor(pet.energy);
+            elements.energyBar.style.width = `${pet.energy}%`;
+            elements.energyBar.textContent = `${Math.floor(pet.energy)}%`;
+            
+            elements.happiness.textContent = Math.floor(pet.happiness);
+            elements.happinessBar.style.width = `${pet.happiness}%`;
+            elements.happinessBar.textContent = `${Math.floor(pet.happiness)}%`;
+            
+            // Блокируем кнопки, если питомец мертв
+            if (pet.isDead) {
+                elements.feedBtn.disabled = true;
+                elements.playBtn.disabled = true;
+                elements.sleepBtn.disabled = true;
+                elements.healBtn.disabled = true;
+                elements.trainBtn.disabled = true;
+                elements.evolveBtn.disabled = true;
+                elements.petName.textContent = `${pet.name} (умер)`;
             } else {
-                x = e.clientX;
-                y = e.clientY;
+                elements.feedBtn.disabled = false;
+                elements.playBtn.disabled = false;
+                elements.sleepBtn.disabled = false;
+                elements.healBtn.disabled = false;
+                elements.trainBtn.disabled = false;
+                elements.evolveBtn.disabled = !pet.canEvolve;
             }
+        }
+        
+        // Обновление меню
+        function updateMenu() {
+            elements.continueGameBtn.disabled = gameState.pets.length === 0;
+            elements.collectionBtn.disabled = gameState.pets.length === 0;
+        }
+        
+        // Обновление экрана коллекции
+        function updateCollectionScreen() {
+            elements.totalPets.textContent = gameState.pets.length;
             
-            // Use ammo
-            ammo--;
-            ammoElement.textContent = `Ammo: ${ammo}`;
+            let maxLevel = 0;
+            gameState.pets.forEach(pet => {
+                if (pet.level > maxLevel) {
+                    maxLevel = pet.level;
+                }
+            });
+            elements.maxLevel.textContent = maxLevel;
             
-            // Create explosion at click position
-            explosions.push(new Explosion(x, y));
+            // Очищаем контейнер с питомцами
+            elements.petsContainer.innerHTML = '';
             
-            // Check if hit any cows
-            let hitCow = false;
-            for (const cow of cows) {
-                if (!cow.hit && isPointInCow(x, y, cow)) {
-                    cow.hit = true;
-                    score += 10;
-                    scoreElement.textContent = `Score: ${score}`;
-                    hitCow = true;
+            // Добавляем питомцев в коллекцию
+            gameState.pets.forEach((pet, index) => {
+                const speciesInfo = getSpeciesData(pet.species);
+                
+                const petElement = document.createElement('div');
+                petElement.className = 'pet-item';
+                if (pet.isDead) {
+                    petElement.style.opacity = '0.6';
+                }
+                
+                petElement.innerHTML = `
+                    <div style="font-size: 24px;">${speciesInfo.emoji}</div>
+                    <div><strong>${pet.name}</strong></div>
+                    <div>Ур. ${pet.level}</div>
+                    <div>${pet.isDead ? 'Умер' : speciesInfo.name}</div>
+                `;
+                
+                petElement.addEventListener('click', () => {
+                    gameState.currentPetIndex = index;
+                    showGameScreen();
+                    updateGameUI();
+                });
+                
+                elements.petsContainer.appendChild(petElement);
+            });
+        }
+        
+        // Показать экран эволюции
+        function showEvolutionScreen(pet, newSpecies) {
+            const newSpeciesInfo = speciesData[newSpecies];
+            
+            elements.evolutionEmoji.textContent = `${pet.emoji} → ${newSpeciesInfo.emoji}`;
+            elements.evolutionText.textContent = `Ваш ${pet.name} эволюционирует в ${newSpeciesInfo.name}!`;
+            
+            // Сохраняем новый вид во временное свойство
+            pet.newSpecies = newSpecies;
+            
+            // Показываем экран эволюции
+            hideAllScreens();
+            elements.evolutionScreen.style.display = 'block';
+        }
+        
+        // Начать новую игру
+        function startNewGame() {
+            // Создаем нового питомца
+            const newPet = {
+                species: 'egg',
+                name: generatePetName('egg'),
+                level: 1,
+                exp: 0,
+                health: 100,
+                hunger: 50,
+                energy: 80,
+                happiness: 70,
+                isDead: false,
+                canEvolve: false,
+                birthTime: Date.now()
+            };
+            
+            // Очищаем старых питомцев и добавляем нового
+            gameState.pets = [newPet];
+            gameState.currentPetIndex = 0;
+            gameState.unlockedSpecies = new Set(['egg']);
+            gameState.lastUpdate = Date.now();
+            
+            // Сохраняем и показываем игру
+            saveGame();
+            showGameScreen();
+            updateGameUI();
+            updateMenu();
+        }
+        
+        // Сохранить игру
+        function saveGame() {
+            localStorage.setItem('evolutionTamagotchi', JSON.stringify(gameState));
+        }
+        
+        // Загрузить игру
+        function loadGame() {
+            const savedGame = localStorage.getItem('evolutionTamagotchi');
+            if (savedGame) {
+                const parsed = JSON.parse(savedGame);
+                
+                // Проверка версии сохранения для возможных миграций
+                if (parsed.version === gameState.version) {
+                    gameState = parsed;
                     
-                    // Small chance to get ammo back
-                    if (Math.random() < 0.3) {
-                        ammo++;
-                        ammoElement.textContent = `Ammo: ${ammo}`;
+                    // Восстанавливаем Set из массива
+                    if (Array.isArray(gameState.unlockedSpecies)) {
+                        gameState.unlockedSpecies = new Set(gameState.unlockedSpecies);
                     }
-                    
-                    break;
                 }
             }
-            
-            // Play sound
-            playSound(hitCow ? 'hit' : 'shoot');
-            
-            // Check if game over (no ammo left)
-            if (ammo <= 0) {
-                endGame();
-            }
         }
         
-        // Play sound effects
-        function playSound(type) {
-            // Simple oscillator sounds since we can't preload audio in this simple implementation
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            
-            if (type === 'shoot') {
-                oscillator.type = 'square';
-                oscillator.frequency.setValueAtTime(100, audioCtx.currentTime);
-                oscillator.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.1);
-                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-            } else if (type === 'hit') {
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
-                oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-            }
-            
-            oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.5);
+        // Скрыть все экраны
+        function hideAllScreens() {
+            elements.mainMenu.style.display = 'none';
+            elements.gameScreen.style.display = 'none';
+            elements.evolutionScreen.style.display = 'none';
+            elements.collectionScreen.style.display = 'none';
+            elements.aboutScreen.style.display = 'none';
         }
         
-        // End game
-        function endGame() {
-            gameRunning = false;
-            cancelAnimationFrame(animationFrameId);
-            finalScoreElement.textContent = score;
-            gameOverElement.style.display = 'block';
+        // Показать главное меню
+        function showMainMenu() {
+            hideAllScreens();
+            elements.mainMenu.style.display = 'block';
+            updateMenu();
         }
         
-        // Start game
-        function startGame() {
-            startScreenElement.style.display = 'none';
-            gameOverElement.style.display = 'none';
-            initGame();
-            gameRunning = true;
-            gameLoop();
+        // Показать экран игры
+        function showGameScreen() {
+            hideAllScreens();
+            elements.gameScreen.style.display = 'block';
+            updateGameUI();
         }
         
-        // Event listeners
-        window.addEventListener('resize', resizeCanvas);
-        canvas.addEventListener('click', handleShoot);
-        canvas.addEventListener('touchstart', handleShoot, {passive: false});
-        startBtn.addEventListener('click', startGame);
-        restartBtn.addEventListener('click', startGame);
-        
-        // Initialize preview animation
-        let previewLegFrame = 0;
-        let previewLegDirection = 1;
-        function animatePreview() {
-            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-            
-            previewLegFrame += previewLegDirection * 0.1;
-            if (previewLegFrame >= 4 || previewLegFrame <= 0) {
-                previewLegDirection *= -1;
-            }
-            
-            drawCow(previewCtx, 50, 40, previewLegFrame, 1, 0, false);
-            requestAnimationFrame(animatePreview);
+        // Показать экран коллекции
+        function showCollectionScreen() {
+            hideAllScreens();
+            elements.collectionScreen.style.display = 'block';
+            updateCollectionScreen();
         }
         
-        // Start preview animation
-        animatePreview();
+        // Показать экран "Об игре"
+        function showAboutScreen() {
+            hideAllScreens();
+            elements.aboutScreen.style.display = 'block';
+        }
         
-        // Show start screen initially
-        startScreenElement.style.display = 'flex';
+        // Инициализируем игру при загрузке
+        window.addEventListener('DOMContentLoaded', initGame);
     </script>
 </body>
 </html>
