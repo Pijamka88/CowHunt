@@ -3,544 +3,552 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тапики: Мир</title>
+    <title>Тапики</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --grass: #7cfc00;
-            --water: #4682b4;
-            --sand: #f5deb3;
-            --rock: #808080;
-            --tree: #2e8b57;
-            --house: #8b4513;
-            --tapir: #4b0082;
-            --menu-bg: #f5e7d0;
-            --border: #5e3a1e;
+            --grass: #7CFC00;
+            --water: #1E90FF;
+            --ground: #DEB887;
+            --tapir: #8B4513;
+            --object: #A0522D;
+            --menu-bg: #F5DEB3;
+            --text: #000000;
         }
         
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f0f0f0;
+            background-color: #F5F5DC;
             overflow: hidden;
-            touch-action: none;
+            touch-action: manipulation;
         }
         
         #game-container {
-            position: relative;
-            width: 100vw;
+            display: flex;
+            flex-direction: column;
             height: 100vh;
+        }
+        
+        #header {
+            background-color: var(--menu-bg);
+            padding: 10px;
+            text-align: center;
+            border-bottom: 2px solid var(--object);
+        }
+        
+        #game-board {
+            flex-grow: 1;
+            position: relative;
             overflow: hidden;
-        }
-        
-        #game-world {
-            position: absolute;
             background-color: var(--grass);
-            display: grid;
-            grid-template-columns: repeat(100, 40px);
-            grid-template-rows: repeat(100, 40px);
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            touch-action: none;
         }
         
-        .tile {
+        .cell {
+            position: absolute;
             width: 40px;
             height: 40px;
-            border: 1px solid rgba(0,0,0,0.1);
-            position: relative;
             box-sizing: border-box;
-        }
-        
-        .water {
-            background-color: var(--water);
-        }
-        
-        .sand {
-            background-color: var(--sand);
-        }
-        
-        .rock {
-            background-color: var(--rock);
-        }
-        
-        .tree {
-            background-color: var(--tree);
-        }
-        
-        .house {
-            background-color: var(--house);
         }
         
         .tapir {
             position: absolute;
-            font-size: 30px;
+            width: 36px;
+            height: 36px;
+            background-color: var(--tapir);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            transition: transform 0.5s ease;
             z-index: 10;
-            transition: all 1s ease;
-            user-select: none;
+        }
+        
+        .building {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            background-color: var(--object);
+            border: 2px solid #654321;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            z-index: 5;
         }
         
         #build-menu {
             position: fixed;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: -200px;
+            left: 0;
+            right: 0;
             background-color: var(--menu-bg);
             padding: 10px;
-            border-radius: 10px;
-            border: 2px solid var(--border);
-            display: none;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            transition: bottom 0.3s ease;
+            border-top: 2px solid var(--object);
             z-index: 100;
         }
         
         #build-menu.active {
-            display: block;
+            bottom: 0;
         }
         
-        .build-options {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .build-btn {
+        .build-option {
             width: 50px;
             height: 50px;
-            border: 1px solid var(--border);
-            border-radius: 5px;
+            background-color: var(--object);
+            border: 2px solid #654321;
             display: flex;
             justify-content: center;
             align-items: center;
+            font-size: 24px;
             cursor: pointer;
-            font-size: 20px;
-        }
-        
-        #main-menu {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: var(--menu-bg);
-            padding: 20px;
-            border-radius: 10px;
-            border: 2px solid var(--border);
-            text-align: center;
-            z-index: 200;
-        }
-        
-        .menu-btn {
-            padding: 10px 20px;
-            margin: 10px;
-            border: 1px solid var(--border);
-            border-radius: 5px;
-            cursor: pointer;
-            background-color: white;
         }
         
         #controls {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
             display: flex;
-            gap: 10px;
-            z-index: 50;
+            justify-content: space-around;
+            padding: 10px;
+            background-color: var(--menu-bg);
         }
         
         .control-btn {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background-color: var(--menu-bg);
-            border: 2px solid var(--border);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 20px;
+            padding: 10px 20px;
+            background-color: var(--object);
+            color: white;
+            border: none;
+            border-radius: 5px;
             cursor: pointer;
         }
         
-        #camera {
-            position: absolute;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
+        .stats-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(245, 222, 179, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid var(--object);
+            z-index: 50;
+        }
+        
+        #zoom-controls {
+            position: fixed;
+            bottom: 60px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 50;
+        }
+        
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            background-color: var(--object);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
     <div id="game-container">
-        <div id="camera">
-            <div id="game-world"></div>
+        <div id="header">
+            <h1>Тапики</h1>
         </div>
         
+        <div id="game-board"></div>
+        
         <div id="build-menu">
-            <h3>Постройка</h3>
-            <div class="build-options">
-                <div class="build-btn" data-type="tree">🌲</div>
-                <div class="build-btn" data-type="rock">🪨</div>
-                <div class="build-btn" data-type="house">🏠</div>
-                <div class="build-btn" data-type="water">💧</div>
-                <div class="build-btn" data-type="sand">🏖️</div>
-            </div>
+            <div class="build-option" data-type="house">🏠</div>
+            <div class="build-option" data-type="tree">🌳</div>
+            <div class="build-option" data-type="pond">💧</div>
+            <div class="build-option" data-type="fence">🧱</div>
+            <div class="build-option" data-type="food">🍎</div>
         </div>
         
         <div id="controls">
-            <div class="control-btn" id="build-btn">🔨</div>
-            <div class="control-btn" id="menu-btn">⚙️</div>
+            <button class="control-btn" id="build-btn">Строить</button>
+            <button class="control-btn" id="add-tapir-btn">Добавить тапика</button>
         </div>
-    </div>
-    
-    <div id="main-menu">
-        <h1>Тапики: Мир</h1>
-        <button class="menu-btn" id="new-game-btn">Новая игра</button>
-        <button class="menu-btn" id="continue-btn">Продолжить</button>
+        
+        <div class="stats-panel">
+            <div>Тапиков: <span id="tapir-count">0</span></div>
+            <div>Объектов: <span id="object-count">0</span></div>
+        </div>
+        
+        <div id="zoom-controls">
+            <button class="zoom-btn" id="zoom-in">+</button>
+            <button class="zoom-btn" id="zoom-out">-</button>
+        </div>
     </div>
 
     <script>
-        // Инициализация Telegram Web App
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        
-        // Состояние игры
+        // Game state
         const gameState = {
-            world: {},
             tapirs: [],
-            buildings: [],
-            camera: { x: 0, y: 0 },
-            version: 1,
-            hasSave: false
+            objects: [],
+            gridSize: 40,
+            boardWidth: 0,
+            boardHeight: 0,
+            isBuilding: false,
+            currentBuildType: null,
+            zoomLevel: 1,
+            lastTapirId: 0,
+            lastObjectId: 0
         };
         
-        // Элементы интерфейса
+        // DOM elements
         const elements = {
-            gameWorld: document.getElementById('game-world'),
+            gameBoard: document.getElementById('game-board'),
             buildMenu: document.getElementById('build-menu'),
             buildBtn: document.getElementById('build-btn'),
-            menuBtn: document.getElementById('menu-btn'),
-            mainMenu: document.getElementById('main-menu'),
-            newGameBtn: document.getElementById('new-game-btn'),
-            continueBtn: document.getElementById('continue-btn'),
-            camera: document.getElementById('camera')
+            addTapirBtn: document.getElementById('add-tapir-btn'),
+            tapirCount: document.getElementById('tapir-count'),
+            objectCount: document.getElementById('object-count'),
+            zoomIn: document.getElementById('zoom-in'),
+            zoomOut: document.getElementById('zoom-out')
         };
         
-        // Размеры мира
-        const WORLD_SIZE = 100;
-        const TILE_SIZE = 40;
-        
-        // Инициализация игры
+        // Initialize game
         function initGame() {
-            loadGame();
+            setupBoard();
             setupEventListeners();
+            loadGame();
             
-            if (gameState.hasSave) {
-                renderWorld();
-            } else {
-                showMainMenu();
-            }
+            // Add initial tapir
+            addTapir();
             
-            // Игровой цикл
+            // Start game loop
             setInterval(gameLoop, 1000/30);
         }
         
-        // Создание нового мира
-        function createNewWorld() {
-            gameState.world = {};
-            gameState.tapirs = [];
-            gameState.buildings = [];
-            gameState.camera = { x: 0, y: 0 };
+        // Set up game board
+        function setupBoard() {
+            gameState.boardWidth = Math.ceil(window.innerWidth / gameState.gridSize);
+            gameState.boardHeight = Math.ceil((window.innerHeight - 120) / gameState.gridSize);
             
-            // Генерация ландшафта
-            for (let y = 0; y < WORLD_SIZE; y++) {
-                for (let x = 0; x < WORLD_SIZE; x++) {
-                    const key = `${x},${y}`;
-                    
-                    // 10% воды, 5% песка
-                    const rand = Math.random();
-                    if (rand < 0.1) {
-                        gameState.world[key] = 'water';
-                    } else if (rand < 0.15) {
-                        gameState.world[key] = 'sand';
-                    } else {
-                        gameState.world[key] = 'grass';
-                    }
-                }
-            }
-            
-            // Создание 5 тапиков
-            for (let i = 0; i < 5; i++) {
-                createTapir(
-                    Math.floor(Math.random() * WORLD_SIZE),
-                    Math.floor(Math.random() * WORLD_SIZE)
-                );
-            }
-            
-            gameState.hasSave = true;
-            renderWorld();
+            elements.gameBoard.style.width = `${gameState.boardWidth * gameState.gridSize}px`;
+            elements.gameBoard.style.height = `${gameState.boardHeight * gameState.gridSize}px`;
         }
         
-        // Создание тапика
-        function createTapir(x, y) {
-            const tapir = {
-                id: Date.now() + Math.random(),
-                x: x,
-                y: y,
-                direction: Math.random() * Math.PI * 2,
-                speed: 0.5 + Math.random() * 0.5,
-                nextMove: 0
-            };
-            
-            gameState.tapirs.push(tapir);
-            return tapir;
-        }
-        
-        // Добавление постройки
-        function addBuilding(x, y, type) {
-            const key = `${x},${y}`;
-            gameState.world[key] = type;
-            renderTile(x, y);
-        }
-        
-        // Отрисовка мира
-        function renderWorld() {
-            elements.gameWorld.innerHTML = '';
-            
-            // Отрисовка тайлов
-            for (let y = 0; y < WORLD_SIZE; y++) {
-                for (let x = 0; x < WORLD_SIZE; x++) {
-                    renderTile(x, y);
-                }
-            }
-            
-            // Отрисовка тапиков
-            gameState.tapirs.forEach(tapir => {
-                renderTapir(tapir);
-            });
-            
-            updateCamera();
-        }
-        
-        // Отрисовка тайла
-        function renderTile(x, y) {
-            const key = `${x},${y}`;
-            const tileType = gameState.world[key] || 'grass';
-            
-            let tile = document.querySelector(`.tile[data-x="${x}"][data-y="${y}"]`);
-            
-            if (!tile) {
-                tile = document.createElement('div');
-                tile.className = `tile ${tileType}`;
-                tile.dataset.x = x;
-                tile.dataset.y = y;
-                elements.gameWorld.appendChild(tile);
-                
-                // Клик по тайлу
-                tile.addEventListener('click', () => {
-                    if (elements.buildMenu.classList.contains('active')) {
-                        addBuilding(x, y, currentBuildingType);
-                    }
-                });
-            } else {
-                tile.className = `tile ${tileType}`;
-            }
-        }
-        
-        // Отрисовка тапика
-        function renderTapir(tapir) {
-            let tapirElement = document.getElementById(`tapir-${tapir.id}`);
-            
-            if (!tapirElement) {
-                tapirElement = document.createElement('div');
-                tapirElement.id = `tapir-${tapir.id}`;
-                tapirElement.className = 'tapir';
-                tapirElement.innerHTML = '🦏';
-                elements.gameWorld.appendChild(tapirElement);
-            }
-            
-            const screenX = tapir.x * TILE_SIZE - gameState.camera.x;
-            const screenY = tapir.y * TILE_SIZE - gameState.camera.y;
-            
-            tapirElement.style.left = `${screenX}px`;
-            tapirElement.style.top = `${screenY}px`;
-            
-            // Ориентация по направлению движения
-            if (tapir.direction > Math.PI/2 && tapir.direction < 3*Math.PI/2) {
-                tapirElement.style.transform = 'scaleX(-1)';
-            } else {
-                tapirElement.style.transform = 'scaleX(1)';
-            }
-        }
-        
-        // Обновление позиции камеры
-        function updateCamera() {
-            elements.camera.style.transform = `translate(${-gameState.camera.x}px, ${-gameState.camera.y}px)`;
-        }
-        
-        // Игровой цикл
-        function gameLoop() {
-            if (!gameState.hasSave) return;
-            
-            const now = Date.now();
-            
-            // Движение тапиков
-            gameState.tapirs.forEach(tapir => {
-                if (now > tapir.nextMove) {
-                    // Случайное изменение направления
-                    if (Math.random() < 0.1) {
-                        tapir.direction += (Math.random() - 0.5) * Math.PI/2;
-                    }
-                    
-                    // Новые координаты
-                    const newX = tapir.x + Math.cos(tapir.direction) * tapir.speed * 0.1;
-                    const newY = tapir.y + Math.sin(tapir.direction) * tapir.speed * 0.1;
-                    
-                    // Проверка границ мира
-                    if (newX >= 0 && newX < WORLD_SIZE && newY >= 0 && newY < WORLD_SIZE) {
-                        // Проверка препятствий
-                        const tileKey = `${Math.floor(newX)},${Math.floor(newY)}`;
-                        const tileType = gameState.world[tileKey];
-                        
-                        if (tileType !== 'water' && tileType !== 'rock') {
-                            tapir.x = newX;
-                            tapir.y = newY;
-                        } else {
-                            // Изменение направления при столкновении
-                            tapir.direction = Math.random() * Math.PI * 2;
-                        }
-                    } else {
-                        // Изменение направления у границы
-                        tapir.direction = Math.random() * Math.PI * 2;
-                    }
-                    
-                    renderTapir(tapir);
-                    tapir.nextMove = now + 1000;
-                }
-            });
-        }
-        
-        // Настройка обработчиков событий
+        // Set up event listeners
         function setupEventListeners() {
-            // Кнопки меню
-            elements.newGameBtn.addEventListener('click', () => {
-                createNewWorld();
-                hideMainMenu();
-            });
-            
-            elements.continueBtn.addEventListener('click', hideMainMenu);
-            
-            // Кнопка строительства
+            // Build button
             elements.buildBtn.addEventListener('click', toggleBuildMenu);
             
-            // Кнопка меню
-            elements.menuBtn.addEventListener('click', showMainMenu);
+            // Add tapir button
+            elements.addTapirBtn.addEventListener('click', addTapir);
             
-            // Выбор типа постройки
-            document.querySelectorAll('.build-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    currentBuildingType = btn.dataset.type;
+            // Build options
+            document.querySelectorAll('.build-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    gameState.currentBuildType = option.dataset.type;
+                    gameState.isBuilding = true;
                     elements.buildMenu.classList.remove('active');
                 });
             });
             
-            // Перемещение камеры
-            let isDragging = false;
-            let lastX, lastY;
+            // Game board click
+            elements.gameBoard.addEventListener('click', handleBoardClick);
             
-            elements.gameWorld.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                lastX = e.clientX;
-                lastY = e.clientY;
-                e.preventDefault();
-            });
+            // Zoom controls
+            elements.zoomIn.addEventListener('click', () => adjustZoom(0.1));
+            elements.zoomOut.addEventListener('click', () => adjustZoom(-0.1));
             
-            window.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    const dx = e.clientX - lastX;
-                    const dy = e.clientY - lastY;
-                    
-                    gameState.camera.x -= dx;
-                    gameState.camera.y -= dy;
-                    
-                    // Ограничение камеры
-                    const maxCamera = WORLD_SIZE * TILE_SIZE - window.innerWidth;
-                    gameState.camera.x = Math.max(0, Math.min(gameState.camera.x, maxCamera));
-                    gameState.camera.y = Math.max(0, Math.min(gameState.camera.y, maxCamera));
-                    
-                    updateCamera();
-                    
-                    lastX = e.clientX;
-                    lastY = e.clientY;
-                }
-            });
-            
-            window.addEventListener('mouseup', () => {
-                isDragging = false;
-            });
-            
-            // Тач-события для мобильных устройств
-            elements.gameWorld.addEventListener('touchstart', (e) => {
-                isDragging = true;
-                lastX = e.touches[0].clientX;
-                lastY = e.touches[0].clientY;
-                e.preventDefault();
-            });
-            
-            window.addEventListener('touchmove', (e) => {
-                if (isDragging) {
-                    const dx = e.touches[0].clientX - lastX;
-                    const dy = e.touches[0].clientY - lastY;
-                    
-                    gameState.camera.x -= dx;
-                    gameState.camera.y -= dy;
-                    
-                    // Ограничение камеры
-                    const maxCamera = WORLD_SIZE * TILE_SIZE - window.innerWidth;
-                    gameState.camera.x = Math.max(0, Math.min(gameState.camera.x, maxCamera));
-                    gameState.camera.y = Math.max(0, Math.min(gameState.camera.y, maxCamera));
-                    
-                    updateCamera();
-                    
-                    lastX = e.touches[0].clientX;
-                    lastY = e.touches[0].clientY;
-                }
-            });
-            
-            window.addEventListener('touchend', () => {
-                isDragging = false;
-            });
+            // Window resize
+            window.addEventListener('resize', setupBoard);
         }
         
-        // Переключение меню строительства
-        let currentBuildingType = 'tree';
-        
+        // Toggle build menu
         function toggleBuildMenu() {
             elements.buildMenu.classList.toggle('active');
+            gameState.isBuilding = false;
+            gameState.currentBuildType = null;
         }
         
-        // Показать главное меню
-        function showMainMenu() {
-            elements.mainMenu.style.display = 'block';
+        // Handle board click
+        function handleBoardClick(e) {
+            if (!gameState.isBuilding) return;
+            
+            const rect = elements.gameBoard.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / gameState.gridSize);
+            const y = Math.floor((e.clientY - rect.top) / gameState.gridSize);
+            
+            if (x >= 0 && x < gameState.boardWidth && y >= 0 && y < gameState.boardHeight) {
+                addObject(gameState.currentBuildType, x, y);
+            }
+            
+            gameState.isBuilding = false;
         }
         
-        // Скрыть главное меню
-        function hideMainMenu() {
-            elements.mainMenu.style.display = 'none';
+        // Add new tapir
+        function addTapir() {
+            const id = ++gameState.lastTapirId;
+            const x = Math.floor(Math.random() * gameState.boardWidth);
+            const y = Math.floor(Math.random() * gameState.boardHeight);
+            
+            const tapir = {
+                id,
+                x,
+                y,
+                targetX: x,
+                targetY: y,
+                speed: 0.02 + Math.random() * 0.03,
+                directionChangeTime: 0,
+                happiness: 50 + Math.random() * 50,
+                hunger: 50 + Math.random() * 50,
+                energy: 50 + Math.random() * 50
+            };
+            
+            gameState.tapirs.push(tapir);
+            renderTapir(tapir);
+            updateStats();
+            saveGame();
         }
         
-        // Сохранение игры
-        function saveGame() {
-            gameState.hasSave = true;
-            localStorage.setItem('tapirWorld', JSON.stringify(gameState));
+        // Add new object
+        function addObject(type, x, y) {
+            // Check if cell is occupied
+            const occupied = gameState.objects.some(obj => 
+                obj.x === x && obj.y === y
+            );
+            
+            if (occupied) return;
+            
+            const id = ++gameState.lastObjectId;
+            
+            const object = {
+                id,
+                type,
+                x,
+                y
+            };
+            
+            gameState.objects.push(object);
+            renderObject(object);
+            updateStats();
+            saveGame();
         }
         
-        // Загрузка игры
-        function loadGame() {
-            const savedGame = localStorage.getItem('tapirWorld');
-            if (savedGame) {
-                const parsed = JSON.parse(savedGame);
-                if (parsed.version === gameState.version) {
-                    Object.assign(gameState, parsed);
+        // Render tapir
+        function renderTapir(tapir) {
+            let element = document.getElementById(`tapir-${tapir.id}`);
+            
+            if (!element) {
+                element = document.createElement('div');
+                element.id = `tapir-${tapir.id}`;
+                element.className = 'tapir';
+                element.textContent = '🦏';
+                elements.gameBoard.appendChild(element);
+            }
+            
+            const left = tapir.x * gameState.gridSize;
+            const top = tapir.y * gameState.gridSize;
+            
+            element.style.left = `${left}px`;
+            element.style.top = `${top}px`;
+            element.style.transform = `scale(${gameState.zoomLevel})`;
+            
+            // Visual feedback based on stats
+            const size = 0.8 + (tapir.happiness / 100) * 0.4;
+            element.style.width = `${36 * size}px`;
+            element.style.height = `${36 * size}px`;
+        }
+        
+        // Render object
+        function renderObject(object) {
+            let element = document.getElementById(`object-${object.id}`);
+            
+            if (!element) {
+                element = document.createElement('div');
+                element.id = `object-${object.id}`;
+                element.className = 'building';
+                elements.gameBoard.appendChild(element);
+            }
+            
+            const left = object.x * gameState.gridSize;
+            const top = object.y * gameState.gridSize;
+            
+            element.style.left = `${left}px`;
+            element.style.top = `${top}px`;
+            element.style.transform = `scale(${gameState.zoomLevel})`;
+            
+            // Set appropriate emoji for object type
+            switch(object.type) {
+                case 'house': element.textContent = '🏠'; break;
+                case 'tree': element.textContent = '🌳'; break;
+                case 'pond': element.textContent = '💧'; break;
+                case 'fence': element.textContent = '🧱'; break;
+                case 'food': element.textContent = '🍎'; break;
+            }
+        }
+        
+        // Game loop
+        function gameLoop(timestamp) {
+            // Move tapirs
+            gameState.tapirs.forEach(tapir => {
+                moveTapir(tapir, timestamp);
+                updateTapirStats(tapir);
+            });
+            
+            // Render all entities
+            gameState.tapirs.forEach(renderTapir);
+            gameState.objects.forEach(renderObject);
+        }
+        
+        // Move tapir
+        function moveTapir(tapir, timestamp) {
+            // Change direction randomly
+            if (timestamp > tapir.directionChangeTime) {
+                tapir.targetX = Math.floor(Math.random() * gameState.boardWidth);
+                tapir.targetY = Math.floor(Math.random() * gameState.boardHeight);
+                tapir.directionChangeTime = timestamp + 2000 + Math.random() * 5000;
+            }
+            
+            // Move towards target
+            const dx = tapir.targetX - tapir.x;
+            const dy = tapir.targetY - tapir.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 0.1) {
+                tapir.x += (dx / distance) * tapir.speed;
+                tapir.y += (dy / distance) * tapir.speed;
+                
+                // Check boundaries
+                tapir.x = Math.max(0, Math.min(gameState.boardWidth - 1, tapir.x));
+                tapir.y = Math.max(0, Math.min(gameState.boardHeight - 1, tapir.y));
+            }
+            
+            // Check for interactions with objects
+            gameState.objects.forEach(obj => {
+                const dist = Math.sqrt(
+                    Math.pow(tapir.x - obj.x, 2) + 
+                    Math.pow(tapir.y - obj.y, 2)
+                );
+                
+                if (dist < 1.5) {
+                    interactWithObject(tapir, obj);
+                }
+            });
+        }
+        
+        // Tapir interacts with object
+        function interactWithObject(tapir, object) {
+            switch(object.type) {
+                case 'food':
+                    tapir.hunger = Math.min(100, tapir.hunger + 10);
+                    break;
+                case 'pond':
+                    tapir.happiness = Math.min(100, tapir.happiness + 5);
+                    break;
+                case 'house':
+                    tapir.energy = Math.min(100, tapir.energy + 5);
+                    break;
+            }
+        }
+        
+        // Update tapir stats
+        function updateTapirStats(tapir) {
+            // Gradually decrease stats
+            tapir.hunger = Math.max(0, tapir.hunger - 0.01);
+            tapir.happiness = Math.max(0, tapir.happiness - 0.005);
+            tapir.energy = Math.max(0, tapir.energy - 0.01);
+            
+            // Affect speed based on stats
+            tapir.speed = 0.02 + 
+                (tapir.energy / 100) * 0.03 + 
+                (tapir.happiness / 100) * 0.02;
+            
+            // If stats are too low, tapir might die
+            if (tapir.hunger < 10 || tapir.energy < 5) {
+                // Small chance to die each frame when stats are critical
+                if (Math.random() < 0.001) {
+                    removeTapir(tapir.id);
                 }
             }
         }
         
-        // Инициализация игры при загрузке
+        // Remove tapir
+        function removeTapir(id) {
+            gameState.tapirs = gameState.tapirs.filter(t => t.id !== id);
+            const element = document.getElementById(`tapir-${id}`);
+            if (element) element.remove();
+            updateStats();
+            saveGame();
+        }
+        
+        // Remove object
+        function removeObject(id) {
+            gameState.objects = gameState.objects.filter(o => o.id !== id);
+            const element = document.getElementById(`object-${id}`);
+            if (element) element.remove();
+            updateStats();
+            saveGame();
+        }
+        
+        // Adjust zoom level
+        function adjustZoom(amount) {
+            gameState.zoomLevel = Math.min(2, Math.max(0.5, gameState.zoomLevel + amount));
+            elements.gameBoard.style.transform = `scale(${gameState.zoomLevel})`;
+            elements.gameBoard.style.transformOrigin = '0 0';
+        }
+        
+        // Update stats display
+        function updateStats() {
+            elements.tapirCount.textContent = gameState.tapirs.length;
+            elements.objectCount.textContent = gameState.objects.length;
+        }
+        
+        // Save game
+        function saveGame() {
+            localStorage.setItem('tapirGameState', JSON.stringify({
+                tapirs: gameState.tapirs,
+                objects: gameState.objects,
+                lastTapirId: gameState.lastTapirId,
+                lastObjectId: gameState.lastObjectId,
+                version: 1
+            }));
+        }
+        
+        // Load game
+        function loadGame() {
+            const saved = localStorage.getItem('tapirGameState');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    if (data.version === 1) {
+                        gameState.tapirs = data.tapirs || [];
+                        gameState.objects = data.objects || [];
+                        gameState.lastTapirId = data.lastTapirId || 0;
+                        gameState.lastObjectId = data.lastObjectId || 0;
+                        
+                        // Render loaded entities
+                        gameState.tapirs.forEach(renderTapir);
+                        gameState.objects.forEach(renderObject);
+                        updateStats();
+                    }
+                } catch (e) {
+                    console.error('Failed to load game', e);
+                }
+            }
+        }
+        
+        // Initialize game when page loads
         window.addEventListener('DOMContentLoaded', initGame);
     </script>
 </body>
