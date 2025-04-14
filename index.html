@@ -23,18 +23,22 @@
             background-color: var(--parchment);
             color: var(--dark-brown);
             margin: 0;
-            padding: 10px;
+            padding: 0;
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><path fill="%23d2a679" fill-opacity="0.1" d="M0 0h100v100H0z"/><path fill="none" stroke="%235e3a1e" stroke-width="0.5" stroke-opacity="0.2" d="M20 20l60 60M20 80l60-60"/></svg>');
         }
         
-        #main-menu, #game-screen {
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: var(--parchment);
+        #main-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
             padding: 20px;
-            border-radius: 10px;
-            border: 2px solid var(--medium-brown);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        #game-screen {
+            display: none;
+            padding: 10px;
         }
         
         .header {
@@ -109,12 +113,14 @@
         
         .tapik-emoji {
             font-size: 50px;
-            animation: float 3s ease-in-out infinite;
+            animation: bounce 2s ease infinite;
         }
         
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-10px) rotate(5deg); }
+            50% { transform: translateY(0) rotate(0deg); }
+            75% { transform: translateY(-5px) rotate(-5deg); }
         }
         
         .tapik-level {
@@ -149,6 +155,20 @@
             font-size: 0.7rem;
         }
         
+        .exp-bar {
+            height: 5px;
+            background-color: #e0e0e0;
+            border-radius: 3px;
+            margin: 5px 0;
+            overflow: hidden;
+        }
+        
+        .exp-fill {
+            height: 100%;
+            border-radius: 3px;
+            background-color: var(--purple);
+        }
+        
         .stat-icon {
             text-align: center;
         }
@@ -169,15 +189,6 @@
         .hunger-fill { background-color: var(--green); }
         .energy-fill { background-color: var(--blue); }
         .happiness-fill { background-color: var(--gold); }
-        .exp-fill { background-color: var(--purple); }
-        
-        .exp-container {
-            margin-top: 5px;
-            display: grid;
-            grid-template-columns: 20px 1fr;
-            gap: 5px;
-            align-items: center;
-        }
         
         .actions-panel {
             background-color: var(--medium-brown);
@@ -226,21 +237,24 @@
         }
         
         .menu-btn {
-            display: block;
-            width: 100%;
-            margin: 10px 0;
-            padding: 12px;
-            font-size: 1.1rem;
             background-color: var(--dark-brown);
-            color: var(--gold);
-            border: 2px solid var(--gold);
-            border-radius: 8px;
+            color: var(--parchment);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-family: 'Times New Roman', serif;
             cursor: pointer;
             transition: all 0.2s;
+            border: 1px solid var(--gold);
+            font-size: 1rem;
+            margin: 10px;
+            width: 200px;
+            text-align: center;
         }
         
         .menu-btn:hover {
-            background-color: var(--medium-brown);
+            background-color: var(--light-brown);
+            color: var(--dark-brown);
         }
         
         .evolution-popup {
@@ -286,10 +300,6 @@
             margin-top: 10px;
         }
         
-        .hidden {
-            display: none;
-        }
-        
         @media (max-width: 600px) {
             .tapiks-container {
                 gap: 10px;
@@ -323,7 +333,7 @@
         <button class="menu-btn" id="exit-btn">Выход</button>
     </div>
     
-    <div id="game-screen" class="hidden">
+    <div id="game-screen">
         <div class="header">
             <h1 class="title">Тапики</h1>
             <div class="tapik-counter" id="tapik-counter">0 тапиков</div>
@@ -347,11 +357,11 @@
     </div>
 
     <script>
-        // Initialize Telegram Web App
+        // Инициализация Telegram Web App
         const tg = window.Telegram.WebApp;
         tg.expand();
         
-        // Game state
+        // Состояние игры
         const gameState = {
             tapiks: [],
             currentTapikIndex: 0,
@@ -359,47 +369,47 @@
             version: 1
         };
         
-        // Tapik species and evolution data
+        // Виды тапиков и их эволюции
         const speciesData = {
             'baby': {
-                emoji: '🐻',
+                emoji: '🦦',
                 color: '#8b5a2b',
-                next: ['teen'],
+                next: ['young'],
                 requirements: { level: 3 }
             },
-            'teen': {
-                emoji: '🐻',
+            'young': {
+                emoji: '🦦',
                 color: '#5e3a1e',
                 next: ['warrior', 'shaman'],
                 requirements: { level: 6 }
             },
             'warrior': {
-                emoji: '🐻',
+                emoji: '🦦',
                 color: '#a52a2a',
                 next: ['champion'],
                 requirements: { level: 9 }
             },
             'shaman': {
-                emoji: '🐻',
+                emoji: '🦦',
                 color: '#4b0082',
                 next: ['druid'],
                 requirements: { level: 9 }
             },
             'champion': {
-                emoji: '🐻',
+                emoji: '🦦',
                 color: '#daa520',
                 next: [],
                 requirements: { level: 12 }
             },
             'druid': {
-                emoji: '🐻',
+                emoji: '🦦',
                 color: '#2e8b57',
                 next: [],
                 requirements: { level: 12 }
             }
         };
         
-        // UI elements
+        // Элементы интерфейса
         const elements = {
             mainMenu: document.getElementById('main-menu'),
             gameScreen: document.getElementById('game-screen'),
@@ -416,38 +426,65 @@
             menuBtn: document.getElementById('menu-btn')
         };
         
-        // Initialize the game
+        // Инициализация игры
         function initGame() {
             loadGame();
             setupEventListeners();
+            updateMenu();
             
-            // Disable continue button if no tapiks
-            elements.continueBtn.disabled = gameState.tapiks.length === 0;
+            if (gameState.tapiks.length > 0) {
+                showGameScreen();
+            } else {
+                showMainMenu();
+            }
             
-            // Show main menu by default
-            showMainMenu();
-            
-            // Start game loop
+            // Запускаем игровой цикл
             setInterval(gameLoop, 1000);
         }
         
-        // Set up event listeners
+        // Настройка обработчиков событий
         function setupEventListeners() {
-            // Menu buttons
-            elements.continueBtn.addEventListener('click', showGameScreen);
+            // Кнопки меню
+            elements.continueBtn.addEventListener('click', continueGame);
             elements.newGameBtn.addEventListener('click', startNewGame);
             elements.exitBtn.addEventListener('click', exitGame);
-            elements.menuBtn.addEventListener('click', showMainMenu);
             
-            // Action buttons
+            // Кнопки действий
             elements.feedBtn.addEventListener('click', () => performAction('feed'));
             elements.playBtn.addEventListener('click', () => performAction('play'));
             elements.sleepBtn.addEventListener('click', () => performAction('sleep'));
             elements.healBtn.addEventListener('click', () => performAction('heal'));
             elements.trainBtn.addEventListener('click', () => performAction('train'));
+            elements.menuBtn.addEventListener('click', showMainMenu);
         }
         
-        // Main game loop
+        // Продолжить игру
+        function continueGame() {
+            if (gameState.tapiks.length > 0) {
+                showGameScreen();
+            }
+        }
+        
+        // Новая игра
+        function startNewGame() {
+            gameState.tapiks = [];
+            gameState.currentTapikIndex = 0;
+            gameState.lastUpdate = Date.now();
+            
+            // Создаем первого тапика
+            createNewTapik();
+            
+            showGameScreen();
+            saveGame();
+        }
+        
+        // Выход из игры
+        function exitGame() {
+            // Для веб-версии просто показываем сообщение
+            alert('Спасибо за игру! Возвращайтесь к своим тапикам!');
+        }
+        
+        // Игровой цикл
         function gameLoop() {
             if (gameState.tapiks.length === 0) return;
             
@@ -455,7 +492,7 @@
             const deltaTime = (now - gameState.lastUpdate) / 1000;
             gameState.lastUpdate = now;
             
-            // Update all tapiks
+            // Обновляем всех тапиков
             gameState.tapiks.forEach(tapik => {
                 updateTapik(tapik, deltaTime);
             });
@@ -464,31 +501,31 @@
             updateUI();
         }
         
-        // Update tapik stats over time
+        // Обновление состояния тапика
         function updateTapik(tapik, deltaTime) {
             if (tapik.isDead) return;
             
-            // Decrease stats over time
+            // Уменьшаем показатели со временем
             tapik.hunger = Math.max(0, tapik.hunger - 0.5 * deltaTime);
             tapik.energy = Math.max(0, tapik.energy - 0.3 * deltaTime);
             tapik.happiness = Math.max(0, tapik.happiness - 0.2 * deltaTime);
             
-            // Health penalties
+            // Если голод или энергия на нуле, уменьшаем здоровье
             if (tapik.hunger <= 0 || tapik.energy <= 0) {
                 tapik.health = Math.max(0, tapik.health - 1 * deltaTime);
             }
             
-            // Check for death
+            // Проверяем, не умер ли тапик
             if (tapik.health <= 0 && !tapik.isDead) {
                 tapik.isDead = true;
                 tapik.deathTime = Date.now();
             }
             
-            // Check for evolution
+            // Проверяем эволюцию
             checkEvolution(tapik);
         }
         
-        // Check if tapik can evolve
+        // Проверка эволюции
         function checkEvolution(tapik) {
             if (tapik.isDead || tapik.isEvolving) return;
             
@@ -503,11 +540,11 @@
             }
         }
         
-        // Evolve tapik to new species
+        // Эволюция тапика
         function evolveTapik(tapik, newSpecies) {
             tapik.isEvolving = true;
             
-            // Show evolution popup
+            // Создаем уведомление об эволюции
             const popup = document.createElement('div');
             popup.className = 'evolution-popup';
             popup.innerHTML = `
@@ -518,7 +555,7 @@
                     <span style="color: ${speciesData[newSpecies].color}">${speciesData[newSpecies].emoji}</span>
                 </div>
                 <div>Новая форма: ${getSpeciesName(newSpecies)}</div>
-                <button class="close-evolution-btn">OK</button>
+                <button class="close-evolution-btn">Понятно</button>
             `;
             
             const closeBtn = popup.querySelector('.close-evolution-btn');
@@ -529,7 +566,7 @@
             
             document.body.appendChild(popup);
             
-            // Auto-close after 5 seconds
+            // Автоматически закрываем через 5 секунд
             setTimeout(() => {
                 if (document.body.contains(popup)) {
                     document.body.removeChild(popup);
@@ -538,18 +575,22 @@
             }, 5000);
         }
         
-        // Complete the evolution process
+        // Завершение эволюции
         function completeEvolution(tapik, newSpecies) {
             tapik.species = newSpecies;
             tapik.isEvolving = false;
-            updateUI();
+            
+            // При достижении уровня, кратного 3, создаем нового тапика
+            if (tapik.level % 3 === 0) {
+                createNewTapik();
+            }
         }
         
-        // Get species display name
+        // Получение имени вида
         function getSpeciesName(species) {
             const names = {
                 'baby': 'Малыш',
-                'teen': 'Подросток',
+                'young': 'Молодой',
                 'warrior': 'Воин',
                 'shaman': 'Шаман',
                 'champion': 'Чемпион',
@@ -558,7 +599,7 @@
             return names[species] || species;
         }
         
-        // Perform action on current tapik
+        // Выполнение действия с тапиком
         function performAction(action) {
             const tapik = gameState.tapiks[gameState.currentTapikIndex];
             if (!tapik || tapik.isDead) return;
@@ -596,7 +637,7 @@
             saveGame();
         }
         
-        // Add experience and check for level up
+        // Добавление опыта и проверка уровня
         function addExp(tapik, amount) {
             tapik.exp += amount;
             const expNeeded = getExpForLevel(tapik.level + 1);
@@ -604,23 +645,18 @@
             if (tapik.exp >= expNeeded) {
                 tapik.level++;
                 tapik.exp -= expNeeded;
-                
-                // Create new tapik every 3 levels
-                if (tapik.level % 3 === 0) {
-                    createNewTapik();
-                }
             }
         }
         
-        // Calculate exp needed for level
+        // Получение опыта для уровня
         function getExpForLevel(level) {
             return 100 * Math.pow(level, 1.5);
         }
         
-        // Create a new tapik
-        function createNewTapik() {
+        // Создание нового тапика
+        function createNewTapik(species = 'baby') {
             const newTapik = {
-                species: 'baby',
+                species: species,
                 level: 1,
                 exp: 0,
                 health: 100,
@@ -638,27 +674,14 @@
             saveGame();
         }
         
-        // Start a new game
-        function startNewGame() {
-            gameState.tapiks = [];
-            gameState.currentTapikIndex = 0;
-            gameState.lastUpdate = Date.now();
-            
-            // Create first tapik
-            createNewTapik();
-            
-            showGameScreen();
-            saveGame();
-        }
-        
-        // Update the UI
+        // Обновление интерфейса
         function updateUI() {
             updateTapiksDisplay();
             updateActionsPanel();
             updateTapikCounter();
         }
         
-        // Update tapiks display
+        // Обновление отображения тапиков
         function updateTapiksDisplay() {
             elements.tapiksContainer.innerHTML = '';
             
@@ -680,6 +703,9 @@
                         <div class="tapik-level">${tapik.level}</div>
                     </div>
                     <div class="tapik-type">${getSpeciesName(tapik.species)}</div>
+                    <div class="exp-bar">
+                        <div class="exp-fill" style="width: ${expPercent}%"></div>
+                    </div>
                     <div class="tapik-stats">
                         <div class="stat-icon">❤️</div>
                         <div class="stat-bar">
@@ -698,19 +724,13 @@
                             <div class="stat-fill happiness-fill" style="width: ${tapik.happiness}%"></div>
                         </div>
                     </div>
-                    <div class="exp-container">
-                        <div class="stat-icon">✨</div>
-                        <div class="stat-bar">
-                            <div class="stat-fill exp-fill" style="width: ${expPercent}%"></div>
-                        </div>
-                    </div>
                 `;
                 
                 elements.tapiksContainer.appendChild(card);
             });
         }
         
-        // Update actions panel state
+        // Обновление панели действий
         function updateActionsPanel() {
             const tapik = gameState.tapiks[gameState.currentTapikIndex];
             
@@ -730,17 +750,36 @@
             elements.trainBtn.disabled = tapik.energy < 20;
         }
         
-        // Update tapik counter
+        // Обновление счетчика тапиков
         function updateTapikCounter() {
             elements.tapikCounter.textContent = `${gameState.tapiks.length} тапиков`;
         }
         
-        // Save game state
+        // Обновление меню
+        function updateMenu() {
+            elements.continueBtn.disabled = gameState.tapiks.length === 0;
+        }
+        
+        // Показать главное меню
+        function showMainMenu() {
+            elements.mainMenu.style.display = 'flex';
+            elements.gameScreen.style.display = 'none';
+            updateMenu();
+        }
+        
+        // Показать экран игры
+        function showGameScreen() {
+            elements.mainMenu.style.display = 'none';
+            elements.gameScreen.style.display = 'block';
+            updateUI();
+        }
+        
+        // Сохранение игры
         function saveGame() {
             localStorage.setItem('tapikiGame', JSON.stringify(gameState));
         }
         
-        // Load game state
+        // Загрузка игры
         function loadGame() {
             const savedGame = localStorage.getItem('tapikiGame');
             if (savedGame) {
@@ -751,25 +790,7 @@
             }
         }
         
-        // Show main menu
-        function showMainMenu() {
-            elements.mainMenu.classList.remove('hidden');
-            elements.gameScreen.classList.add('hidden');
-        }
-        
-        // Show game screen
-        function showGameScreen() {
-            elements.mainMenu.classList.add('hidden');
-            elements.gameScreen.classList.remove('hidden');
-            updateUI();
-        }
-        
-        // Exit game (for web, just go back to menu)
-        function exitGame() {
-            showMainMenu();
-        }
-        
-        // Initialize the game when page loads
+        // Инициализация игры при загрузке
         window.addEventListener('DOMContentLoaded', initGame);
     </script>
 </body>
