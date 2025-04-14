@@ -47,8 +47,8 @@
             background-color: var(--medium-brown);
             color: var(--parchment);
             border: none;
-            padding: 12px 25px;
-            margin: 10px 0;
+            padding: 15px 30px;
+            margin: 10px;
             border-radius: 8px;
             font-family: 'Times New Roman', serif;
             font-size: 1.2rem;
@@ -91,7 +91,7 @@
             margin-bottom: 15px;
         }
         
-        .game-title {
+        .title {
             color: var(--gold);
             text-shadow: 1px 1px 2px var(--dark-brown);
             margin: 0;
@@ -150,7 +150,7 @@
         
         .tapiki-emoji {
             font-size: 50px;
-            animation: bounce 0.5s ease infinite alternate;
+            animation: bounce 0.5s infinite alternate;
         }
         
         @keyframes bounce {
@@ -265,16 +265,15 @@
         }
         
         .back-btn {
-            background-color: var(--red);
+            background-color: var(--medium-brown);
             color: var(--parchment);
             border: none;
-            padding: 10px;
+            padding: 10px 15px;
             border-radius: 5px;
+            margin-top: 15px;
             font-family: 'Times New Roman', serif;
             cursor: pointer;
-            margin-top: 15px;
-            width: 100%;
-            font-size: 1rem;
+            border: 1px solid var(--dark-brown);
         }
         
         .evolution-popup {
@@ -354,7 +353,7 @@
     
     <div id="game-screen">
         <div class="header">
-            <h1 class="game-title">Тапики</h1>
+            <h1 class="title">Тапики</h1>
             <div class="tapiki-counter" id="tapiki-counter">0 тапиков</div>
         </div>
         
@@ -371,8 +370,9 @@
                 <button class="action-btn" id="heal-btn">Лечить</button>
                 <button class="action-btn" id="train-btn">Тренировать</button>
             </div>
-            <button class="back-btn" id="back-btn">В меню</button>
         </div>
+        
+        <button class="back-btn" id="back-btn">В меню</button>
     </div>
 
     <script>
@@ -436,7 +436,7 @@
             continueBtn: document.getElementById('continue-btn'),
             newGameBtn: document.getElementById('new-game-btn'),
             tapiksContainer: document.getElementById('tapiki-container'),
-            tapikCounter: document.getElementById('tapiki-counter'),
+            tapikiCounter: document.getElementById('tapiki-counter'),
             feedBtn: document.getElementById('feed-btn'),
             playBtn: document.getElementById('play-btn'),
             sleepBtn: document.getElementById('sleep-btn'),
@@ -535,9 +535,9 @@
             tapik.isEvolving = true;
             
             // Создаем уведомление об эволюции
-            const evolutionDiv = document.createElement('div');
-            evolutionDiv.className = 'evolution-popup';
-            evolutionDiv.innerHTML = `
+            const popup = document.createElement('div');
+            popup.className = 'evolution-popup';
+            popup.innerHTML = `
                 <div class="evolution-text">Ваш тапик эволюционирует!</div>
                 <div class="evolution-emoji">
                     <span style="color: ${speciesData[tapik.species].color}">${speciesData[tapik.species].emoji}</span> 
@@ -547,18 +547,18 @@
                 <button class="close-evolution-btn">Понятно</button>
             `;
             
-            const closeBtn = evolutionDiv.querySelector('.close-evolution-btn');
+            const closeBtn = popup.querySelector('.close-evolution-btn');
             closeBtn.addEventListener('click', () => {
-                document.body.removeChild(evolutionDiv);
+                document.body.removeChild(popup);
                 completeEvolution(tapik, newSpecies);
             });
             
-            document.body.appendChild(evolutionDiv);
+            document.body.appendChild(popup);
             
-            // Автоматически закрываем через 5 секунд
+            // Автоматическое закрытие через 5 секунд
             setTimeout(() => {
-                if (document.body.contains(evolutionDiv)) {
-                    document.body.removeChild(evolutionDiv);
+                if (document.body.contains(popup)) {
+                    document.body.removeChild(popup);
                     completeEvolution(tapik, newSpecies);
                 }
             }, 5000);
@@ -571,7 +571,7 @@
             
             // При достижении уровня, кратного 3, создаем нового тапика
             if (tapik.level % 3 === 0) {
-                createNewTapik();
+                createNewTapik(tapik.species);
             }
         }
         
@@ -630,9 +630,9 @@
         }
         
         // Создание нового тапика
-        function createNewTapik() {
+        function createNewTapik(species = 'baby') {
             const newTapik = {
-                species: 'baby',
+                species: species,
                 level: 1,
                 exp: 0,
                 health: 100,
@@ -650,11 +650,22 @@
             saveGame();
         }
         
+        // Начало новой игры
+        function startNewGame() {
+            gameState.tapiks = [];
+            gameState.currentTapikIndex = 0;
+            gameState.lastUpdate = Date.now();
+            gameState.hasSave = true;
+            
+            createNewTapik();
+            showGameScreen();
+        }
+        
         // Обновление интерфейса
         function updateUI() {
             updateTapiksDisplay();
             updateActionsPanel();
-            updateTapikCounter();
+            updateTapikiCounter();
         }
         
         // Обновление отображения тапиков
@@ -664,6 +675,7 @@
             gameState.tapiks.forEach((tapik, index) => {
                 const speciesInfo = speciesData[tapik.species];
                 const isActive = index === gameState.currentTapikIndex;
+                const expPercent = (tapik.exp / getExpForLevel(tapik.level + 1)) * 100;
                 
                 const card = document.createElement('div');
                 card.className = `tapiki-card ${isActive ? 'active' : ''} ${tapik.isDead ? 'dead' : ''}`;
@@ -671,9 +683,6 @@
                     gameState.currentTapikIndex = index;
                     updateUI();
                 });
-                
-                // Расчет процента опыта
-                const expPercent = (tapik.exp / getExpForLevel(tapik.level + 1)) * 100;
                 
                 card.innerHTML = `
                     <div class="tapiki-avatar">
@@ -728,30 +737,13 @@
         }
         
         // Обновление счетчика тапиков
-        function updateTapikCounter() {
-            elements.tapikCounter.textContent = `${gameState.tapiks.length} тапиков`;
+        function updateTapikiCounter() {
+            elements.tapikiCounter.textContent = `${gameState.tapiks.length} тапиков`;
         }
         
         // Обновление меню
         function updateMenu() {
             elements.continueBtn.disabled = !gameState.hasSave;
-        }
-        
-        // Сохранение игры
-        function saveGame() {
-            gameState.hasSave = gameState.tapiks.length > 0;
-            localStorage.setItem('tapikiGame', JSON.stringify(gameState));
-        }
-        
-        // Загрузка игры
-        function loadGame() {
-            const savedGame = localStorage.getItem('tapikiGame');
-            if (savedGame) {
-                const parsed = JSON.parse(savedGame);
-                if (parsed.version === gameState.version) {
-                    Object.assign(gameState, parsed);
-                }
-            }
         }
         
         // Показать главное меню
@@ -768,17 +760,21 @@
             updateUI();
         }
         
-        // Начать новую игру
-        function startNewGame() {
-            gameState.tapiks = [];
-            gameState.currentTapikIndex = 0;
-            gameState.lastUpdate = Date.now();
-            
-            // Создаем первого тапика
-            createNewTapik();
-            
-            showGameScreen();
-            saveGame();
+        // Сохранение игры
+        function saveGame() {
+            gameState.hasSave = true;
+            localStorage.setItem('tapikiGame', JSON.stringify(gameState));
+        }
+        
+        // Загрузка игры
+        function loadGame() {
+            const savedGame = localStorage.getItem('tapikiGame');
+            if (savedGame) {
+                const parsed = JSON.parse(savedGame);
+                if (parsed.version === gameState.version) {
+                    Object.assign(gameState, parsed);
+                }
+            }
         }
         
         // Инициализация игры при загрузке
