@@ -1,534 +1,184 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cosmic Cow Hunt</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background: linear-gradient(to bottom, #000428, #004e92);
-            font-family: 'Arial', sans-serif;
-            touch-action: manipulation;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        
-        #gameCanvas {
-            display: block;
-            background: radial-gradient(ellipse at center, #1a2a6c 0%, #000428 100%);
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-        
-        #startScreen, #gameOverScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            z-index: 10;
-        }
-        
-        #gameOverScreen {
-            display: none;
-        }
-        
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-            text-align: center;
-            color: #4fc3f7;
-            text-shadow: 0 0 10px #00bcd4;
-        }
-        
-        button {
-            background: linear-gradient(to bottom, #4fc3f7, #2196f3);
-            border: none;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 1.2rem;
-            margin: 10px 2px;
-            cursor: pointer;
-            border-radius: 25px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s;
-        }
-        
-        button:hover {
-            background: linear-gradient(to bottom, #2196f3, #1976d2);
-            transform: scale(1.05);
-        }
-        
-        #scoreDisplay {
-            position: absolute;
+        body { margin: 0; overflow: hidden; background: #0a043c; }
+        canvas { touch-action: none; }
+        #score {
+            position: fixed;
             top: 20px;
             left: 20px;
-            color: white;
-            font-size: 1.5rem;
-            z-index: 5;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 10px 20px;
-            border-radius: 10px;
-        }
-        
-        #ammoDisplay {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            color: white;
-            font-size: 1.5rem;
-            z-index: 5;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 10px 20px;
-            border-radius: 10px;
-        }
-        
-        #crosshair {
-            position: absolute;
-            width: 40px;
-            height: 40px;
-            pointer-events: none;
-            z-index: 5;
-            transform: translate(-50%, -50%);
-            display: none;
-        }
-        
-        #crosshair::before, #crosshair::after {
-            content: '';
-            position: absolute;
-            background-color: rgba(255, 255, 255, 0.8);
-        }
-        
-        #crosshair::before {
-            width: 4px;
-            height: 30px;
-            left: 18px;
-            top: 5px;
-        }
-        
-        #crosshair::after {
-            width: 30px;
-            height: 4px;
-            left: 5px;
-            top: 18px;
-        }
-        
-        .stars {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-        
-        .star {
-            position: absolute;
-            background-color: white;
-            border-radius: 50%;
-            animation: twinkle 1s infinite alternate;
-        }
-        
-        @keyframes twinkle {
-            0% { opacity: 0.3; }
-            100% { opacity: 1; }
+            color: #fff;
+            font-family: Arial;
+            font-size: 24px;
+            text-shadow: 2px 2px #000;
+            z-index: 100;
         }
     </style>
 </head>
 <body>
-    <div class="stars" id="stars"></div>
+    <div id="score">Score: 0</div>
     <canvas id="gameCanvas"></canvas>
-    <div id="crosshair"></div>
-    <div id="scoreDisplay">Score: 0</div>
-    <div id="ammoDisplay">Ammo: 10</div>
-    
-    <div id="startScreen">
-        <h1>Cosmic Cow Hunt</h1>
-        <button id="startButton">Start Game</button>
-        <p>Aim and shoot flying cosmic cows!</p>
-        <p>You have 10 ammo per round.</p>
-    </div>
-    
-    <div id="gameOverScreen">
-        <h1>Game Over</h1>
-        <div id="finalScore">Your score: 0</div>
-        <button id="restartButton">Play Again</button>
-    </div>
 
-    <script>
-        // Telegram Web App initialization
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let score = 0;
+const cows = [];
+const bullets = [];
+let lastTime = 0;
+const starCount = 100;
+const stars = [];
+
+// Set canvas size
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// Generate stars
+for (let i = 0; i < starCount; i++) {
+    stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 2,
+        alpha: Math.random()
+    });
+}
+
+// Cow class
+class Cow {
+    constructor() {
+        this.reset();
+        this.legAngle = 0;
+    }
+
+    reset() {
+        this.x = Math.random() < 0.5 ? -100 : canvas.width + 100;
+        this.y = Math.random() * (canvas.height - 100) + 50;
+        this.speed = (Math.random() * 3 + 2) * (this.x < 0 ? 1 : -1);
+        this.legDirection = Math.random() < 0.5 ? 1 : -1;
+    }
+
+    draw() {
+        // Body
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.ellipse(this.x, this.y, 40, 25, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Head
+        ctx.strokeStyle = 'rgba(200, 200, 255, 0.7)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(this.x + (this.speed > 0 ? -35 : 35), this.y - 15, 20, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Horns
+        ctx.strokeStyle = 'white';
+        ctx.beginPath();
+        ctx.moveTo(this.x + (this.speed > 0 ? -45 : 45), this.y - 25);
+        ctx.lineTo(this.x + (this.speed > 0 ? -55 : 55), this.y - 35);
+        ctx.stroke();
+
+        // Eyes
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(this.x + (this.speed > 0 ? -40 : 30), this.y - 20, 3, 0, Math.PI * 2);
+        ctx.arc(this.x + (this.speed > 0 ? -30 : 40), this.y - 20, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Nose
+        ctx.fillStyle = '#8B4513';
+        ctx.beginPath();
+        ctx.ellipse(this.x + (this.speed > 0 ? -35 : 35), this.y - 10, 8, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
         
-        // Game variables
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const startScreen = document.getElementById('startScreen');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const startButton = document.getElementById('startButton');
-        const restartButton = document.getElementById('restartButton');
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        const ammoDisplay = document.getElementById('ammoDisplay');
-        const finalScore = document.getElementById('finalScore');
-        const crosshair = document.getElementById('crosshair');
-        const starsContainer = document.getElementById('stars');
-        
-        // Set canvas size
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+        // Nostrils
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(this.x + (this.speed > 0 ? -38 : 32), this.y - 10, 2, 0, Math.PI * 2);
+        ctx.arc(this.x + (this.speed > 0 ? -32 : 38), this.y - 10, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Legs
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 8;
+        const angles = [Math.sin(this.legAngle)*0.5, Math.cos(this.legAngle)*0.5];
+        for(let i = 0; i < 4; i++) {
+            ctx.beginPath();
+            ctx.moveTo(this.x - 25 + (i*15), this.y + 20);
+            ctx.lineTo(
+                this.x - 25 + (i*15) + Math.cos(angles[i%2])*20 * this.legDirection,
+                this.y + 20 + Math.sin(angles[i%2])*20
+            );
+            ctx.stroke();
         }
+    }
+
+    update() {
+        this.x += this.speed;
+        this.legAngle += 0.1;
+        if(this.x < -150 || this.x > canvas.width + 150) this.reset();
+    }
+}
+
+// Game loop
+function gameLoop(timestamp) {
+    ctx.fillStyle = '#0a043c';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw stars
+    ctx.fillStyle = 'white';
+    stars.forEach(star => {
+        ctx.globalAlpha = star.alpha;
+        ctx.fillRect(star.x, star.y, star.size, star.size);
+    });
+    ctx.globalAlpha = 1;
+
+    // Spawn cows
+    if(Math.random() < 0.02) cows.push(new Cow());
+
+    // Update and draw cows
+    cows.forEach((cow, index) => {
+        cow.update();
+        cow.draw();
         
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
-        
-        // Create stars background
-        function createStars() {
-            starsContainer.innerHTML = '';
-            const starCount = Math.floor(window.innerWidth * window.innerHeight / 1000);
-            
-            for (let i = 0; i < starCount; i++) {
-                const star = document.createElement('div');
-                star.className = 'star';
-                
-                const size = Math.random() * 2 + 1;
-                star.style.width = `${size}px`;
-                star.style.height = `${size}px`;
-                
-                star.style.left = `${Math.random() * 100}%`;
-                star.style.top = `${Math.random() * 100}%`;
-                
-                star.style.animationDelay = `${Math.random() * 2}s`;
-                
-                starsContainer.appendChild(star);
-            }
+        // Remove offscreen cows
+        if(cow.x < -200 || cow.x > canvas.width + 200) {
+            cows.splice(index, 1);
         }
-        
-        createStars();
-        
-        // Game state
-        let score = 0;
-        let ammo = 10;
-        let cows = [];
-        let gameRunning = false;
-        let animationFrameId;
-        let lastCowTime = 0;
-        let cowInterval = 1500;
-        let difficultyIncreaseInterval = 10000;
-        let lastDifficultyIncrease = 0;
-        
-        // Cow class
-        class Cow {
-            constructor() {
-                this.width = 80;
-                this.height = 50;
-                this.x = Math.random() < 0.5 ? -this.width : canvas.width;
-                this.y = Math.random() * (canvas.height - this.height);
-                this.speedX = (Math.random() * 3 + 2) * (this.x < 0 ? 1 : -1);
-                this.speedY = (Math.random() * 2 - 1) * 0.5;
-                this.legFrame = 0;
-                this.legAnimationSpeed = 0.2;
-                this.hit = false;
-                this.hitTimer = 0;
-                this.scored = false;
-            }
-            
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                
-                // Animate legs
-                this.legFrame += this.legAnimationSpeed;
-                if (this.legFrame >= 4) this.legFrame = 0;
-                
-                // Check if out of bounds
-                if ((this.speedX > 0 && this.x > canvas.width) || 
-                    (this.speedX < 0 && this.x < -this.width)) {
-                    return false;
-                }
-                
-                // Bounce off top and bottom
-                if (this.y <= 0 || this.y >= canvas.height - this.height) {
-                    this.speedY *= -1;
-                }
-                
-                return true;
-            }
-            
-            draw(ctx) {
-                // Save the current context state
-                ctx.save();
-                
-                // Move to the cow's position
-                ctx.translate(this.x, this.y);
-                
-                if (this.hit) {
-                    // Draw explosion
-                    ctx.fillStyle = `rgba(255, 165, 0, ${1 - this.hitTimer / 20})`;
-                    ctx.beginPath();
-                    ctx.arc(this.width / 2, this.height / 2, this.width * (1 + this.hitTimer / 10), 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    this.hitTimer++;
-                    if (this.hitTimer > 20) {
-                        return false;
-                    }
-                }
-                
-                // Draw body (white)
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.ellipse(this.width / 2, this.height / 2, this.width / 2, this.height / 3, 0, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Draw head with transparent helmet
-                ctx.fillStyle = 'rgba(200, 230, 255, 0.3)';
-                ctx.beginPath();
-                ctx.arc(this.width / 2 + (this.speedX > 0 ? this.width / 4 : -this.width / 4), 
-                        this.height / 2, this.height / 3, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = 'rgba(100, 180, 255, 0.7)';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                
-                // Draw horns
-                ctx.strokeStyle = 'rgba(200, 200, 200, 0.8)';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.moveTo(this.width / 2 + (this.speedX > 0 ? this.width / 4 : -this.width / 4), 
-                          this.height / 2 - this.height / 6);
-                ctx.lineTo(this.width / 2 + (this.speedX > 0 ? this.width / 3 : -this.width / 3), 
-                          this.height / 2 - this.height / 3);
-                ctx.stroke();
-                
-                ctx.beginPath();
-                ctx.moveTo(this.width / 2 + (this.speedX > 0 ? this.width / 4 : -this.width / 4), 
-                          this.height / 2 - this.height / 6);
-                ctx.lineTo(this.width / 2 + (this.speedX > 0 ? this.width / 5 : -this.width / 5), 
-                          this.height / 2 - this.height / 3);
-                ctx.stroke();
-                
-                // Draw eyes
-                ctx.fillStyle = 'black';
-                ctx.beginPath();
-                ctx.arc(this.width / 2 + (this.speedX > 0 ? this.width / 4 + 5 : -this.width / 4 - 5), 
-                        this.height / 2 - 5, 3, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.beginPath();
-                ctx.arc(this.width / 2 + (this.speedX > 0 ? this.width / 4 + 5 : -this.width / 4 - 5), 
-                        this.height / 2 + 5, 3, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Draw nose (brown with black nostrils)
-                ctx.fillStyle = '#8B4513';
-                ctx.beginPath();
-                ctx.arc(this.width / 2 + (this.speedX > 0 ? this.width / 4 + 15 : -this.width / 4 - 15), 
-                        this.height / 2, 8, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.fillStyle = 'black';
-                ctx.beginPath();
-                ctx.arc(this.width / 2 + (this.speedX > 0 ? this.width / 4 + 12 : -this.width / 4 - 12), 
-                        this.height / 2, 2, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.beginPath();
-                ctx.arc(this.width / 2 + (this.speedX > 0 ? this.width / 4 + 18 : -this.width / 4 - 18), 
-                        this.height / 2, 2, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Draw legs (animated)
-                const legPositions = [
-                    { x1: this.width / 4, y1: this.height / 2 + this.height / 6, 
-                      x2: this.width / 4, y2: this.height / 2 + this.height / 3 },
-                    { x1: this.width * 3/4, y1: this.height / 2 + this.height / 6, 
-                      x2: this.width * 3/4, y2: this.height / 2 + this.height / 3 },
-                    { x1: this.width / 4 - 5, y1: this.height / 2 + this.height / 6, 
-                      x2: this.width / 4 - 10, y2: this.height / 2 + this.height / 3 },
-                    { x1: this.width * 3/4 + 5, y1: this.height / 2 + this.height / 6, 
-                      x2: this.width * 3/4 + 10, y2: this.height / 2 + this.height / 3 }
-                ];
-                
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 4;
-                
-                // Front legs
-                const frontLegFrame = Math.floor(this.legFrame) % 2;
-                ctx.beginPath();
-                ctx.moveTo(legPositions[frontLegFrame].x1, legPositions[frontLegFrame].y1);
-                ctx.lineTo(legPositions[frontLegFrame].x2, legPositions[frontLegFrame].y2);
-                ctx.stroke();
-                
-                // Back legs
-                const backLegFrame = (Math.floor(this.legFrame) + 1) % 2 + 2;
-                ctx.beginPath();
-                ctx.moveTo(legPositions[backLegFrame].x1, legPositions[backLegFrame].y1);
-                ctx.lineTo(legPositions[backLegFrame].x2, legPositions[backLegFrame].y2);
-                ctx.stroke();
-                
-                // Restore the context state
-                ctx.restore();
-                
-                return true;
-            }
-            
-            isHit(x, y) {
-                return !this.hit && 
-                       x >= this.x && x <= this.x + this.width && 
-                       y >= this.y && y <= this.y + this.height;
-            }
+    });
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Shooting logic
+function handleShoot(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+    // Check cow hits
+    cows.forEach((cow, index) => {
+        if(x > cow.x - 50 && x < cow.x + 50 && y > cow.y - 50 && y < cow.y + 50) {
+            cows.splice(index, 1);
+            score += 100;
+            document.getElementById('score').textContent = `Score: ${score}`;
         }
-        
-        // Game functions
-        function startGame() {
-            score = 0;
-            ammo = 10;
-            cows = [];
-            gameRunning = true;
-            lastCowTime = 0;
-            cowInterval = 1500;
-            lastDifficultyIncrease = Date.now();
-            
-            scoreDisplay.textContent = `Score: ${score}`;
-            ammoDisplay.textContent = `Ammo: ${ammo}`;
-            
-            startScreen.style.display = 'none';
-            gameOverScreen.style.display = 'none';
-            crosshair.style.display = 'block';
-            
-            animationFrameId = requestAnimationFrame(gameLoop);
-        }
-        
-        function endGame() {
-            gameRunning = false;
-            cancelAnimationFrame(animationFrameId);
-            
-            finalScore.textContent = `Your score: ${score}`;
-            gameOverScreen.style.display = 'flex';
-            crosshair.style.display = 'none';
-            
-            // Send score to Telegram bot if launched from Telegram
-            if (tg.initDataUnsafe?.user?.id) {
-                tg.sendData(JSON.stringify({ score: score }));
-            }
-        }
-        
-        function gameLoop(timestamp) {
-            if (!gameRunning) return;
-            
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Spawn new cows
-            if (timestamp - lastCowTime > cowInterval) {
-                cows.push(new Cow());
-                lastCowTime = timestamp;
-            }
-            
-            // Increase difficulty over time
-            if (timestamp - lastDifficultyIncrease > difficultyIncreaseInterval) {
-                cowInterval = Math.max(500, cowInterval - 100);
-                lastDifficultyIncrease = timestamp;
-            }
-            
-            // Update and draw cows
-            for (let i = cows.length - 1; i >= 0; i--) {
-                const cow = cows[i];
-                const stillAlive = cow.update();
-                
-                if (!stillAlive || !cow.draw(ctx)) {
-                    cows.splice(i, 1);
-                }
-            }
-            
-            animationFrameId = requestAnimationFrame(gameLoop);
-        }
-        
-        // Event listeners
-        canvas.addEventListener('click', (e) => {
-            if (!gameRunning || ammo <= 0) return;
-            
-            ammo--;
-            ammoDisplay.textContent = `Ammo: ${ammo}`;
-            
-            // Play shot sound
-            const shotSound = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...');
-            shotSound.volume = 0.2;
-            shotSound.play().catch(e => console.log("Audio play failed:", e));
-            
-            // Check for hits
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            let hit = false;
-            
-            for (let i = cows.length - 1; i >= 0; i--) {
-                const cow = cows[i];
-                if (cow.isHit(x, y)) {
-                    cow.hit = true;
-                    hit = true;
-                    
-                    if (!cow.scored) {
-                        score += 10;
-                        scoreDisplay.textContent = `Score: ${score}`;
-                        cow.scored = true;
-                        
-                        // Play hit sound
-                        const hitSound = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...');
-                        hitSound.volume = 0.3;
-                        hitSound.play().catch(e => console.log("Audio play failed:", e));
-                    }
-                }
-            }
-            
-            if (ammo <= 0) {
-                setTimeout(endGame, 2000);
-            }
-        });
-        
-        canvas.addEventListener('mousemove', (e) => {
-            crosshair.style.left = `${e.clientX}px`;
-            crosshair.style.top = `${e.clientY}px`;
-        });
-        
-        startButton.addEventListener('click', startGame);
-        restartButton.addEventListener('click', startGame);
-        
-        // Touch support for mobile
-        canvas.addEventListener('touchstart', (e) => {
-            if (!gameRunning || ammo <= 0) return;
-            
-            e.preventDefault();
-            const touch = e.touches[0];
-            const mouseEvent = new MouseEvent('click', {
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-            canvas.dispatchEvent(mouseEvent);
-        });
-        
-        canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            crosshair.style.left = `${touch.clientX}px`;
-            crosshair.style.top = `${touch.clientY}px`;
-        });
-    </script>
+    });
+}
+
+// Event listeners
+canvas.addEventListener('mousedown', handleShoot);
+canvas.addEventListener('touchstart', handleShoot);
+
+// Start game
+gameLoop();
+</script>
 </body>
 </html>
