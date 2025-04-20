@@ -1,1147 +1,781 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cosmic Cow Hunt</title>
+    <title>Тапики</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body {
+        :root {
+            --bg-color: #1a1a2e;
+            --text-color: #e6e6e6;
+            --accent-color: #f05454;
+            --secondary-color: #30475e;
+            --highlight-color: #f5b349;
+            --retro-border: 4px solid var(--accent-color);
+            --retro-shadow: 6px 6px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            overflow: hidden;
-            background: #000;
-            font-family: 'Arial', sans-serif;
-            touch-action: manipulation;
-            user-select: none;
-            -webkit-user-select: none;
         }
-        
-        #gameCanvas {
-            display: block;
-            background: #000;
-            cursor: crosshair;
+
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 10px;
+            overflow-x: hidden;
         }
-        
-        #topUI {
-            position: absolute;
-            top: 10px;
-            left: 0;
-            width: 100%;
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        header {
             display: flex;
-            justify-content: space-around;
-            color: white;
-            font-size: 18px;
-            text-shadow: 1px 1px 2px black;
-            pointer-events: none;
-        }
-        
-        #bottomUI {
-            position: absolute;
-            bottom: 10px;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-around;
-            color: white;
-            font-size: 18px;
-            text-shadow: 1px 1px 2px black;
-            pointer-events: none;
-        }
-        
-        #startScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            z-index: 10;
-        }
-        
-        #gameOverScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            z-index: 10;
-        }
-        
-        h1 {
-            font-size: 3rem;
+            padding: 10px;
             margin-bottom: 20px;
-            text-align: center;
-            color: #4fc3f7;
-            text-shadow: 0 0 10px #4fc3f7, 0 0 20px #4fc3f7, 3px 3px 0 #ff00aa;
+            border-bottom: var(--retro-border);
         }
-        
-        button {
-            background: linear-gradient(to bottom, #4fc3f7, #1976d2);
+
+        h1 {
+            color: var(--accent-color);
+            font-size: 2rem;
+            text-shadow: 2px 2px 0 #000;
+            letter-spacing: 2px;
+        }
+
+        .pets-count {
+            background-color: var(--secondary-color);
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            border: 2px solid var(--accent-color);
+        }
+
+        .menu-button {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
             border: none;
-            color: white;
-            padding: 15px 30px;
-            font-size: 1.2rem;
-            border-radius: 30px;
-            margin-top: 20px;
+            padding: 8px 15px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
-            transition: all 0.3s;
+            margin-right: 10px;
+            box-shadow: var(--retro-shadow);
+            transition: all 0.2s;
         }
-        
-        button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 15px rgba(79, 195, 247, 0.8);
+
+        .menu-button:hover {
+            transform: translate(2px, 2px);
+            box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
         }
-        
-        #reloadIndicator {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255, 0, 0, 0.5);
-            color: white;
-            padding: 10px 20px;
-            font-size: 24px;
-            border-radius: 10px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-            z-index: 5;
-        }
-        
-        #crosshair {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            pointer-events: none;
-            z-index: 5;
+
+        .screen {
             display: none;
         }
-        
-        .life {
-            display: inline-block;
+
+        .screen.active {
+            display: block;
+        }
+
+        .pets-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 10px;
+            max-height: 60vh;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border: var(--retro-border);
+            background-color: rgba(48, 71, 94, 0.3);
+        }
+
+        .pet {
+            width: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            background-color: var(--secondary-color);
+            border: 3px solid var(--accent-color);
+            box-shadow: var(--retro-shadow);
+            position: relative;
+        }
+
+        .pet.active {
+            border-color: var(--highlight-color);
+            box-shadow: 0 0 0 3px var(--highlight-color), var(--retro-shadow);
+        }
+
+        .pet-bear {
+            width: 60px;
+            height: 60px;
+            background-color: currentColor;
+            border-radius: 50% 50% 40% 40%;
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        .pet-bear::before,
+        .pet-bear::after {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: currentColor;
+            border-radius: 50%;
+            top: 15px;
+        }
+
+        .pet-bear::before {
+            left: -5px;
+        }
+
+        .pet-bear::after {
+            right: -5px;
+        }
+
+        .pet-bear .eye {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background-color: var(--bg-color);
+            border-radius: 50%;
+            top: 25px;
+        }
+
+        .pet-bear .eye.left {
+            left: 18px;
+        }
+
+        .pet-bear .eye.right {
+            right: 18px;
+        }
+
+        .pet-bear .mouth {
+            position: absolute;
+            width: 20px;
+            height: 8px;
+            border-bottom: 2px solid var(--bg-color);
+            border-radius: 0 0 50% 50%;
+            bottom: 15px;
+            left: 20px;
+        }
+
+        .pet-stats {
+            width: 100%;
+            font-size: 0.8rem;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .stat-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 5px;
+            background-color: currentColor;
+        }
+
+        .hunger .stat-icon {
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        }
+
+        .energy .stat-icon {
+            clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+        }
+
+        .happiness .stat-icon {
+            clip-path: path('M10 0 C 20 0 20 20 10 20 C 0 20 0 0 10 0 Z M7 5 C 5 5 5 7 7 7 C 9 7 9 5 7 5 Z M13 5 C 11 5 11 7 13 7 C 15 7 15 5 13 5 Z M7 10 C 5 10 5 15 10 15 C 15 15 15 10 13 10');
+        }
+
+        .stat-bar {
+            flex-grow: 1;
+            height: 10px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--text-color);
+            overflow: hidden;
+        }
+
+        .stat-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .hunger .stat-fill {
+            background-color: #f05454;
+        }
+
+        .energy .stat-fill {
+            background-color: #4cc9f0;
+        }
+
+        .happiness .stat-fill {
+            background-color: #f5b349;
+        }
+
+        .xp-bar {
+            width: 100%;
+            height: 6px;
+            background-color: rgba(0, 0, 0, 0.3);
+            margin-top: 5px;
+            border: 1px solid var(--text-color);
+        }
+
+        .xp-fill {
+            height: 100%;
+            background-color: #7209b7;
+            transition: width 0.3s;
+        }
+
+        .pet-level {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background-color: var(--highlight-color);
+            color: var(--bg-color);
             width: 20px;
             height: 20px;
-            margin: 0 5px;
-            background-color: #ff5252;
-            clip-path: polygon(
-                50% 0%, 
-                61% 35%, 
-                98% 35%, 
-                68% 57%, 
-                79% 91%, 
-                50% 70%, 
-                21% 91%, 
-                32% 57%, 
-                2% 35%, 
-                39% 35%
-            );
-            transition: all 0.3s;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.7rem;
+            border: 2px solid var(--accent-color);
         }
-        
-        .life.lost {
-            background-color: #666;
-            transform: scale(0.8);
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .action-button {
+            flex: 1 1 calc(25% - 10px);
+            min-width: 70px;
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+            border: none;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: var(--retro-shadow);
+            transition: all 0.2s;
+        }
+
+        .action-button:hover {
+            transform: translate(2px, 2px);
+            box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .action-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: var(--retro-shadow);
+        }
+
+        .log {
+            height: 100px;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: var(--secondary-color);
+            border: var(--retro-border);
+            font-size: 0.9rem;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .menu-screen {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .menu-title {
+            color: var(--accent-color);
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 3px 3px 0 #000;
+        }
+
+        .menu-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .menu-option {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+            border: none;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: var(--retro-shadow);
+            transition: all 0.2s;
+        }
+
+        .menu-option:hover {
+            transform: translate(2px, 2px);
+            box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .instructions {
+            text-align: left;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: var(--secondary-color);
+            border: var(--retro-border);
+        }
+
+        .instructions h2 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+
+        .instructions ul {
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+
+        .color-palette {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .color-option.selected {
+            border-color: var(--text-color);
+            transform: scale(1.1);
         }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    
-    <div id="topUI">
-        <div>Score: <span id="score">0</span></div>
-        <div>Time: <span id="time">60</span>s</div>
-        <div>Lives: <span id="lives"></span></div>
+    <div class="container">
+        <!-- Главный экран игры -->
+        <div id="game-screen" class="screen">
+            <header>
+                <h1>ТАПИКИ</h1>
+                <div class="pets-count" id="pets-count">1 мишка</div>
+            </header>
+
+            <div class="pets-container" id="pets-container">
+                <!-- Питомцы будут добавляться здесь -->
+            </div>
+
+            <div class="actions">
+                <button class="action-button" onclick="feedPet()">Кормить</button>
+                <button class="action-button" onclick="playWithPet()">Играть</button>
+                <button class="action-button" onclick="restPet()">Отдых</button>
+                <button class="action-button" onclick="trainPet()">Тренировка</button>
+            </div>
+
+            <div class="log" id="game-log">
+                <div class="log-entry">Добро пожаловать в Тапики!</div>
+            </div>
+
+            <button class="menu-button" onclick="showScreen('menu-screen')">Меню</button>
+        </div>
+
+        <!-- Меню -->
+        <div id="menu-screen" class="screen menu-screen">
+            <h1 class="menu-title">ТАПИКИ</h1>
+            
+            <div class="menu-options">
+                <button class="menu-option" onclick="showScreen('game-screen')">Продолжить</button>
+                <button class="menu-option" onclick="startNewGame()">Новая игра</button>
+                <button class="menu-option" onclick="showScreen('instructions-screen')">Как играть</button>
+            </div>
+
+            <div class="color-palette">
+                <div class="color-option selected" style="background-color: #f05454;" onclick="changeColor('#f05454')"></div>
+                <div class="color-option" style="background-color: #4cc9f0;" onclick="changeColor('#4cc9f0')"></div>
+                <div class="color-option" style="background-color: #f5b349;" onclick="changeColor('#f5b349')"></div>
+                <div class="color-option" style="background-color: #7209b7;" onclick="changeColor('#7209b7')"></div>
+                <div class="color-option" style="background-color: #2ec4b6;" onclick="changeColor('#2ec4b6')"></div>
+            </div>
+        </div>
+
+        <!-- Экран инструкций -->
+        <div id="instructions-screen" class="screen menu-screen">
+            <h1 class="menu-title">КАК ИГРАТЬ</h1>
+            
+            <div class="instructions">
+                <h2>Уход за тапиками</h2>
+                <ul>
+                    <li><strong>Кормить</strong> - восстанавливает голод, но уменьшает энергию</li>
+                    <li><strong>Играть</strong> - увеличивает счастье, но уменьшает энергию и голод</li>
+                    <li><strong>Отдых</strong> - восстанавливает энергию, но уменьшает счастье</li>
+                    <li><strong>Тренировка</strong> - дает много опыта, но уменьшает все показатели</li>
+                </ul>
+
+                <h2>Эволюция</h2>
+                <p>Когда тапик получает +3 уровня от текущего максимума в вашей группе, все тапики эволюционируют!</p>
+                <p>Новые тапики появляются автоматически при эволюции.</p>
+            </div>
+
+            <button class="menu-option" onclick="showScreen('menu-screen')" style="margin-top: 20px;">Назад</button>
+        </div>
     </div>
-    
-    <div id="bottomUI">
-        <div>Ammo: <span id="ammo">5</span>/5</div>
-        <div>Hits: <span id="hits">0</span></div>
-        <div>Miss: <span id="miss">0</span></div>
-        <div>Level: <span id="level">1</span></div>
-    </div>
-    
-    <div id="reloadIndicator">RELOADING</div>
-    
-    <div id="startScreen">
-        <h1>COSMIC COW HUNT</h1>
-        <p>Shoot the cosmic cows before time runs out!</p>
-        <button id="startButton">START GAME</button>
-    </div>
-    
-    <div id="gameOverScreen">
-        <h1>GAME OVER</h1>
-        <p>Your score: <span id="finalScore">0</span></p>
-        <button id="restartButton">PLAY AGAIN</button>
-    </div>
-    
-    <img id="crosshair" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBkPSJNMjU2IDhDMTE5IDggOCAxMTkgOCAyNTZzMTExIDI0OCAyNDggMjQ4IDI0OC0xMTEgMjQ4LTI0OFMzOTMgOCAyNTYgOHptMCA0OGMxMTAuNSAwIDIwMCA4OS41IDIwMCAyMDBzLTg5LjUgMjAwLTIwMCAyMDBTMzYgMzY2LjUgMzYgMjU2IDE0NS41IDU2IDI1NiA1NnptMCAxMjhjLTE3LjcgMC0zMiAxNC4zLTMyIDMyczE0LjMgMzIgMzIgMzIgMzItMTQuMyAzMi0zMi0xNC4zLTMyLTMyLTMyeiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=" alt="crosshair">
-    
+
     <script>
-        // Telegram Web App initialization
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        
-        // Game variables
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreElement = document.getElementById('score');
-        const timeElement = document.getElementById('time');
-        const livesElement = document.getElementById('lives');
-        const ammoElement = document.getElementById('ammo');
-        const hitsElement = document.getElementById('hits');
-        const missElement = document.getElementById('miss');
-        const levelElement = document.getElementById('level');
-        const finalScoreElement = document.getElementById('finalScore');
-        const startScreen = document.getElementById('startScreen');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const startButton = document.getElementById('startButton');
-        const restartButton = document.getElementById('restartButton');
-        const reloadIndicator = document.getElementById('reloadIndicator');
-        const crosshair = document.getElementById('crosshair');
-        
-        // Game state
-        let score = 0;
-        let timeLeft = 60;
-        let lives = 3;
-        let hits = 0;
-        let miss = 0;
-        let level = 1;
-        let gameActive = false;
-        let cows = [];
-        let bonuses = [];
-        let planets = [];
-        let stars = [];
-        let lastCowTime = 0;
-        let cowInterval = 1500;
-        let ammo = 5;
-        let maxAmmo = 5;
-        let isReloading = false;
-        let reloadTime = 2000;
-        let reloadStart = 0;
-        let animationFrameId;
-        let gameTime = 0;
-        let lastTimeUpdate = 0;
-        let lastStarUpdate = 0;
-        let lastPlanetUpdate = 0;
-        
-        // Resize canvas to fit window
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            initStars();
-            initPlanets();
-        }
-        
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-        
-        // Star class
-        class Star {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.size = 1 + Math.random() * 3;
-                this.speed = 0.1 + Math.random() * 0.2;
-                this.angle = Math.random() * Math.PI * 2;
-                this.color = Math.random() > 0.7 ? '#4fc3f7' : '#ffd700';
-                this.alpha = 0.5 + Math.random() * 0.5;
-                this.twinkleSpeed = 0.01 + Math.random() * 0.02;
-                this.twinklePhase = Math.random() * Math.PI * 2;
-            }
-            
-            update() {
-                this.twinklePhase += this.twinkleSpeed;
-                this.alpha = 0.5 + Math.sin(this.twinklePhase) * 0.3;
+        // Состояние игры
+        const gameState = {
+            pets: [],
+            currentPetIndex: 0,
+            maxLevel: 1,
+            colors: ['#f05454', '#4cc9f0', '#f5b349', '#7209b7', '#2ec4b6'],
+            currentColor: '#f05454',
+            log: []
+        };
+
+        // Инициализация игры
+        function initGame() {
+            // Проверяем сохраненную игру
+            const savedGame = localStorage.getItem('tapikiGame');
+            if (savedGame) {
+                const parsed = JSON.parse(savedGame);
+                gameState.pets = parsed.pets;
+                gameState.currentPetIndex = parsed.currentPetIndex || 0;
+                gameState.maxLevel = parsed.maxLevel || 1;
+                gameState.currentColor = parsed.currentColor || '#f05454';
+                gameState.log = parsed.log || [];
                 
-                this.x += Math.cos(this.angle) * this.speed;
-                this.y += Math.sin(this.angle) * this.speed;
-                
-                if (this.x < 0) this.x = canvas.width;
-                if (this.x > canvas.width) this.x = 0;
-                if (this.y < 0) this.y = canvas.height;
-                if (this.y > canvas.height) this.y = 0;
-            }
-            
-            draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                
-                // Draw 4-pointed star
-                ctx.fillStyle = this.color;
-                ctx.globalAlpha = this.alpha;
-                
-                ctx.beginPath();
-                for (let i = 0; i < 4; i++) {
-                    const angle = i * Math.PI / 2;
-                    ctx.lineTo(Math.cos(angle) * this.size, Math.sin(angle) * this.size);
-                    ctx.lineTo(Math.cos(angle + Math.PI/4) * this.size * 0.5, Math.sin(angle + Math.PI/4) * this.size * 0.5);
+                // Восстанавливаем таймеры
+                const now = Date.now();
+                const timePassed = now - (parsed.lastUpdateTime || now);
+                if (timePassed > 0) {
+                    updateStatsOverTime(timePassed);
                 }
-                ctx.closePath();
-                ctx.fill();
-                
-                // Add glow
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.size * 2);
-                gradient.addColorStop(0, this.color);
-                gradient.addColorStop(1, 'rgba(0,0,0,0)');
-                ctx.fillStyle = gradient;
-                ctx.globalAlpha = this.alpha * 0.3;
-                ctx.beginPath();
-                ctx.arc(0, 0, this.size * 2, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.restore();
+            } else {
+                startNewGame();
+            }
+            
+            // Инициализация Telegram WebApp
+            if (window.Telegram && Telegram.WebApp) {
+                Telegram.WebApp.ready();
+                Telegram.WebApp.expand();
+            }
+            
+            renderGame();
+        }
+
+        // Новая игра
+        function startNewGame() {
+            gameState.pets = [createNewPet()];
+            gameState.currentPetIndex = 0;
+            gameState.maxLevel = 1;
+            gameState.log = ['Добро пожаловать в Тапики!', 'Первый тапик появился!'];
+            saveGame();
+            showScreen('game-screen');
+            renderGame();
+        }
+
+        // Создать нового питомца
+        function createNewPet() {
+            return {
+                hunger: 80,
+                energy: 80,
+                happiness: 80,
+                level: 1,
+                xp: 0,
+                color: gameState.currentColor,
+                lastActionTime: Date.now()
+            };
+        }
+
+        // Сохранить игру
+        function saveGame() {
+            const gameToSave = {
+                pets: gameState.pets,
+                currentPetIndex: gameState.currentPetIndex,
+                maxLevel: gameState.maxLevel,
+                currentColor: gameState.currentColor,
+                log: gameState.log,
+                lastUpdateTime: Date.now()
+            };
+            localStorage.setItem('tapikiGame', JSON.stringify(gameToSave));
+        }
+
+        // Показать экран
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+            
+            if (screenId === 'game-screen') {
+                renderGame();
             }
         }
-        
-        // Planet class
-        class Planet {
-            constructor() {
-                this.size = 50 + Math.random() * 100;
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.speed = 0.02 + Math.random() * 0.03;
-                this.angle = Math.random() * Math.PI * 2;
-                this.color1 = `hsl(${Math.random() * 60 + 200}, 70%, 50%)`;
-                this.color2 = `hsl(${Math.random() * 60 + 200}, 90%, 70%)`;
-                this.rotation = 0;
-                this.rotationSpeed = (Math.random() * 0.01 - 0.005);
+
+        // Обновить статистику со временем
+        function updateStatsOverTime(timePassed = 0) {
+            const now = Date.now();
+            if (!timePassed) {
+                timePassed = now - (gameState.lastUpdateTime || now);
             }
             
-            update() {
-                this.x += Math.cos(this.angle) * this.speed;
-                this.y += Math.sin(this.angle) * this.speed;
-                this.rotation += this.rotationSpeed;
-                
-                if (this.x < -this.size * 2) this.x = canvas.width + this.size;
-                if (this.x > canvas.width + this.size) this.x = -this.size * 2;
-                if (this.y < -this.size * 2) this.y = canvas.height + this.size;
-                if (this.y > canvas.height + this.size) this.y = -this.size * 2;
-            }
+            const minutesPassed = timePassed / (1000 * 60);
             
-            draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.rotate(this.rotation);
-                
-                // Draw planet
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.size);
-                gradient.addColorStop(0, this.color1);
-                gradient.addColorStop(1, this.color2);
-                ctx.fillStyle = gradient;
-                
-                ctx.beginPath();
-                ctx.arc(0, 0, this.size, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Add some details
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-                ctx.beginPath();
-                ctx.arc(this.size * 0.3, -this.size * 0.4, this.size * 0.4, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.beginPath();
-                ctx.arc(-this.size * 0.5, this.size * 0.2, this.size * 0.3, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Add glow
-                const glowGradient = ctx.createRadialGradient(0, 0, this.size, 0, 0, this.size * 1.5);
-                glowGradient.addColorStop(0, 'rgba(79, 195, 247, 0.3)');
-                glowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                ctx.fillStyle = glowGradient;
-                ctx.beginPath();
-                ctx.arc(0, 0, this.size * 1.5, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.restore();
-            }
-        }
-        
-        // Bonus (life) class
-        class Bonus {
-            constructor() {
-                this.size = 30;
-                this.x = Math.random() * (canvas.width - this.size);
-                this.y = Math.random() * (canvas.height - this.size);
-                this.speedX = (Math.random() - 0.5) * 1.5;
-                this.speedY = (Math.random() - 0.5) * 1.5;
-                this.rotation = 0;
-                this.rotationSpeed = (Math.random() * 0.02 - 0.01);
-                this.pulseSpeed = 0.05 + Math.random() * 0.05;
-                this.pulsePhase = Math.random() * Math.PI * 2;
-                this.collected = false;
-            }
-            
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                this.rotation += this.rotationSpeed;
-                this.pulsePhase += this.pulseSpeed;
-                
-                // Bounce off edges
-                if (this.x < 0 || this.x > canvas.width - this.size) {
-                    this.speedX *= -1;
-                }
-                if (this.y < 0 || this.y > canvas.height - this.size) {
-                    this.speedY *= -1;
-                }
-            }
-            
-            draw() {
-                if (this.collected) return;
-                
-                ctx.save();
-                ctx.translate(this.x + this.size/2, this.y + this.size/2);
-                ctx.rotate(this.rotation);
-                
-                const pulseScale = 1 + Math.sin(this.pulsePhase) * 0.1;
-                ctx.scale(pulseScale, pulseScale);
-                
-                // Draw circle background
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                ctx.beginPath();
-                ctx.arc(0, 0, this.size/2, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.strokeStyle = '#ff5252';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(0, 0, this.size/2, 0, Math.PI * 2);
-                ctx.stroke();
-                
-                // Draw heart
-                ctx.fillStyle = '#ff5252';
-                ctx.beginPath();
-                ctx.moveTo(0, -this.size/4);
-                ctx.bezierCurveTo(
-                    -this.size/4, -this.size/3,
-                    -this.size/3, 0,
-                    0, this.size/4
-                );
-                ctx.bezierCurveTo(
-                    this.size/3, 0,
-                    this.size/4, -this.size/3,
-                    0, -this.size/4
-                );
-                ctx.fill();
-                
-                // Add glow
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.size/2);
-                gradient.addColorStop(0, 'rgba(255, 82, 82, 0.7)');
-                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(0, 0, this.size/2, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.restore();
-            }
-            
-            isCollected(x, y) {
-                if (this.collected) return false;
-                
-                const centerX = this.x + this.size/2;
-                const centerY = this.y + this.size/2;
-                const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
-                
-                return distance <= this.size/2;
-            }
-        }
-        
-        // Cow class
-        class Cow {
-            constructor() {
-                this.type = Math.floor(Math.random() * 3); // 0, 1, or 2 for different cow types
-                this.width = 100;
-                this.height = 40;
-                this.x = Math.random() < 0.5 ? -this.width : canvas.width;
-                this.y = canvas.height - 100 - Math.random() * 300;
-                
-                // Different movement patterns based on type
-                switch(this.type) {
-                    case 0: // Straight flyer
-                        this.speedX = this.x < 0 ? 2 + Math.random() * 2 : -2 - Math.random() * 2;
-                        this.speedY = Math.random() * 1 - 0.5;
-                        break;
-                    case 1: // Wavy flyer
-                        this.speedX = this.x < 0 ? 1.5 + Math.random() * 1.5 : -1.5 - Math.random() * 1.5;
-                        this.speedY = Math.sin(this.x * 0.02) * 1.5;
-                        this.waveSpeed = 0.05 + Math.random() * 0.05;
-                        break;
-                    case 2: // Zigzag flyer
-                        this.speedX = this.x < 0 ? 3 + Math.random() * 2 : -3 - Math.random() * 2;
-                        this.speedY = 0;
-                        this.zigzagTimer = 0;
-                        this.zigzagInterval = 30 + Math.random() * 40;
-                        this.zigzagDirection = 1;
-                        break;
-                }
-                
-                this.legAngle = 0;
-                this.legDirection = 1;
-                this.legSpeed = 0.1 + Math.random() * 0.1;
-                this.hit = false;
-                this.hitTime = 0;
-                this.rotation = 0;
-                this.rotationSpeed = (Math.random() * 0.02 - 0.01) * (this.speedX > 0 ? 1 : -1);
-                this.scale = 0.8 + Math.random() * 0.4;
-                this.eyeBlinkTimer = 0;
-                this.eyeBlinkInterval = 100 + Math.random() * 200;
-                this.blinking = false;
-                this.blinkDuration = 0;
-            }
-            
-            update() {
-                if (this.hit) {
-                    this.speedY += 0.2;
-                    this.rotation += this.rotationSpeed * 3;
-                    this.y += this.speedY;
-                    this.x += this.speedX * 0.5;
-                    
-                    if (Date.now() - this.hitTime > 2000) {
-                        return false; // Remove cow
-                    }
-                    return true;
-                }
-                
-                this.x += this.speedX;
-                
-                // Different movement updates
-                switch(this.type) {
-                    case 1: // Wavy flyer
-                        this.speedY = Math.sin(this.x * this.waveSpeed) * 1.5;
-                        break;
-                    case 2: // Zigzag flyer
-                        this.zigzagTimer++;
-                        if (this.zigzagTimer >= this.zigzagInterval) {
-                            this.zigzagTimer = 0;
-                            this.zigzagDirection *= -1;
-                        }
-                        this.speedY = this.zigzagDirection * 2;
-                        break;
-                }
-                
-                this.y += this.speedY;
-                
-                // Leg animation
-                this.legAngle += this.legSpeed * this.legDirection;
-                if (Math.abs(this.legAngle) > 0.3) {
-                    this.legDirection *= -1;
-                }
-                
-                // Eye blinking
-                this.eyeBlinkTimer++;
-                if (this.eyeBlinkTimer >= this.eyeBlinkInterval) {
-                    this.blinking = true;
-                    this.eyeBlinkTimer = 0;
-                    this.eyeBlinkInterval = 100 + Math.random() * 200;
-                    this.blinkDuration = 5 + Math.random() * 10;
-                }
-                
-                if (this.blinking) {
-                    this.blinkDuration--;
-                    if (this.blinkDuration <= 0) {
-                        this.blinking = false;
-                    }
-                }
-                
-                // Slight rotation
-                this.rotation += this.rotationSpeed;
-                
-                // Remove if off screen
-                if ((this.speedX > 0 && this.x > canvas.width + this.width) || 
-                    (this.speedX < 0 && this.x < -this.width)) {
-                    return false;
-                }
-                
-                // Keep within vertical bounds
-                if (this.y < 50 || this.y > canvas.height - 100) {
-                    this.speedY *= -1;
-                }
-                
-                return true;
-            }
-            
-            draw() {
-                ctx.save();
-                ctx.translate(this.x + this.width/2, this.y + this.height/2);
-                ctx.rotate(this.rotation);
-                ctx.scale(this.scale, this.scale);
-                
-                // Draw cow body
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Draw head with helmet at the end of the body
-                ctx.save();
-                ctx.translate(this.width/2, 0);
-                
-                // Helmet bubble
-                ctx.fillStyle = 'rgba(200, 230, 255, 0.2)';
-                ctx.beginPath();
-                ctx.arc(0, 0, 25, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = 'rgba(150, 200, 255, 0.7)';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                
-                // Head (vertical)
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.ellipse(0, 0, 15, 20, Math.PI/2, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Eyes
-                ctx.fillStyle = 'black';
-                if (!this.blinking) {
-                    // Open eyes
-                    ctx.beginPath();
-                    ctx.arc(-8, -5, 4, 0, Math.PI * 2);
-                    ctx.arc(8, -5, 4, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Eye highlights
-                    ctx.fillStyle = 'white';
-                    ctx.beginPath();
-                    ctx.arc(-6, -6, 1.5, 0, Math.PI * 2);
-                    ctx.arc(10, -6, 1.5, 0, Math.PI * 2);
-                    ctx.fill();
-                } else {
-                    // Closed eyes
-                    ctx.strokeStyle = 'black';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(-12, -5);
-                    ctx.lineTo(-4, -5);
-                    ctx.moveTo(4, -5);
-                    ctx.lineTo(12, -5);
-                    ctx.stroke();
-                }
-                
-                // Nose (beige with nostrils)
-                ctx.fillStyle = '#f5deb3';
-                ctx.beginPath();
-                ctx.ellipse(0, 10, 6, 4, Math.PI/2, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.fillStyle = 'black';
-                ctx.beginPath();
-                ctx.arc(-2, 10, 1.5, 0, Math.PI * 2);
-                ctx.arc(2, 10, 1.5, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Horns (buffalo style)
-                ctx.strokeStyle = '#8B4513';
-                ctx.lineWidth = 4;
-                ctx.beginPath();
-                ctx.moveTo(-10, -15);
-                ctx.lineTo(-20, -25);
-                ctx.lineTo(-25, -35);
-                ctx.moveTo(10, -15);
-                ctx.lineTo(20, -25);
-                ctx.lineTo(25, -35);
-                ctx.stroke();
-                
-                ctx.restore();
-                
-                // Legs (4 legs with black hooves)
-                const legPositions = [
-                    { x: -this.width/3, y: this.height/4 },
-                    { x: -this.width/6, y: this.height/4 },
-                    { x: this.width/6, y: this.height/4 },
-                    { x: this.width/3, y: this.height/4 }
-                ];
-                
-                legPositions.forEach(pos => {
-                    ctx.save();
-                    ctx.translate(pos.x, pos.y);
-                    
-                    // Upper leg
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(-5, 0, 10, 20);
-                    
-                    // Lower leg (animated)
-                    ctx.translate(0, 20);
-                    ctx.rotate(this.legAngle);
-                    ctx.fillRect(-5, 0, 10, 20);
-                    
-                    // Hoof (black square)
-                    ctx.fillStyle = 'black';
-                    ctx.fillRect(-6, 20, 12, 5);
-                    
-                    ctx.restore();
+            if (minutesPassed > 0) {
+                gameState.pets.forEach(pet => {
+                    // Уменьшаем показатели со временем
+                    const decayRate = Math.min(3 * minutesPassed, 20);
+                    pet.hunger = Math.max(0, pet.hunger - decayRate);
+                    pet.energy = Math.max(0, pet.energy - decayRate * 0.7);
+                    pet.happiness = Math.max(0, pet.happiness - decayRate * 0.5);
                 });
                 
-                // Udder for some cows (random)
-                if (Math.random() < 0.3) {
-                    ctx.fillStyle = 'pink';
-                    ctx.beginPath();
-                    ctx.ellipse(0, this.height/3, 10, 5, 0, 0, Math.PI * 2);
-                    ctx.fill();
+                // Проверяем, не умер ли кто-то
+                const alivePets = gameState.pets.filter(pet => pet.hunger > 0 && pet.energy > 0);
+                if (alivePets.length < gameState.pets.length) {
+                    const deadCount = gameState.pets.length - alivePets.length;
+                    addLogMessage(`${deadCount} тапиков умерло от neglect!`);
+                    gameState.pets = alivePets;
                     
-                    // Teats
-                    ctx.fillStyle = 'lightpink';
-                    for (let i = -1; i <= 1; i += 0.5) {
-                        ctx.beginPath();
-                        ctx.arc(i * 5, this.height/3 + 5, 2, 0, Math.PI * 2);
-                        ctx.fill();
+                    if (gameState.pets.length === 0) {
+                        addLogMessage('Все тапики умерли! Начинаем новую игру.');
+                        startNewGame();
+                        return;
+                    }
+                    
+                    if (gameState.currentPetIndex >= gameState.pets.length) {
+                        gameState.currentPetIndex = 0;
                     }
                 }
                 
-                // If hit, draw explosion
-                if (this.hit) {
-                    const timeSinceHit = Date.now() - this.hitTime;
-                    const explosionSize = Math.min(timeSinceHit / 10, 50);
-                    const alpha = 1 - timeSinceHit / 2000;
-                    
-                    ctx.fillStyle = `rgba(255, 165, 0, ${alpha})`;
-                    ctx.beginPath();
-                    ctx.arc(0, 0, explosionSize, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    for (let i = 0; i < 8; i++) {
-                        const angle = (i / 8) * Math.PI * 2;
-                        const length = explosionSize * (0.7 + Math.random() * 0.3);
-                        ctx.strokeStyle = `rgba(255, 100, 0, ${alpha})`;
-                        ctx.lineWidth = 3;
-                        ctx.beginPath();
-                        ctx.moveTo(0, 0);
-                        ctx.lineTo(Math.cos(angle) * length, Math.sin(angle) * length);
-                        ctx.stroke();
-                    }
-                }
+                gameState.lastUpdateTime = now;
+                saveGame();
+            }
+        }
+
+        // Отрисовка игры
+        function renderGame() {
+            updateStatsOverTime();
+            
+            // Обновляем счетчик питомцев
+            const petsCount = gameState.pets.length;
+            document.getElementById('pets-count').textContent = 
+                `${petsCount} ${petsCount === 1 ? 'мишка' : petsCount < 5 ? 'мишки' : 'мишек'}`;
+            
+            // Отрисовываем всех питомцев
+            const petsContainer = document.getElementById('pets-container');
+            petsContainer.innerHTML = '';
+            
+            gameState.pets.forEach((pet, index) => {
+                const petElement = document.createElement('div');
+                petElement.className = `pet ${index === gameState.currentPetIndex ? 'active' : ''}`;
+                petElement.style.color = pet.color;
+                petElement.onclick = () => {
+                    gameState.currentPetIndex = index;
+                    renderGame();
+                };
                 
-                ctx.restore();
-            }
-            
-            isHit(x, y) {
-                if (this.hit) return false;
+                petElement.innerHTML = `
+                    <div class="pet-bear">
+                        <div class="eye left"></div>
+                        <div class="eye right"></div>
+                        <div class="mouth"></div>
+                    </div>
+                    <div class="pet-stats">
+                        <div class="stat hunger">
+                            <div class="stat-icon"></div>
+                            <div class="stat-bar"><div class="stat-fill" style="width: ${pet.hunger}%"></div></div>
+                        </div>
+                        <div class="stat energy">
+                            <div class="stat-icon"></div>
+                            <div class="stat-bar"><div class="stat-fill" style="width: ${pet.energy}%"></div></div>
+                        </div>
+                        <div class="stat happiness">
+                            <div class="stat-icon"></div>
+                            <div class="stat-bar"><div class="stat-fill" style="width: ${pet.happiness}%"></div></div>
+                        </div>
+                    </div>
+                    <div class="xp-bar"><div class="xp-fill" style="width: ${(pet.xp / (pet.level * 20)) * 100}%"></div></div>
+                    <div class="pet-level">${pet.level}</div>
+                `;
                 
-                // Simple ellipse collision detection
-                const centerX = this.x + this.width/2;
-                const centerY = this.y + this.height/2;
-                const radiusX = this.width/2 * this.scale;
-                const radiusY = this.height/2 * this.scale;
-                
-                const dx = x - centerX;
-                const dy = y - centerY;
-                
-                return (dx * dx) / (radiusX * radiusX) + (dy * dy) / (radiusY * radiusY) <= 1;
-            }
-            
-            setHit() {
-                this.hit = true;
-                this.hitTime = Date.now();
-                this.speedY = -3;
-                return true;
-            }
-        }
-        
-        // Initialize stars
-        function initStars() {
-            stars = [];
-            for (let i = 0; i < 200; i++) {
-                stars.push(new Star());
-            }
-        }
-        
-        // Initialize planets
-        function initPlanets() {
-            planets = [];
-            for (let i = 0; i < 3; i++) {
-                planets.push(new Planet());
-            }
-        }
-        
-        // Game functions
-        function startGame() {
-            score = 0;
-            timeLeft = 60;
-            lives = 3;
-            hits = 0;
-            miss = 0;
-            level = 1;
-            cows = [];
-            bonuses = [];
-            ammo = maxAmmo;
-            isReloading = false;
-            gameActive = true;
-            gameTime = 0;
-            lastTimeUpdate = 0;
-            lastCowTime = Date.now();
-            cowInterval = 1500;
-            
-            updateUI();
-            startScreen.style.display = 'none';
-            gameOverScreen.style.display = 'none';
-            crosshair.style.display = 'block';
-            
-            animationFrameId = requestAnimationFrame(gameLoop);
-        }
-        
-        function endGame() {
-            gameActive = false;
-            cancelAnimationFrame(animationFrameId);
-            gameOverScreen.style.display = 'flex';
-            finalScoreElement.textContent = score;
-            crosshair.style.display = 'none';
-            
-            // Send data to Telegram bot if launched from Telegram
-            if (tg.initDataUnsafe?.user?.id) {
-                tg.sendData(JSON.stringify({
-                    action: 'game_over',
-                    score: score,
-                    level: level
-                }));
-            }
-        }
-        
-        function updateUI() {
-            scoreElement.textContent = score;
-            timeElement.textContent = timeLeft;
-            ammoElement.textContent = `${ammo}/${maxAmmo}`;
-            hitsElement.textContent = hits;
-            missElement.textContent = miss;
-            levelElement.textContent = level;
-            
-            // Update lives display
-            livesElement.innerHTML = '';
-            for (let i = 0; i < 3; i++) {
-                const life = document.createElement('span');
-                life.className = 'life' + (i >= lives ? ' lost' : '');
-                livesElement.appendChild(life);
-            }
-        }
-        
-        function gameLoop(timestamp) {
-            if (!gameActive) return;
-            
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw background
-            drawBackground();
-            
-            // Update and draw planets
-            planets.forEach(planet => planet.update());
-            planets.forEach(planet => planet.draw());
-            
-            // Update and draw stars
-            stars.forEach(star => star.update());
-            stars.forEach(star => star.draw());
-            
-            // Spawn new cows
-            if (Date.now() - lastCowTime > cowInterval) {
-                cows.push(new Cow());
-                lastCowTime = Date.now();
-            }
-            
-            // Spawn bonuses randomly
-            if (Math.random() < 0.002 && bonuses.length < 3) {
-                bonuses.push(new Bonus());
-            }
-            
-            // Update and draw cows
-            cows = cows.filter(cow => cow.update());
-            cows.forEach(cow => cow.draw());
-            
-            // Update and draw bonuses
-            bonuses = bonuses.filter(bonus => !bonus.collected);
-            bonuses.forEach(bonus => {
-                bonus.update();
-                bonus.draw();
+                petsContainer.appendChild(petElement);
             });
             
-            // Update game time
-            gameTime += 16; // Assuming ~60fps
+            // Отрисовываем лог
+            const logElement = document.getElementById('game-log');
+            logElement.innerHTML = '';
+            gameState.log.slice().reverse().forEach(entry => {
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.textContent = entry;
+                logElement.appendChild(logEntry);
+            });
             
-            // Update time left every second
-            if (timestamp - lastTimeUpdate >= 1000) {
-                timeLeft--;
-                lastTimeUpdate = timestamp;
+            saveGame();
+        }
+
+        // Добавить сообщение в лог
+        function addLogMessage(message) {
+            gameState.log.push(message);
+            if (gameState.log.length > 50) {
+                gameState.log.shift();
+            }
+        }
+
+        // Действия с питомцами
+        function feedPet() {
+            const pet = gameState.pets[gameState.currentPetIndex];
+            
+            if (pet.energy < 10) {
+                addLogMessage(`Тапик слишком устал, чтобы есть!`);
+                return;
+            }
+            
+            pet.hunger = Math.min(100, pet.hunger + 30);
+            pet.energy = Math.max(0, pet.energy - 10);
+            addXp(pet, 5);
+            
+            addLogMessage(`Тапик покормлен!`);
+            renderGame();
+        }
+
+        function playWithPet() {
+            const pet = gameState.pets[gameState.currentPetIndex];
+            
+            if (pet.energy < 15 || pet.hunger < 20) {
+                addLogMessage(`Тапик слишком устал или голоден для игр!`);
+                return;
+            }
+            
+            pet.happiness = Math.min(100, pet.happiness + 25);
+            pet.energy = Math.max(0, pet.energy - 15);
+            pet.hunger = Math.max(0, pet.hunger - 20);
+            addXp(pet, 8);
+            
+            addLogMessage(`Вы поиграли с тапиком!`);
+            renderGame();
+        }
+
+        function restPet() {
+            const pet = gameState.pets[gameState.currentPetIndex];
+            
+            pet.energy = Math.min(100, pet.energy + 40);
+            pet.happiness = Math.max(0, pet.happiness - 10);
+            addXp(pet, 3);
+            
+            addLogMessage(`Тапик отдохнул!`);
+            renderGame();
+        }
+
+        function trainPet() {
+            const pet = gameState.pets[gameState.currentPetIndex];
+            
+            if (pet.energy < 30 || pet.hunger < 30 || pet.happiness < 30) {
+                addLogMessage(`Тапик не готов к тренировке!`);
+                return;
+            }
+            
+            pet.energy = Math.max(0, pet.energy - 30);
+            pet.hunger = Math.max(0, pet.hunger - 30);
+            pet.happiness = Math.max(0, pet.happiness - 30);
+            addXp(pet, 20);
+            
+            addLogMessage(`Тапик потренировался!`);
+            renderGame();
+        }
+
+        // Добавить опыт и проверить уровень
+        function addXp(pet, xp) {
+            pet.xp += xp;
+            const xpNeeded = pet.level * 20;
+            
+            if (pet.xp >= xpNeeded) {
+                pet.xp -= xpNeeded;
+                pet.level++;
                 
-                if (timeLeft <= 0) {
-                    endGame();
-                    return;
+                addLogMessage(`Тапик достиг уровня ${pet.level}!`);
+                
+                // Проверяем эволюцию
+                if (pet.level >= gameState.maxLevel + 3) {
+                    evolveAllPets();
                 }
                 
-                // Level progression
-                const newLevel = Math.floor(gameTime / 60000) + 1;
-                if (newLevel > level) {
-                    level = newLevel;
-                    // Increase difficulty
-                    cowInterval = Math.max(500, 1500 - (level - 1) * 200);
-                }
-                
-                updateUI();
-            }
-            
-            // Handle reloading
-            if (isReloading && Date.now() - reloadStart >= reloadTime) {
-                isReloading = false;
-                ammo = maxAmmo;
-                reloadIndicator.style.opacity = '0';
-                updateUI();
-                playSound('reload');
-            }
-            
-            animationFrameId = requestAnimationFrame(gameLoop);
-        }
-        
-        function drawBackground() {
-            // Draw nebula effect
-            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-            gradient.addColorStop(0, 'rgba(0, 42, 92, 0.3)');
-            gradient.addColorStop(0.5, 'rgba(26, 42, 108, 0.5)');
-            gradient.addColorStop(1, 'rgba(0, 42, 92, 0.3)');
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw some nebula clouds
-            for (let i = 0; i < 5; i++) {
-                const x = Math.random() * canvas.width;
-                const y = Math.random() * canvas.height;
-                const radius = 100 + Math.random() * 200;
-                const nebulaGradient = ctx.createRadialGradient(
-                    x, y, 0,
-                    x, y, radius
-                );
-                nebulaGradient.addColorStop(0, `rgba(${
-                    Math.floor(50 + Math.random() * 50)
-                }, ${
-                    Math.floor(100 + Math.random() * 100)
-                }, ${
-                    Math.floor(200 + Math.random() * 50)
-                }, 0.3)`);
-                nebulaGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                
-                ctx.fillStyle = nebulaGradient;
-                ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-        
-        function shoot(x, y) {
-            if (!gameActive) return false;
-            
-            if (isReloading) {
-                return false;
-            }
-            
-            if (ammo <= 0) {
-                startReload();
-                return false;
-            }
-            
-            // Play shoot sound
-            playSound('shoot');
-            
-            // Decrease ammo
-            ammo--;
-            
-            // Check if hit any cow
-            let hit = false;
-            for (let i = 0; i < cows.length; i++) {
-                if (cows[i].isHit(x, y)) {
-                    if (cows[i].setHit()) {
-                        score += 10 * level;
-                        hits++;
-                        hit = true;
-                        playSound('hit');
-                        
-                        // Random chance to drop bonus
-                        if (Math.random() < 0.2) {
-                            const bonus = new Bonus();
-                            bonus.x = cows[i].x + cows[i].width/2 - bonus.size/2;
-                            bonus.y = cows[i].y + cows[i].height/2 - bonus.size/2;
-                            bonuses.push(bonus);
-                        }
-                    }
+                // Обновляем максимальный уровень
+                if (pet.level > gameState.maxLevel) {
+                    gameState.maxLevel = pet.level;
                 }
             }
-            
-            // Check if collected any bonus
-            for (let i = 0; i < bonuses.length; i++) {
-                if (!bonuses[i].collected && bonuses[i].isCollected(x, y)) {
-                    bonuses[i].collected = true;
-                    lives = Math.min(3, lives + 1);
-                    score += 20 * level;
-                    playSound('bonus');
-                    hit = true;
-                }
-            }
-            
-            if (!hit) {
-                miss++;
-                if (miss % 5 === 0 && lives > 0) {
-                    lives--;
-                    if (lives <= 0) {
-                        endGame();
-                    }
-                }
-            }
-            
-            // Start reload if out of ammo
-            if (ammo <= 0) {
-                startReload();
-            }
-            
-            // Draw bullet effect
-            drawBulletEffect(x, y);
-            
-            updateUI();
-            return hit;
         }
-        
-        function startReload() {
-            if (!isReloading && ammo < maxAmmo) {
-                isReloading = true;
-                reloadStart = Date.now();
-                reloadIndicator.style.opacity = '1';
-                playSound('reload');
+
+        // Эволюция всех питомцев
+        function evolveAllPets() {
+            gameState.pets.forEach(pet => {
+                pet.level++;
+            });
+            
+            // Добавляем нового питомца, если есть место
+            if (gameState.pets.length < 10) {
+                const newPet = createNewPet();
+                gameState.pets.push(newPet);
+                addLogMessage(`Новый тапик появился в результате эволюции!`);
+            }
+            
+            addLogMessage(`Все тапики эволюционировали до уровня ${gameState.maxLevel + 1}!`);
+            gameState.maxLevel++;
+        }
+
+        // Изменить цвет питомцев
+        function changeColor(color) {
+            gameState.currentColor = color;
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+            
+            // Применяем цвет к текущему питомцу
+            if (gameState.pets.length > 0) {
+                gameState.pets[gameState.currentPetIndex].color = color;
+                renderGame();
             }
         }
-        
-        function drawBulletEffect(x, y) {
-            // Bullet hole
-            ctx.fillStyle = 'black';
-            ctx.beginPath();
-            ctx.arc(x, y, 3, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Flash
-            const gradient = ctx.createRadialGradient(
-                x, y, 0,
-                x, y, 15
-            );
-            gradient.addColorStop(0, 'rgba(255, 255, 0, 0.8)');
-            gradient.addColorStop(1, 'rgba(255, 255, 0, 0)');
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(x, y, 15, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Smoke puff
-            for (let i = 0; i < 5; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const distance = 10 + Math.random() * 10;
-                const size = 2 + Math.random() * 4;
-                
-                ctx.fillStyle = `rgba(200, 200, 200, ${0.3 + Math.random() * 0.2})`;
-                ctx.beginPath();
-                ctx.arc(
-                    x + Math.cos(angle) * distance,
-                    y + Math.sin(angle) * distance,
-                    size, 0, Math.PI * 2
-                );
-                ctx.fill();
-            }
-        }
-        
-        // Simple sound effects using Web Audio API
-        function playSound(type) {
-            try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioCtx.createOscillator();
-                const gainNode = audioCtx.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                
-                let frequency, duration, waveType;
-                
-                switch (type) {
-                    case 'shoot':
-                        frequency = 1000;
-                        duration = 0.05;
-                        waveType = 'square';
-                        break;
-                    case 'hit':
-                        frequency = 300;
-                        duration = 0.3;
-                        waveType = 'sawtooth';
-                        break;
-                    case 'reload':
-                        frequency = 200;
-                        duration = 0.5;
-                        waveType = 'sine';
-                        break;
-                    case 'bonus':
-                        frequency = 800;
-                        duration = 0.2;
-                        waveType = 'triangle';
-                        break;
-                    default:
-                        return;
-                }
-                
-                oscillator.type = waveType;
-                oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-                oscillator.start();
-                oscillator.stop(audioCtx.currentTime + duration);
-            } catch (e) {
-                console.log('Audio error:', e);
-            }
-        }
-        
-        // Event listeners
-        canvas.addEventListener('click', (e) => {
-            if (!gameActive && startScreen.style.display === 'none') return;
-            
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            shoot(x, y);
-        });
-        
-        canvas.addEventListener('touchstart', (e) => {
-            if (!gameActive && startScreen.style.display === 'none') return;
-            e.preventDefault();
-            
-            const rect = canvas.getBoundingClientRect();
-            const touch = e.touches[0];
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
-            
-            shoot(x, y);
-        });
-        
-        document.addEventListener('mousemove', (e) => {
-            crosshair.style.left = (e.clientX - 15) + 'px';
-            crosshair.style.top = (e.clientY - 15) + 'px';
-        });
-        
-        startButton.addEventListener('click', startGame);
-        restartButton.addEventListener('click', startGame);
-        
-        // Initialize
-        initStars();
-        initPlanets();
-        updateUI();
-        
-        // Show instructions for Telegram users
-        if (tg.platform !== 'unknown') {
-            document.querySelector('#startScreen p').textContent = 
-                'Shoot the cosmic cows before time runs out! Use your finger to aim and tap to shoot.';
-        }
+
+        // Инициализация при загрузке
+        window.onload = initGame;
     </script>
 </body>
 </html>
