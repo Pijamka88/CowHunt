@@ -1,670 +1,1098 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тапики</title>
+    <title>Cosmic Cow Hunt</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root {
-            --pet-color-1: #FF6B6B;
-            --pet-color-2: #4ECDC4;
-            --pet-color-3: #45B7D1;
-            --pet-color-4: #FFBE0B;
-            --pet-color-5: #FB5607;
-            --pet-color-6: #8338EC;
-            --pet-color-7: #3A86FF;
-            --pet-color-8: #FF006E;
-            --pet-color-9: #A5DD9B;
-            --pet-color-10: #F9C74F;
-        }
-
         body {
-            font-family: 'Comic Sans MS', cursive, sans-serif;
-            background-color: #FFEEDD;
             margin: 0;
             padding: 0;
-            color: #5A3D2B;
-            overflow-x: hidden;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Arial', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
         }
-
-        .container {
-            max-width: 100%;
-            padding: 15px;
-            box-sizing: border-box;
+        
+        #gameCanvas {
+            display: block;
+            background: radial-gradient(ellipse at center, #001a33 0%, #000000 100%);
+            cursor: crosshair;
         }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 15px;
-            background-color: #FFD5A5;
-            border-radius: 0 0 15px 15px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-
-        h1 {
-            margin: 0;
-            color: #FF6B6B;
-            text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
-            font-size: 24px;
-        }
-
-        .pets-count {
-            background-color: white;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .pets-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
-            padding-bottom: 20px;
-            max-height: calc(100vh - 180px);
-            overflow-y: auto;
-        }
-
-        .pet {
-            width: 140px;
-            background-color: white;
-            border-radius: 15px;
-            padding: 15px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
-            position: relative;
-        }
-
-        .pet:hover {
-            transform: translateY(-5px);
-        }
-
-        .pet.active {
-            box-shadow: 0 0 0 3px #FF9E7D;
-        }
-
-        .pet-shape {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 10px;
-            position: relative;
-            background-color: var(--pet-color);
-            border-radius: 50%;
-            /* Медвежья мордочка */
-            box-shadow: 
-                /* Уши */
-                -15px -10px 0 0 var(--pet-color) inset,
-                15px -10px 0 0 var(--pet-color) inset,
-                /* Глаза */
-                -10px 10px 0 0 white inset,
-                10px 10px 0 0 white inset,
-                /* Нос */
-                0px 15px 0 0 white inset,
-                /* Рот */
-                0px 25px 0 0 transparent inset;
-        }
-
-        .pet-shape::before,
-        .pet-shape::after {
-            content: '';
+        
+        #topUI {
             position: absolute;
-            width: 10px;
-            height: 10px;
-            background-color: #5A3D2B;
-            border-radius: 50%;
-            top: 30px;
-        }
-
-        .pet-shape::before {
-            left: 25px;
-        }
-
-        .pet-shape::after {
-            right: 25px;
-        }
-
-        .pet-stats {
-            margin-top: 10px;
-        }
-
-        .stat {
-            display: flex;
-            align-items: center;
-            margin-bottom: 5px;
-            font-size: 12px;
-        }
-
-        .stat-icon {
-            width: 16px;
-            height: 16px;
-            margin-right: 5px;
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-        }
-
-        .hunger-icon {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e74c3c'%3E%3Cpath d='M12 3c-4.97 0-9 3.185-9 7.115 0 2.557 1.522 4.82 3.889 6.115l-.996 1.74C3.562 19.8 6.848 21 12 21c5.153 0 8.438-1.2 9.107-3.03l-.996-1.74c2.367-1.295 3.889-3.558 3.889-6.115C21 6.185 16.97 3 12 3zm0 2c3.87 0 7 2.355 7 5.115 0 1.847-.988 3.49-2.57 4.53l-.43.26-.3.42-.5-.28c-.645-.37-1.292-.62-2-.76V11h-2v1.815c-.708.14-1.355.39-2 .76l-.5.28-.3-.42-.43-.26C5.988 13.605 5 11.962 5 10.115 5 7.355 8.13 5 12 5z'/%3E%3C/svg%3E");
-        }
-
-        .energy-icon {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f39c12'%3E%3Cpath d='M12 20a8 8 0 0 1-8-8 8 8 0 0 1 8-8 8 8 0 0 1 8 8 8 8 0 0 1-8 8m0-18a10 10 0 0 0-10 10 10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2m-1 12h2v5h-2v-5m0-9h2v7h-2V5'/%3E%3C/svg%3E");
-        }
-
-        .happiness-icon {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232ecc71'%3E%3Cpath d='M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z'/%3E%3Cpath d='M14.829 14.828a4.055 4.055 0 0 1-1.272.858 4.002 4.002 0 0 1-4.875-1.45l-1.658 1.119a6.063 6.063 0 0 0 1.621 1.62 5.963 5.963 0 0 0 2.148.903 6.042 6.042 0 0 0 3.163-.85 6.048 6.048 0 0 0 1.652-1.617l-1.658-1.119a4.032 4.032 0 0 1-.489.592z'/%3E%3Ccircle cx='8.5' cy='10.5' r='1.5'/%3E%3Ccircle cx='15.5' cy='10.5' r='1.5'/%3E%3C/svg%3E");
-        }
-
-        .stat-bar {
-            flex-grow: 1;
-            height: 8px;
-            background-color: #f0f0f0;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .stat-fill {
-            height: 100%;
-            border-radius: 4px;
-        }
-
-        .hunger-fill {
-            background-color: #e74c3c;
-        }
-
-        .energy-fill {
-            background-color: #f39c12;
-        }
-
-        .happiness-fill {
-            background-color: #2ecc71;
-        }
-
-        .level-info {
-            font-size: 10px;
-            text-align: center;
-            margin-top: 5px;
-            color: #888;
-        }
-
-        .xp-bar {
-            height: 4px;
-            background-color: #ddd;
-            border-radius: 2px;
-            margin-top: 3px;
-            overflow: hidden;
-        }
-
-        .xp-fill {
-            height: 100%;
-            background-color: #9b59b6;
-        }
-
-        .actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            padding: 15px;
-            background-color: #FFD5A5;
-            border-radius: 15px 15px 0 0;
-            box-shadow: 0 -4px 8px rgba(0,0,0,0.1);
-            position: fixed;
-            bottom: 0;
+            top: 10px;
             left: 0;
-            right: 0;
-        }
-
-        .action-btn {
-            border: none;
-            background-color: white;
-            color: #5A3D2B;
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-family: 'Comic Sans MS', cursive, sans-serif;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
+            width: 100%;
             display: flex;
-            align-items: center;
-            gap: 5px;
+            justify-content: space-around;
+            color: white;
+            font-size: 18px;
+            text-shadow: 1px 1px 2px black;
+            pointer-events: none;
         }
-
-        .action-btn:hover {
-            transform: scale(1.05);
-        }
-
-        .action-btn:active {
-            transform: scale(0.95);
-        }
-
-        .action-btn:disabled {
-            opacity: 0.5;
-            transform: none;
-            cursor: not-allowed;
-        }
-
-        .action-icon {
-            width: 16px;
-            height: 16px;
-            background-size: contain;
-        }
-
-        .feed-icon {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e74c3c'%3E%3Cpath d='M18.06 22.99h1.66c.84 0 1.53-.64 1.63-1.46L23 5.05h-5V1h-1.97v4.05h-4.97l.3 2.34c1.71.47 3.31 1.32 4.27 2.26 1.44 1.42 2.43 2.89 2.43 5.29v8.05zM1 21.99V21h15.03v.99c0 .55-.45 1-1.01 1H2.01c-.56 0-1.01-.45-1.01-1zm15.03-7c0-8-15.03-8-15.03 0h15.03zM1.02 17h15v2h-15z'/%3E%3C/svg%3E");
-        }
-
-        .play-icon {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232ecc71'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E");
-        }
-
-        .sleep-icon {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f39c12'%3E%3Cpath d='M12.34 2.02C6.59 1.82 2 6.42 2 12c0 5.52 4.48 10 10 10 3.71 0 6.93-2.02 8.66-5.02-7.51-.25-12.09-8.43-8.32-14.96z'/%3E%3C/svg%3E");
-        }
-
-        .train-icon {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239b59b6'%3E%3Cpath d='M4 9h16v2H4zm0 4h10v2H4z'/%3E%3C/svg%3E");
-        }
-
-        .menu-btn {
-            position: fixed;
-            top: 15px;
-            right: 15px;
-            width: 40px;
-            height: 40px;
-            background-color: white;
-            border: none;
-            border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        
+        #bottomUI {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            width: 100%;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            z-index: 100;
+            justify-content: space-around;
+            color: white;
+            font-size: 18px;
+            text-shadow: 1px 1px 2px black;
+            pointer-events: none;
         }
-
-        .menu-icon {
-            width: 24px;
-            height: 24px;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%235A3D2B'%3E%3Cpath d='M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z'/%3E%3C/svg%3E");
-            background-size: contain;
-        }
-
-        .menu-screen {
-            position: fixed;
+        
+        #startScreen {
+            position: absolute;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(255, 213, 165, 0.95);
-            z-index: 90;
+            width: 100%;
+            height: 100%;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            transform: translateY(-100%);
-            transition: transform 0.3s;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            z-index: 10;
         }
-
-        .menu-screen.active {
-            transform: translateY(0);
+        
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            z-index: 10;
         }
-
-        .menu-item {
-            background-color: white;
-            color: #5A3D2B;
-            padding: 15px 30px;
-            margin: 10px;
-            border-radius: 30px;
-            font-weight: bold;
-            text-decoration: none;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            width: 200px;
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
             text-align: center;
+            color: #ff66cc;
+            text-shadow: 3px 3px 0 #ff0099, 6px 6px 0 #660066;
+        }
+        
+        button {
+            background: linear-gradient(to bottom, #4fc3f7, #1976d2);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 30px;
+            margin-top: 20px;
             cursor: pointer;
+            box-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+            transition: all 0.3s;
         }
-
-        .menu-item:hover {
-            background-color: #FFEEDD;
+        
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(79, 195, 247, 0.8);
         }
-
-        .game-title {
-            font-size: 32px;
-            color: #FF6B6B;
-            margin-bottom: 30px;
-            text-shadow: 3px 3px 0px rgba(0,0,0,0.1);
+        
+        #reloadIndicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.5);
+            color: white;
+            padding: 10px 20px;
+            font-size: 24px;
+            border-radius: 10px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 5;
+            pointer-events: none;
         }
-
-        @media (max-width: 480px) {
-            .pet {
-                width: calc(50% - 20px);
-            }
-            
-            .actions {
-                gap: 5px;
-            }
-            
-            .action-btn {
-                padding: 6px 8px;
-                font-size: 12px;
-            }
+        
+        #crosshair {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            pointer-events: none;
+            z-index: 5;
+            display: none;
+        }
+        
+        .life {
+            width: 24px;
+            height: 24px;
+            background: #ff3333;
+            border-radius: 50%;
+            position: relative;
+            display: inline-block;
+            margin: 0 5px;
+        }
+        
+        .life::before, .life::after {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #ff3333;
+            border-radius: 50%;
+        }
+        
+        .life::before {
+            top: -7px;
+            left: 5px;
+        }
+        
+        .life::after {
+            bottom: -7px;
+            left: 5px;
+        }
+        
+        .life.burned {
+            background: #666;
+        }
+        
+        .life.burned::before, .life.burned::after {
+            background: #666;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Тапики</h1>
-            <div class="pets-count" id="pets-count">1 мишка</div>
-        </header>
-
-        <div class="pets-container" id="pets-container">
-            <!-- Питомцы будут добавляться здесь -->
-        </div>
-
-        <div class="actions">
-            <button class="action-btn" id="feed-btn" onclick="feedPet()">
-                <span class="action-icon feed-icon"></span>
-                Кормить
-            </button>
-            <button class="action-btn" id="play-btn" onclick="playWithPet()">
-                <span class="action-icon play-icon"></span>
-                Играть
-            </button>
-            <button class="action-btn" id="sleep-btn" onclick="restPet()">
-                <span class="action-icon sleep-icon"></span>
-                Спать
-            </button>
-            <button class="action-btn" id="train-btn" onclick="trainPet()">
-                <span class="action-icon train-icon"></span>
-                Тренировать
-            </button>
-        </div>
-
-        <button class="menu-btn" id="menu-btn">
-            <span class="menu-icon"></span>
-        </button>
-
-        <div class="menu-screen" id="menu-screen">
-            <div class="game-title">Тапики</div>
-            <div class="menu-item" onclick="continueGame()">Продолжить</div>
-            <div class="menu-item" onclick="newGame()">Новая игра</div>
-            <div class="menu-item" onclick="showHelp()">Помощь</div>
-        </div>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="topUI">
+        <div>Score: <span id="score">0</span></div>
+        <div>Time: <span id="time">60</span>s</div>
+        <div>Lives: <span id="lives"></span></div>
     </div>
-
+    
+    <div id="bottomUI">
+        <div>Ammo: <span id="ammo">5</span>/5</div>
+        <div>Hits: <span id="hits">0</span> | Miss: <span id="miss">0</span></div>
+        <div>Level: <span id="level">1</span></div>
+    </div>
+    
+    <div id="reloadIndicator">RELOADING</div>
+    
+    <div id="startScreen">
+        <h1>COSMIC COW HUNT</h1>
+        <p>Shoot the cosmic cows before time runs out!</p>
+        <button id="startButton">START GAME</button>
+    </div>
+    
+    <div id="gameOverScreen">
+        <h1>GAME OVER</h1>
+        <p>Your score: <span id="finalScore">0</span></p>
+        <button id="restartButton">PLAY AGAIN</button>
+    </div>
+    
+    <img id="crosshair" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBkPSJNMjU2IDhDMTE5IDggOCAxMTkgOCAyNTZzMTExIDI0OCAyNDggMjQ4IDI0OC0xMTEgMjQ4LTI0OFMzOTMgOCAyNTYgOHptMCA0OGMxMTAuNSAwIDIwMCA4OS41IDIwMCAyMDBzLTg5LjUgMjAwLTIwMCAyMDBTMzYgMzY2LjUgMzYgMjU2IDE0NS41IDU2IDI1NiA1NnptMCAxMjhjLTE3LjcgMC0zMiAxNC4zLTMyIDMyczE0LjMgMzIgMzIgMzIgMzItMTQuMyAzMi0zMi0xNC4zLTMyLTMyLTMyeiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=" alt="crosshair">
+    
     <script>
-        // Игровые данные
-        let gameState = {
-            pets: [],
-            currentPetIndex: 0,
-            lastUpdateTime: Date.now()
-        };
-
-        // Цвета для питомцев
-        const petColors = [
-            'var(--pet-color-1)',
-            'var(--pet-color-2)',
-            'var(--pet-color-3)',
-            'var(--pet-color-4)',
-            'var(--pet-color-5)',
-            'var(--pet-color-6)',
-            'var(--pet-color-7)',
-            'var(--pet-color-8)',
-            'var(--pet-color-9)',
-            'var(--pet-color-10)'
+        // Telegram Web App initialization
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        // Game variables
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const timeElement = document.getElementById('time');
+        const livesElement = document.getElementById('lives');
+        const ammoElement = document.getElementById('ammo');
+        const hitsElement = document.getElementById('hits');
+        const missElement = document.getElementById('miss');
+        const levelElement = document.getElementById('level');
+        const finalScoreElement = document.getElementById('finalScore');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const reloadIndicator = document.getElementById('reloadIndicator');
+        const crosshair = document.getElementById('crosshair');
+        
+        // Game state
+        let score = 0;
+        let timeLeft = 60;
+        let lives = 3;
+        let hits = 0;
+        let miss = 0;
+        let level = 1;
+        let gameActive = false;
+        let cows = [];
+        let bonuses = [];
+        let planets = [];
+        let stars = [];
+        let lastCowTime = 0;
+        let cowInterval = 2000;
+        let ammo = 5;
+        let maxAmmo = 5;
+        let isReloading = false;
+        let reloadTime = 2000;
+        let reloadStart = 0;
+        let animationFrameId;
+        let gameTime = 0;
+        let lastTimeUpdate = 0;
+        let lastBonusTime = 0;
+        let bonusInterval = 10000;
+        
+        // Resize canvas to fit window
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initStars();
+            initPlanets();
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Star class
+        class Star {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = 2 + Math.random() * 3;
+                this.speedX = Math.random() * 0.2 - 0.1;
+                this.speedY = Math.random() * 0.2 - 0.1;
+                this.color = Math.random() > 0.7 ? '#4fc3f7' : '#ffcc00';
+                this.angle = Math.random() * Math.PI * 2;
+                this.rotationSpeed = Math.random() * 0.02 - 0.01;
+                this.twinkleSpeed = Math.random() * 0.05;
+                this.twinklePhase = Math.random() * Math.PI * 2;
+                this.alpha = 0.7 + Math.random() * 0.3;
+            }
+            
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.angle += this.rotationSpeed;
+                this.twinklePhase += this.twinkleSpeed;
+                
+                // Wrap around screen
+                if (this.x < 0) this.x = canvas.width;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.y < 0) this.y = canvas.height;
+                if (this.y > canvas.height) this.y = 0;
+            }
+            
+            draw() {
+                const brightness = 0.7 + Math.sin(this.twinklePhase) * 0.3;
+                
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                ctx.globalAlpha = this.alpha * brightness;
+                
+                // Draw 4-pointed star
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                
+                // Main cross
+                ctx.moveTo(0, -this.size);
+                ctx.lineTo(0, this.size);
+                ctx.moveTo(-this.size, 0);
+                ctx.lineTo(this.size, 0);
+                
+                // Diagonal cross (smaller)
+                const smallSize = this.size * 0.7;
+                ctx.moveTo(-smallSize, -smallSize);
+                ctx.lineTo(smallSize, smallSize);
+                ctx.moveTo(-smallSize, smallSize);
+                ctx.lineTo(smallSize, -smallSize);
+                
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                
+                // Center dot
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+        
+        // Planet class
+        class Planet {
+            constructor() {
+                this.size = 50 + Math.random() * 100;
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height * 0.6;
+                this.speedX = Math.random() * 0.2 - 0.1;
+                this.speedY = Math.random() * 0.2 - 0.1;
+                this.color1 = `hsl(${Math.random() * 60 + 200}, 70%, 50%)`;
+                this.color2 = `hsl(${Math.random() * 60 + 200}, 80%, 30%)`;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotationSpeed = Math.random() * 0.005 - 0.0025;
+                this.hasRing = Math.random() > 0.7;
+                this.ringWidth = this.size * 0.3;
+                this.ringAngle = Math.random() * Math.PI;
+            }
+            
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.rotation += this.rotationSpeed;
+                
+                // Wrap around screen
+                if (this.x < -this.size) this.x = canvas.width + this.size;
+                if (this.x > canvas.width + this.size) this.x = -this.size;
+                if (this.y < -this.size) this.y = canvas.height + this.size;
+                if (this.y > canvas.height + this.size) this.y = -this.size;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                
+                // Draw planet
+                const gradient = ctx.createRadialGradient(
+                    0, 0, this.size * 0.3,
+                    0, 0, this.size
+                );
+                gradient.addColorStop(0, this.color1);
+                gradient.addColorStop(1, this.color2);
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw planet details
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.beginPath();
+                ctx.arc(-this.size * 0.4, -this.size * 0.3, this.size * 0.2, 0, Math.PI * 2);
+                ctx.arc(this.size * 0.3, this.size * 0.2, this.size * 0.15, 0, Math.PI * 2);
+                ctx.arc(this.size * 0.2, -this.size * 0.4, this.size * 0.25, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw ring if planet has one
+                if (this.hasRing) {
+                    ctx.rotate(this.ringAngle);
+                    ctx.strokeStyle = '#8D6E63';
+                    ctx.lineWidth = this.size * 0.1;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.size * 1.2, this.size * 0.4, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    ctx.strokeStyle = '#5D4037';
+                    ctx.lineWidth = this.size * 0.05;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.size * 1.2, this.size * 0.4, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                ctx.restore();
+            }
+        }
+        
+        // Bonus (life) class
+        class Bonus {
+            constructor() {
+                this.size = 30;
+                this.x = Math.random() * (canvas.width - this.size);
+                this.y = Math.random() * (canvas.height - this.size);
+                this.speedX = Math.random() * 2 - 1;
+                this.speedY = Math.random() * 2 - 1;
+                this.color = '#ff3333';
+                this.pulsePhase = 0;
+                this.pulseSpeed = 0.05;
+                this.lifetime = 5000; // 5 seconds
+                this.createdAt = Date.now();
+            }
+            
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.pulsePhase += this.pulseSpeed;
+                
+                // Bounce off edges
+                if (this.x < 0 || this.x > canvas.width - this.size) {
+                    this.speedX *= -1;
+                }
+                if (this.y < 0 || this.y > canvas.height - this.size) {
+                    this.speedY *= -1;
+                }
+                
+                // Check if expired
+                return Date.now() - this.createdAt < this.lifetime;
+            }
+            
+            draw() {
+                const pulseSize = Math.sin(this.pulsePhase) * 5;
+                const currentSize = this.size + pulseSize;
+                
+                ctx.save();
+                ctx.translate(this.x + this.size/2, this.y + this.size/2);
+                
+                // Draw outer circle
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.beginPath();
+                ctx.arc(0, 0, currentSize * 0.6, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw heart
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.moveTo(0, currentSize * -0.2);
+                ctx.bezierCurveTo(
+                    currentSize * 0.3, currentSize * -0.4,
+                    currentSize * 0.4, currentSize * 0.1,
+                    0, currentSize * 0.3
+                );
+                ctx.bezierCurveTo(
+                    currentSize * -0.4, currentSize * 0.1,
+                    currentSize * -0.3, currentSize * -0.4,
+                    0, currentSize * -0.2
+                );
+                ctx.fill();
+                
+                ctx.restore();
+            }
+            
+            isCollected(x, y) {
+                const centerX = this.x + this.size/2;
+                const centerY = this.y + this.size/2;
+                const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+                return distance < this.size/2;
+            }
+        }
+        
+        // Cow types
+        const cowTypes = [
+            { speed: 2, score: 10, color: 'white', helmetColor: 'rgba(150, 200, 255, 0.3)' }, // Basic cow
+            { speed: 3, score: 20, color: '#e0e0e0', helmetColor: 'rgba(200, 150, 255, 0.3)' }, // Faster cow
+            { speed: 1.5, score: 30, color: '#f0f0f0', helmetColor: 'rgba(150, 255, 200, 0.3)' } // Slower but worth more
         ];
-
-        // Инициализация игры
-        function initGame() {
-            // Проверяем, есть ли сохраненные данные
-            const savedGame = localStorage.getItem('tapikiGame');
-            if (savedGame) {
-                gameState = JSON.parse(savedGame);
-                gameState.lastUpdateTime = Date.now();
-                updateStatsOverTime();
-            } else {
-                newGame();
+        
+        // Cow class
+        class Cow {
+            constructor() {
+                this.type = Math.floor(Math.random() * cowTypes.length);
+                const typeData = cowTypes[this.type];
+                
+                this.width = 100;
+                this.height = 40;
+                this.x = Math.random() < 0.5 ? -this.width : canvas.width;
+                this.y = canvas.height - 100 - Math.random() * 300;
+                this.speedX = this.x < 0 ? typeData.speed + Math.random() * typeData.speed : 
+                                          -typeData.speed - Math.random() * typeData.speed;
+                this.speedY = Math.random() * 1 - 0.5;
+                this.legAngle = 0;
+                this.legDirection = 1;
+                this.legSpeed = 0.1 + Math.random() * 0.1;
+                this.hit = false;
+                this.hitTime = 0;
+                this.rotation = 0;
+                this.rotationSpeed = (Math.random() * 0.02 - 0.01) * (this.speedX > 0 ? 1 : -1);
+                this.scale = 0.8 + Math.random() * 0.4;
+                this.color = typeData.color;
+                this.helmetColor = typeData.helmetColor;
+                this.scoreValue = typeData.score;
+                this.movePattern = Math.floor(Math.random() * 3); // 0 = straight, 1 = wave, 2 = zigzag
+                this.patternPhase = 0;
+                this.patternSpeed = Math.random() * 0.02 + 0.01;
             }
             
-            // Инициализация Telegram Web App
-            if (window.Telegram && Telegram.WebApp) {
-                Telegram.WebApp.ready();
-                Telegram.WebApp.expand();
+            update() {
+                if (this.hit) {
+                    this.speedY += 0.2;
+                    this.rotation += this.rotationSpeed * 3;
+                    this.y += this.speedY;
+                    this.x += this.speedX * 0.5;
+                    
+                    if (Date.now() - this.hitTime > 2000) {
+                        return false; // Remove cow
+                    }
+                    return true;
+                }
+                
+                // Update position based on movement pattern
+                this.x += this.speedX;
+                
+                switch (this.movePattern) {
+                    case 1: // Wave pattern
+                        this.patternPhase += this.patternSpeed;
+                        this.y += Math.sin(this.patternPhase) * 1.5;
+                        break;
+                    case 2: // Zigzag pattern
+                        this.patternPhase += this.patternSpeed;
+                        this.y += Math.sin(this.patternPhase) > 0 ? 1 : -1;
+                        break;
+                }
+                
+                // Leg animation
+                this.legAngle += this.legSpeed * this.legDirection;
+                if (Math.abs(this.legAngle) > 0.3) {
+                    this.legDirection *= -1;
+                }
+                
+                // Slight rotation
+                this.rotation += this.rotationSpeed;
+                
+                // Remove if off screen
+                if ((this.speedX > 0 && this.x > canvas.width + this.width) || 
+                    (this.speedX < 0 && this.x < -this.width)) {
+                    return false;
+                }
+                
+                // Keep within vertical bounds
+                if (this.y < 50 || this.y > canvas.height - 100) {
+                    this.speedY *= -1;
+                }
+                
+                return true;
             }
             
-            renderGame();
-            
-            // Настройка меню
-            document.getElementById('menu-btn').addEventListener('click', toggleMenu);
-        }
-
-        // Новая игра
-        function newGame() {
-            gameState = {
-                pets: [createNewPet(0)],
-                currentPetIndex: 0,
-                lastUpdateTime: Date.now()
-            };
-            saveGame();
-            hideMenu();
-            renderGame();
-        }
-
-        // Продолжить игру
-        function continueGame() {
-            hideMenu();
-        }
-
-        // Показать помощь
-        function showHelp() {
-            alert(`Как играть в Тапики:
-            
-1. Кормите мишку - увеличивает сытость
-2. Играйте с мишкой - увеличивает счастье
-3. Укладывайте спать - восстанавливает энергию
-4. Тренируйте - дает опыт для роста
-            
-Когда мишка достигнет +3 уровня от текущего максимума, появится новый мишка!`);
-        }
-
-        // Создать нового питомца
-        function createNewPet(index) {
-            return {
-                hunger: 80,
-                energy: 80,
-                happiness: 80,
-                level: 1,
-                xp: 0,
-                maxLevel: 1,
-                color: petColors[index % petColors.length]
-            };
-        }
-
-        // Сохранить игру
-        function saveGame() {
-            localStorage.setItem('tapikiGame', JSON.stringify(gameState));
-        }
-
-        // Показать/скрыть меню
-        function toggleMenu() {
-            document.getElementById('menu-screen').classList.toggle('active');
-        }
-
-        function hideMenu() {
-            document.getElementById('menu-screen').classList.remove('active');
-        }
-
-        // Обновить статистику с течением времени
-        function updateStatsOverTime() {
-            const now = Date.now();
-            const timePassed = now - gameState.lastUpdateTime;
-            const minutesPassed = timePassed / (1000 * 60);
-            
-            if (minutesPassed > 0) {
-                gameState.pets.forEach(pet => {
-                    // Уменьшаем показатели со временем
-                    const decayRate = Math.min(5 * minutesPassed, 30);
-                    pet.hunger = Math.max(0, pet.hunger - decayRate);
-                    pet.energy = Math.max(0, pet.energy - decayRate * 0.7);
-                    pet.happiness = Math.max(0, pet.happiness - decayRate * 0.5);
+            draw() {
+                ctx.save();
+                ctx.translate(this.x + this.width/2, this.y + this.height/2);
+                ctx.rotate(this.rotation);
+                ctx.scale(this.scale, this.scale);
+                
+                // Draw cow body (horizontal)
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw head with helmet (vertical)
+                ctx.save();
+                const headDirection = this.speedX > 0 ? 1 : -1;
+                ctx.translate(this.width/2 * headDirection, 0);
+                ctx.rotate(Math.PI/2); // Rotate head to be vertical
+                
+                // Helmet bubble
+                ctx.fillStyle = this.helmetColor;
+                ctx.beginPath();
+                ctx.arc(0, 0, 25, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(150, 200, 255, 0.7)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Head
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, 20, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Eyes with highlights
+                ctx.fillStyle = 'black';
+                
+                // Left eye
+                ctx.beginPath();
+                ctx.arc(-8, -5, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(-6, -6, 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Right eye
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(8, -5, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(6, -6, 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Nose
+                ctx.fillStyle = '#D2B48C';
+                ctx.beginPath();
+                ctx.arc(0, 10, 7, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Nostrils
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(-3, 10, 1.5, 0, Math.PI * 2);
+                ctx.arc(3, 10, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Horns (Buffalo style)
+                ctx.strokeStyle = '#5D4037';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(-10, -15);
+                ctx.lineTo(-20, -25);
+                ctx.lineTo(-25, -35);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(10, -15);
+                ctx.lineTo(20, -25);
+                ctx.lineTo(25, -35);
+                ctx.stroke();
+                
+                ctx.restore();
+                
+                // Legs (4 legs with black hooves)
+                ctx.fillStyle = this.color;
+                const legPositions = [
+                    { x: -this.width/3, y: this.height/4 },
+                    { x: -this.width/6, y: this.height/4 },
+                    { x: this.width/6, y: this.height/4 },
+                    { x: this.width/3, y: this.height/4 }
+                ];
+                
+                legPositions.forEach(pos => {
+                    ctx.save();
+                    ctx.translate(pos.x, pos.y);
+                    ctx.rotate(this.legAngle);
+                    
+                    // Leg
+                    ctx.fillRect(-4, 0, 8, 30);
+                    
+                    // Hoof
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(-6, 28, 12, 6);
+                    
+                    ctx.restore();
+                    ctx.fillStyle = this.color;
                 });
                 
-                gameState.lastUpdateTime = now;
-                saveGame();
+                // Udder for some cows (random)
+                if (Math.random() < 0.3) {
+                    ctx.fillStyle = 'pink';
+                    ctx.beginPath();
+                    ctx.ellipse(0, this.height/3, 10, 5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Teats
+                    ctx.fillStyle = 'lightpink';
+                    for (let i = -1; i <= 1; i += 0.5) {
+                        ctx.beginPath();
+                        ctx.arc(i * 5, this.height/3 + 5, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+                
+                // If hit, draw explosion
+                if (this.hit) {
+                    const timeSinceHit = Date.now() - this.hitTime;
+                    const explosionSize = Math.min(timeSinceHit / 10, 50);
+                    const alpha = 1 - timeSinceHit / 2000;
+                    
+                    ctx.fillStyle = `rgba(255, 165, 0, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, explosionSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (i / 8) * Math.PI * 2;
+                        const length = explosionSize * (0.7 + Math.random() * 0.3);
+                        ctx.strokeStyle = `rgba(255, 100, 0, ${alpha})`;
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(Math.cos(angle) * length, Math.sin(angle) * length);
+                        ctx.stroke();
+                    }
+                }
+                
+                ctx.restore();
+            }
+            
+            isHit(x, y) {
+                if (this.hit) return false;
+                
+                // Simple ellipse collision detection
+                const centerX = this.x + this.width/2;
+                const centerY = this.y + this.height/2;
+                const radiusX = this.width/2 * this.scale;
+                const radiusY = this.height/2 * this.scale;
+                
+                const dx = x - centerX;
+                const dy = y - centerY;
+                
+                return (dx * dx) / (radiusX * radiusX) + (dy * dy) / (radiusY * radiusY) <= 1;
+            }
+            
+            setHit() {
+                this.hit = true;
+                this.hitTime = Date.now();
+                this.speedY = -3;
+                return this.scoreValue;
             }
         }
-
-        // Отрисовать игру
-        function renderGame() {
-            updateStatsOverTime();
+        
+        // Initialize stars
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 100; i++) {
+                stars.push(new Star());
+            }
+        }
+        
+        // Initialize planets
+        function initPlanets() {
+            planets = [];
+            for (let i = 0; i < 3; i++) {
+                planets.push(new Planet());
+            }
+        }
+        
+        // Update lives display
+        function updateLivesDisplay() {
+            livesElement.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                const life = document.createElement('span');
+                life.className = 'life' + (i >= lives ? ' burned' : '');
+                livesElement.appendChild(life);
+            }
+        }
+        
+        // Game functions
+        function startGame() {
+            score = 0;
+            timeLeft = 60;
+            lives = 3;
+            hits = 0;
+            miss = 0;
+            level = 1;
+            cows = [];
+            bonuses = [];
+            ammo = maxAmmo;
+            isReloading = false;
+            gameActive = true;
+            gameTime = 0;
+            lastTimeUpdate = 0;
+            lastBonusTime = 0;
+            cowInterval = 2000;
             
-            const petsContainer = document.getElementById('pets-container');
-            petsContainer.innerHTML = '';
+            updateLivesDisplay();
+            scoreElement.textContent = score;
+            timeElement.textContent = timeLeft;
+            hitsElement.textContent = hits;
+            missElement.textContent = miss;
+            levelElement.textContent = level;
+            ammoElement.textContent = `${ammo}/${maxAmmo}`;
             
-            // Обновляем счетчик питомцев
-            document.getElementById('pets-count').textContent = 
-                `${gameState.pets.length} ${pluralize(gameState.pets.length, 'мишка', 'мишки', 'мишек')}`;
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            reloadIndicator.style.opacity = '0';
+            crosshair.style.display = 'block';
             
-            // Рендерим всех питомцев
-            gameState.pets.forEach((pet, index) => {
-                const petElement = document.createElement('div');
-                petElement.className = `pet ${index === gameState.currentPetIndex ? 'active' : ''}`;
-                petElement.style.setProperty('--pet-color', pet.color);
-                petElement.onclick = () => {
-                    gameState.currentPetIndex = index;
-                    renderGame();
-                };
-                
-                petElement.innerHTML = `
-                    <div class="pet-shape"></div>
-                    <div class="pet-stats">
-                        <div class="stat">
-                            <div class="stat-icon hunger-icon"></div>
-                            <div class="stat-bar"><div class="stat-fill hunger-fill" style="width: ${pet.hunger}%"></div></div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-icon energy-icon"></div>
-                            <div class="stat-bar"><div class="stat-fill energy-fill" style="width: ${pet.energy}%"></div></div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-icon happiness-icon"></div>
-                            <div class="stat-bar"><div class="stat-fill happiness-fill" style="width: ${pet.happiness}%"></div></div>
-                        </div>
-                        <div class="level-info">Уровень ${pet.level}</div>
-                        <div class="xp-bar"><div class="xp-fill" style="width: ${(pet.xp / (pet.level * 20)) * 100}%"></div></div>
-                    </div>
-                `;
-                
-                petsContainer.appendChild(petElement);
+            lastCowTime = Date.now();
+            initStars();
+            initPlanets();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+        
+        function endGame() {
+            gameActive = false;
+            cancelAnimationFrame(animationFrameId);
+            gameOverScreen.style.display = 'flex';
+            finalScoreElement.textContent = score;
+            crosshair.style.display = 'none';
+            
+            // Send data to Telegram bot if launched from Telegram
+            if (tg.initDataUnsafe?.user?.id) {
+                tg.sendData(JSON.stringify({
+                    action: 'game_over',
+                    score: score,
+                    level: level
+                }));
+            }
+        }
+        
+        function gameLoop(timestamp) {
+            if (!gameActive) return;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background
+            drawBackground();
+            
+            // Draw planets
+            planets.forEach(planet => {
+                planet.update();
+                planet.draw();
             });
             
-            saveGame();
-        }
-
-        // Покормить питомца
-        function feedPet() {
-            const pet = gameState.pets[gameState.currentPetIndex];
+            // Draw stars
+            stars.forEach(star => {
+                star.update();
+                star.draw();
+            });
             
-            if (pet.energy < 10) {
-                alert('Мишка слишком устал, чтобы есть!');
-                return;
+            // Spawn new cows
+            if (Date.now() - lastCowTime > cowInterval) {
+                cows.push(new Cow());
+                lastCowTime = Date.now();
             }
             
-            pet.hunger = Math.min(100, pet.hunger + 30);
-            pet.energy = Math.max(0, pet.energy - 10);
-            addXp(pet, 5);
-            
-            renderGame();
-        }
-
-        // Поиграть с питомцем
-        function playWithPet() {
-            const pet = gameState.pets[gameState.currentPetIndex];
-            
-            if (pet.energy < 15 || pet.hunger < 20) {
-                alert('Мишка слишком устал или голоден для игр!');
-                return;
+            // Spawn bonuses
+            if (Date.now() - lastBonusTime > bonusInterval && lives < 3) {
+                bonuses.push(new Bonus());
+                lastBonusTime = Date.now();
             }
             
-            pet.happiness = Math.min(100, pet.happiness + 25);
-            pet.energy = Math.max(0, pet.energy - 15);
-            pet.hunger = Math.max(0, pet.hunger - 20);
-            addXp(pet, 8);
+            // Update and draw cows
+            cows = cows.filter(cow => cow.update());
+            cows.forEach(cow => cow.draw());
             
-            renderGame();
-        }
-
-        // Отдых питомца
-        function restPet() {
-            const pet = gameState.pets[gameState.currentPetIndex];
+            // Update and draw bonuses
+            bonuses = bonuses.filter(bonus => bonus.update());
+            bonuses.forEach(bonus => bonus.draw());
             
-            pet.energy = Math.min(100, pet.energy + 40);
-            pet.happiness = Math.max(0, pet.happiness - 10);
-            addXp(pet, 3);
+            // Update game time
+            gameTime += 16; // Assuming ~60fps
             
-            renderGame();
-        }
-
-        // Тренировка питомца
-        function trainPet() {
-            const pet = gameState.pets[gameState.currentPetIndex];
-            
-            if (pet.energy < 30 || pet.hunger < 30 || pet.happiness < 30) {
-                alert('Мишка не готов к тренировке!');
-                return;
-            }
-            
-            pet.energy = Math.max(0, pet.energy - 30);
-            pet.hunger = Math.max(0, pet.hunger - 30);
-            pet.happiness = Math.max(0, pet.happiness - 30);
-            addXp(pet, 15);
-            
-            renderGame();
-        }
-
-        // Добавить опыт питомцу
-        function addXp(pet, amount) {
-            pet.xp += amount;
-            
-            // Проверяем повышение уровня
-            while (pet.xp >= pet.level * 20) {
-                pet.xp -= pet.level * 20;
-                pet.level++;
+            // Update time left every second
+            if (timestamp - lastTimeUpdate >= 1000) {
+                timeLeft--;
+                timeElement.textContent = timeLeft;
+                lastTimeUpdate = timestamp;
                 
-                // Обновляем максимальный уровень
-                const maxLevel = Math.max(...gameState.pets.map(p => p.level));
-                pet.maxLevel = maxLevel;
+                if (timeLeft <= 0) {
+                    endGame();
+                    return;
+                }
                 
-                // Проверяем, нужно ли добавить нового питомца
-                if (pet.level >= maxLevel + 3 && gameState.pets.length < 10) {
-                    const newPet = createNewPet(gameState.pets.length);
-                    newPet.maxLevel = pet.level;
-                    gameState.pets.push(newPet);
-                    alert('Появился новый мишка!');
+                // Level progression
+                const newLevel = Math.floor(gameTime / 60000) + 1;
+                if (newLevel > level) {
+                    level = newLevel;
+                    levelElement.textContent = level;
+                    cowInterval = Math.max(500, 2000 - (level - 1) * 300);
                 }
             }
+            
+            // Handle automatic reloading
+            if (ammo <= 0 && !isReloading) {
+                isReloading = true;
+                reloadStart = Date.now();
+                reloadIndicator.style.opacity = '1';
+                playSound('reload');
+            }
+            
+            // Finish reloading
+            if (isReloading && Date.now() - reloadStart >= reloadTime) {
+                isReloading = false;
+                ammo = maxAmmo;
+                ammoElement.textContent = `${ammo}/${maxAmmo}`;
+                reloadIndicator.style.opacity = '0';
+            }
+            
+            animationFrameId = requestAnimationFrame(gameLoop);
         }
-
-        // Функция для склонения слов
-        function pluralize(number, one, few, many) {
-            if (number % 10 === 1 && number % 100 !== 11) {
-                return one;
-            } else if ([2, 3, 4].includes(number % 10) && ![12, 13, 14].includes(number % 100)) {
-                return few;
-            } else {
-                return many;
+        
+        function drawBackground() {
+            // Draw nebula effect
+            const gradient = ctx.createRadialGradient(
+                canvas.width / 2, canvas.height / 2, 0,
+                canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height) / 2
+            );
+            gradient.addColorStop(0, 'rgba(0, 42, 92, 0.8)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        function shoot(x, y) {
+            if (!gameActive || isReloading) return false;
+            
+            // Check if hit a bonus first
+            let bonusHit = false;
+            bonuses.forEach((bonus, index) => {
+                if (bonus.isCollected(x, y)) {
+                    if (lives < 3) {
+                        lives++;
+                        updateLivesDisplay();
+                        playSound('bonus');
+                    }
+                    bonuses.splice(index, 1);
+                    bonusHit = true;
+                }
+            });
+            
+            if (bonusHit) return true;
+            
+            // Decrease ammo
+            ammo--;
+            ammoElement.textContent = `${ammo}/${maxAmmo}`;
+            
+            // Play shoot sound
+            playSound('shoot');
+            
+            // Check if hit any cow
+            let hit = false;
+            cows.forEach(cow => {
+                if (cow.isHit(x, y)) {
+                    const points = cow.setHit();
+                    if (points) {
+                        score += points;
+                        scoreElement.textContent = score;
+                        hits++;
+                        hitsElement.textContent = hits;
+                        hit = true;
+                        playSound('hit');
+                    }
+                }
+            });
+            
+            if (!hit) {
+                miss++;
+                missElement.textContent = miss;
+                
+                // Lose a life for each miss
+                if (lives > 0) {
+                    lives--;
+                    updateLivesDisplay();
+                    
+                    if (lives <= 0) {
+                        endGame();
+                    }
+                }
+            }
+            
+            // Draw bullet effect
+            drawBulletEffect(x, y);
+            
+            return hit;
+        }
+        
+        function drawBulletEffect(x, y) {
+            // Bullet hole
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Flash
+            const gradient = ctx.createRadialGradient(
+                x, y, 0,
+                x, y, 15
+            );
+            gradient.addColorStop(0, 'rgba(255, 255, 0, 0.8)');
+            gradient.addColorStop(1, 'rgba(255, 255, 0, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Smoke puff
+            for (let i = 0; i < 5; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 10 + Math.random() * 10;
+                const size = 2 + Math.random() * 4;
+                
+                ctx.fillStyle = `rgba(200, 200, 200, ${0.3 + Math.random() * 0.2})`;
+                ctx.beginPath();
+                ctx.arc(
+                    x + Math.cos(angle) * distance,
+                    y + Math.sin(angle) * distance,
+                    size, 0, Math.PI * 2
+                );
+                ctx.fill();
             }
         }
-
-        // Инициализация игры при загрузке
-        window.onload = initGame;
+        
+        // Simple sound effects using Web Audio API
+        function playSound(type) {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                let frequency, duration, waveType;
+                
+                switch (type) {
+                    case 'shoot':
+                        frequency = 1000;
+                        duration = 0.05;
+                        waveType = 'square';
+                        break;
+                    case 'hit':
+                        frequency = 300;
+                        duration = 0.3;
+                        waveType = 'sawtooth';
+                        break;
+                    case 'reload':
+                        frequency = 200;
+                        duration = 0.5;
+                        waveType = 'sine';
+                        break;
+                    case 'bonus':
+                        frequency = 800;
+                        duration = 0.2;
+                        waveType = 'triangle';
+                        break;
+                    default:
+                        return;
+                }
+                
+                oscillator.type = waveType;
+                oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.log('Audio error:', e);
+            }
+        }
+        
+        // Event listeners
+        canvas.addEventListener('click', (e) => {
+            if (!gameActive && startScreen.style.display === 'none') return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            shoot(x, y);
+        });
+        
+        canvas.addEventListener('touchstart', (e) => {
+            if (!gameActive && startScreen.style.display === 'none') return;
+            e.preventDefault();
+            
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            
+            shoot(x, y);
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            crosshair.style.left = (e.clientX - 15) + 'px';
+            crosshair.style.top = (e.clientY - 15) + 'px';
+        });
+        
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+        
+        // Initialize
+        updateLivesDisplay();
+        
+        // Show instructions for Telegram users
+        if (tg.platform !== 'unknown') {
+            document.querySelector('#startScreen p').textContent = 
+                'Shoot the cosmic cows before time runs out! Use your finger to aim and tap to shoot. Collect hearts to regain lives.';
+        }
     </script>
 </body>
 </html>
