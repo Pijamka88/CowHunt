@@ -2,260 +2,268 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-  <title>Cow Hunt</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Winged Cows Hunt</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       overflow: hidden;
-      background: #000;
+      background-color: #0a0f2c;
       font-family: sans-serif;
-      color: white;
     }
     canvas {
       display: block;
-      background: linear-gradient(#001f3f, #0074D9);
+      background: linear-gradient(#0a0f2c, #1e1e4c);
       width: 100vw;
       height: 100vh;
     }
     #menu {
       position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0, 0, 60, 0.95);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      z-index: 10;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: white;
     }
-    #menu button {
-      padding: 15px 30px;
-      font-size: 1.5em;
+    #playBtn {
+      padding: 20px 40px;
+      font-size: 24px;
       border: none;
-      background: #ff4136;
+      border-radius: 10px;
+      background: #3b82f6;
       color: white;
       cursor: pointer;
-      margin-top: 20px;
-      border-radius: 10px;
+      transition: background 0.3s;
+    }
+    #playBtn:hover {
+      background: #2563eb;
     }
   </style>
 </head>
 <body>
 <div id="menu">
-  <h1>🛸 Cow Hunt 🛸</h1>
-  <button onclick="startGame()">Начать игру</button>
+  <h1>Winged Cows Hunt</h1>
+  <button id="playBtn">Играть</button>
 </div>
 <canvas id="game"></canvas>
 
 <script>
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-let width = window.innerWidth;
-let height = window.innerHeight;
-canvas.width = width;
-canvas.height = height;
+let width, height;
+function resize() {
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
 
-let gameInterval, spawnInterval;
+// === ГЛАВНОЕ МЕНЮ ===
+const menu = document.getElementById("menu");
+const playBtn = document.getElementById("playBtn");
+playBtn.onclick = () => {
+  menu.style.display = "none";
+  startGame();
+};
+
+// === ИГРОВАЯ ЛОГИКА ===
 let cows = [];
-let explosions = [];
+let particles = [];
 let score = 0;
-let isRunning = false;
+let gameRunning = false;
 
-window.addEventListener('resize', () => {
-  width = window.innerWidth;
-  height = window.innerHeight;
-  canvas.width = width;
-  canvas.height = height;
-});
-
-function startGame() {
-  document.getElementById('menu').style.display = 'none';
-  isRunning = true;
-  score = 0;
-  cows = [];
-  explosions = [];
-
-  gameInterval = setInterval(update, 1000 / 30);
-  spawnInterval = setInterval(spawnCow, 1000);
-}
-
-function spawnCow() {
-  const direction = Math.random() > 0.5 ? 1 : -1;
-  const x = direction === 1 ? -100 : width + 100;
-  const y = 100 + Math.random() * (height - 200);
-  const speed = 1 + Math.random() * 1.5;
-  cows.push({x, y, vx: direction * speed, vy: 0, alive: true});
-}
-
-function drawCow(cow) {
-  ctx.save();
-  ctx.translate(cow.x, cow.y);
-  ctx.scale(cow.vx > 0 ? 1 : -1, 1);
-
-  // Тело
-  ctx.fillStyle = '#888';
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 40, 25, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Голова
-  ctx.fillStyle = '#aaa';
-  ctx.beginPath();
-  ctx.arc(35, -5, 15, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Шлем
-  ctx.strokeStyle = 'cyan';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(35, -5, 18, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Рожки
-  ctx.strokeStyle = 'white';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(25, -20);
-  ctx.lineTo(20, -35);
-  ctx.moveTo(45, -20);
-  ctx.lineTo(50, -35);
-  ctx.stroke();
-
-  // Глаза
-  ctx.fillStyle = 'white';
-  ctx.beginPath();
-  ctx.arc(30, -7, 4, 0, Math.PI * 2);
-  ctx.arc(40, -7, 4, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Нос
-  ctx.fillStyle = 'brown';
-  ctx.beginPath();
-  ctx.rect(33, 2, 4, 4);
-  ctx.fill();
-
-  // Ноздри
-  ctx.fillStyle = 'black';
-  ctx.beginPath();
-  ctx.arc(34, 3, 1, 0, Math.PI * 2);
-  ctx.arc(37, 3, 1, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Ноги
-  ctx.strokeStyle = 'gray';
-  ctx.lineWidth = 2;
-  for (let i = 0; i < 4; i++) {
-    ctx.beginPath();
-    ctx.moveTo(-20 + i*13, 15);
-    ctx.lineTo(-20 + i*13, 30);
-    ctx.stroke();
+class Cow {
+  constructor() {
+    this.reset();
   }
 
-  ctx.restore();
+  reset() {
+    this.size = Math.random() * 40 + 30;
+    this.x = Math.random() < 0.5 ? -this.size : width + this.size;
+    this.y = Math.random() * (height * 0.7) + 50;
+    this.vx = (Math.random() * 2 + 1) * (this.x < 0 ? 1 : -1);
+    this.vy = (Math.random() - 0.5) * 1;
+    this.dead = false;
+    this.fallSpeed = 0;
+  }
+
+  update() {
+    if (!this.dead) {
+      this.x += this.vx;
+      this.y += this.vy;
+      if ((this.vx > 0 && this.x > width + this.size) || (this.vx < 0 && this.x < -this.size)) {
+        this.reset();
+      }
+    } else {
+      this.y += this.fallSpeed;
+      this.fallSpeed += 0.3;
+      if (this.y > height + this.size) {
+        this.reset();
+      }
+    }
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    const scale = this.size / 50;
+    ctx.scale(scale, scale);
+
+    // Тело
+    ctx.fillStyle = "#8B4513"; // коричневое
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 25, 40, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Шлем
+    ctx.fillStyle = "#aaaaff88";
+    ctx.beginPath();
+    ctx.arc(0, -35, 15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Рожки
+    ctx.strokeStyle = "#ffdd00";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-10, -45);
+    ctx.lineTo(-20, -65);
+    ctx.moveTo(10, -45);
+    ctx.lineTo(20, -65);
+    ctx.stroke();
+
+    // Глаза
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(-10, -10, 7, 0, Math.PI * 2);
+    ctx.arc(10, -10, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Зрачки
+    ctx.fillStyle = "black";
+    ctx.beginPath();
+    ctx.arc(-10, -10, 3, 0, Math.PI * 2);
+    ctx.arc(10, -10, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Нос
+    ctx.fillStyle = "#8B0000";
+    ctx.beginPath();
+    ctx.arc(0, 10, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ноздри
+    ctx.fillStyle = "black";
+    ctx.beginPath();
+    ctx.arc(-2, 10, 1.5, 0, Math.PI * 2);
+    ctx.arc(2, 10, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  isHit(x, y) {
+    return !this.dead && Math.hypot(this.x - x, this.y - y) < this.size;
+  }
 }
 
-function drawExplosion(explosion) {
-  ctx.save();
-  ctx.translate(explosion.x, explosion.y);
-  ctx.globalAlpha = 1 - explosion.life / 30;
-  ctx.fillStyle = 'orange';
-  ctx.beginPath();
-  ctx.arc(0, 0, explosion.size, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+class Particle {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.vx = (Math.random() - 0.5) * 6;
+    this.vy = (Math.random() - 0.5) * 6;
+    this.life = 30;
+    this.color = ["#ffffff", "#aaaaff", "#ffcc00"][Math.floor(Math.random() * 3)];
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.life--;
+  }
+
+  draw(ctx) {
+    ctx.fillStyle = this.color;
+    ctx.globalAlpha = this.life / 30;
+    ctx.fillRect(this.x, this.y, 3, 3);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function spawnCows() {
+  while (cows.length < 5) {
+    cows.push(new Cow());
+  }
 }
 
 function update() {
+  if (!gameRunning) return;
+
   ctx.clearRect(0, 0, width, height);
 
-  // Обновить коров
-  for (let cow of cows) {
-    if (!cow.alive) {
-      cow.vy += 0.5;
-      cow.y += cow.vy;
-      if (cow.y > height + 50) cow.toRemove = true;
-    } else {
-      cow.x += cow.vx;
-      if (cow.x > width + 100 || cow.x < -100) cow.toRemove = true;
-    }
+  // Звезды
+  ctx.fillStyle = "white";
+  for (let i = 0; i < 100; i++) {
+    ctx.fillRect(Math.random() * width, Math.random() * height, 1, 1);
   }
 
-  // Удалить мертвых коров
-  cows = cows.filter(c => !c.toRemove);
+  // Обновление объектов
+  spawnCows();
+  particles.forEach(p => p.update());
+  particles = particles.filter(p => p.life > 0);
+  cows.forEach(c => c.update());
 
-  // Обновить взрывы
-  for (let e of explosions) {
-    e.life++;
-    e.size += 1;
-  }
-  explosions = explosions.filter(e => e.life < 30);
-
-  // Отрисовать всё
-  for (let cow of cows) drawCow(cow);
-  for (let e of explosions) drawExplosion(e);
+  // Отрисовка
+  particles.forEach(p => p.draw(ctx));
+  cows.forEach(c => c.draw(ctx));
 
   // Счет
-  ctx.fillStyle = 'white';
-  ctx.font = '24px sans-serif';
+  ctx.fillStyle = "white";
+  ctx.font = "24px sans-serif";
   ctx.fillText("Счёт: " + score, 20, 40);
+
+  requestAnimationFrame(update);
 }
 
-canvas.addEventListener('click', (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-
+function shoot(x, y) {
   for (let cow of cows) {
-    if (cow.alive && inCow(mx, my, cow)) {
-      cow.alive = false;
-      explosions.push({
-        x: cow.x,
-        y: cow.y,
-        life: 0,
-        size: 10
-      });
+    if (cow.isHit(x, y)) {
+      cow.dead = true;
+      cow.fallSpeed = 1;
       score++;
-      break;
+      createExplosion(x, y);
     }
   }
-});
-
-function inCow(mx, my, cow) {
-  const dx = mx - cow.x;
-  const dy = my - cow.y;
-  return Math.sqrt(dx*dx + dy*dy) < 40;
 }
 
-document.body.addEventListener('touchstart', e => {
+function createExplosion(x, y) {
+  for (let i = 0; i < 30; i++) {
+    particles.push(new Particle(x, y));
+  }
+}
+
+// === Управление ===
+canvas.addEventListener("touchstart", e => {
   const touch = e.touches[0];
   const rect = canvas.getBoundingClientRect();
-  const mx = touch.clientX - rect.left;
-  const my = touch.clientY - rect.top;
+  shoot(touch.clientX - rect.left, touch.clientY - rect.top);
+});
 
-  for (let cow of cows) {
-    if (cow.alive && inCow(mx, my, cow)) {
-      cow.alive = false;
-      explosions.push({
-        x: cow.x,
-        y: cow.y,
-        life: 0,
-        size: 10
-      });
-      score++;
-      break;
-    }
-  }
-}, { passive: true });
+canvas.addEventListener("mousedown", e => {
+  const rect = canvas.getBoundingClientRect();
+  shoot(e.clientX - rect.left, e.clientY - rect.top);
+});
 
-// Перезапуск игры при повторном нажатии
-window.restartGame = () => {
-  clearInterval(gameInterval);
-  clearInterval(spawnInterval);
-  startGame();
-};
+// === Запуск игры ===
+function startGame() {
+  score = 0;
+  cows = [];
+  particles = [];
+  gameRunning = true;
+  update();
+}
 </script>
 </body>
 </html>
