@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cow Hunt</title>
+  <title>Космические Коровы</title>
   <style>
     html, body {
       margin: 0;
@@ -27,6 +27,9 @@
       transform: translate(-50%, -50%);
       text-align: center;
       z-index: 10;
+      background: rgba(0,0,0,0.7);
+      padding: 30px;
+      border-radius: 10px;
     }
     #menu button {
       padding: 15px 30px;
@@ -38,17 +41,39 @@
       color: white;
       cursor: pointer;
     }
-    #menu h1 {
-      margin-bottom: 20px;
+    #scoreboard {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 18px;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 8px;
     }
   </style>
 </head>
 <body>
   <div id="menu">
     <h1>Космические Коровы</h1>
+    <p>Тапай по коровам!</p>
     <button onclick="startGame()">Начать игру</button>
+    <p>Рекорд: <span id="record">0</span></p>
+  </div>
+  <div id="scoreboard" style="display:none;">
+    Счёт: <span id="score">0</span><br/>
+    Рекорд: <span id="highScore">0</span>
   </div>
   <canvas id="gameCanvas"></canvas>
+
+  <audio id="bgMusic" loop>
+    <source src="https://files.catbox.moe/9kzqkc.mp3" type="audio/mp3">
+  </audio>
+  <audio id="shootSound">
+    <source src="https://files.catbox.moe/4n6s9j.mp3" type="audio/mp3">
+  </audio>
+  <audio id="hitSound">
+    <source src="https://files.catbox.moe/p9v6y9.mp3" type="audio/mp3">
+  </audio>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
@@ -65,20 +90,33 @@
     resize();
 
     let gameRunning = false;
+    let score = 0;
+    let highScore = localStorage.getItem("cowHuntHigh") || 0;
+
+    document.getElementById("highScore").innerText = highScore;
+    const bgMusic = document.getElementById("bgMusic");
+    const shootSound = document.getElementById("shootSound");
+    const hitSound = document.getElementById("hitSound");
 
     const cows = [];
     let cowFrame = 0;
     let lastCowTime = 0;
 
     function startGame() {
+      score = 0;
+      document.getElementById("score").innerText = score;
+      document.getElementById("scoreboard").style.display = "block";
       document.getElementById("menu").style.display = "none";
+      cows.length = 0;
+      bgMusic.play().catch(() => {});
       gameRunning = true;
       requestAnimationFrame(gameLoop);
     }
 
     function createCow() {
       const direction = Math.random() > 0.5 ? 1 : -1;
-      const speed = 0.5 + Math.random() * 1.5;
+      const baseSpeed = 0.8 + Math.random() * 1.2;
+      const speed = baseSpeed + score * 0.05; // Увеличивается со счётом
       cows.push({
         x: direction === 1 ? -60 : width + 60,
         y: 100 + Math.random() * (height - 200),
@@ -172,7 +210,7 @@
 
     function updateCows(dt) {
       cowFrame += dt * 0.01;
-      if (Date.now() - lastCowTime > 1500) {
+      if (Date.now() - lastCowTime > Math.max(1000 - score * 20, 300)) {
         createCow();
         lastCowTime = Date.now();
       }
@@ -190,11 +228,22 @@
     }
 
     function checkHit(x, y) {
+      shootSound.currentTime = 0;
+      shootSound.play();
       for (const cow of cows) {
         const dx = cow.x - x;
         const dy = cow.y - y;
         if (dx * dx + dy * dy < 900 && !cow.dead) {
           cow.dead = true;
+          hitSound.currentTime = 0;
+          hitSound.play();
+          score++;
+          document.getElementById("score").innerText = score;
+          if (score > highScore) {
+            highScore = score;
+            localStorage.setItem("cowHuntHigh", highScore);
+            document.getElementById("highScore").innerText = highScore;
+          }
           break;
         }
       }
