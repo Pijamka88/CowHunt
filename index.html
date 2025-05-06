@@ -2,197 +2,233 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Cosmic Cow Hunt</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Коровки в космосе</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      background: #001f3f;
+      background: #0a0f2c;
       overflow: hidden;
+      font-family: 'Arial', sans-serif;
+      color: white;
     }
     canvas {
       display: block;
-      margin: 0 auto;
-      background: linear-gradient(to bottom, #001f3f, #0074D9);
-      border: 4px solid #00aaff;
+      background: #0a0f2c;
     }
-    #score {
+    #game-over {
       position: absolute;
-      top: 10px;
-      left: 10px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 3em;
+      text-align: center;
       color: white;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 20px;
+      z-index: 10;
+      display: none;
     }
   </style>
 </head>
 <body>
-<canvas id="gameCanvas"></canvas>
-<div id="score">Score: 0</div>
+  <canvas id="gameCanvas"></canvas>
+  <div id="game-over">Игра окончена!</div>
 
-<script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
 
-// Установить размеры экрана
-canvas.width = window.innerWidth * 0.9;
-canvas.height = window.innerHeight * 0.9;
-
-let score = 0;
-let cows = [];
-
-const cowSize = 60;
-const cowSpeed = 2;
-const shootCooldown = 500; // ms
-
-let lastShotTime = 0;
-
-class Cow {
-  constructor() {
-    this.x = Math.random() * (canvas.width - cowSize);
-    this.y = -cowSize;
-    this.vx = (Math.random() - 0.5) * 2;
-    this.vy = cowSpeed + Math.random();
-    this.frame = 0;
-    this.alive = true;
-  }
-
-  update() {
-    if (!this.alive) return;
-    this.x += this.vx;
-    this.y += this.vy;
-    this.frame = (this.frame + 0.2) % 4;
-    if (this.y > canvas.height) {
-      this.alive = false;
+    // Установка размера холста
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     }
-  }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
 
-  draw() {
-    if (!this.alive) return;
-    const frameIndex = Math.floor(this.frame);
-    ctx.save();
-    ctx.translate(this.x + cowSize / 2, this.y + cowSize / 2);
+    const gravity = 0.5;
+    const jumpPower = -10;
+    const cowSpeed = 3;
+    const cowWidth = 60;
+    const cowHeight = 80;
 
-    // Тело коровы
-    ctx.fillStyle = "white";
-    ctx.fillRect(-cowSize / 2, -cowSize / 2, cowSize, cowSize / 2);
+    let cows = [];
+    let score = 0;
+    let gameOver = false;
 
-    // Голова в шлеме
-    ctx.beginPath();
-    ctx.arc(0, -cowSize / 2.5, cowSize / 3, 0, Math.PI * 2);
-    ctx.fillStyle = "#888";
-    ctx.fill(); // Шлем
-    ctx.strokeStyle = "#000";
-    ctx.stroke();
+    class Cow {
+      constructor(x) {
+        this.x = x;
+        this.y = Math.random() * (canvas.height - cowHeight - 100) + 50;
+        this.vy = 0;
+        this.facingRight = Math.random() > 0.5;
+        this.legs = [0, 0];
+        this.jump = false;
+        this.angle = 0;
+        this.rotationSpeed = 0.05;
+      }
 
-    // Рожки
-    ctx.beginPath();
-    ctx.moveTo(-cowSize / 8, -cowSize);
-    ctx.lineTo(-cowSize / 10, -cowSize / 2.5);
-    ctx.moveTo(cowSize / 8, -cowSize);
-    ctx.lineTo(cowSize / 10, -cowSize / 2.5);
-    ctx.strokeStyle = "brown";
-    ctx.lineWidth = 3;
-    ctx.stroke();
+      update() {
+        if (!this.jump) {
+          this.vy += gravity;
+          this.y += this.vy;
+        } else {
+          this.vy += gravity;
+          this.y += this.vy;
+        }
 
-    // Глаза
-    ctx.fillStyle = "white";
-    ctx.fillRect(-cowSize / 8 - 5, -cowSize / 2.8, 5, 5);
-    ctx.fillRect(cowSize / 8, -cowSize / 2.8, 5, 5);
-    ctx.fillStyle = "black";
-    ctx.fillRect(-cowSize / 8 - 3, -cowSize / 2.8 + 1, 3, 3);
-    ctx.fillRect(cowSize / 8 + 2, -cowSize / 2.8 + 1, 3, 3);
+        // Поворот коровы
+        this.angle += this.rotationSpeed * (this.facingRight ? 1 : -1);
 
-    // Нос
-    ctx.fillStyle = "brown";
-    ctx.beginPath();
-    ctx.ellipse(0, -cowSize / 3.5, 6, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "black";
-    ctx.beginPath();
-    ctx.arc(-2, -cowSize / 3.5, 1, 0, Math.PI * 2);
-    ctx.arc(2, -cowSize / 3.5, 1, 0, Math.PI * 2);
-    ctx.fill();
+        // Анимация ног
+        this.legs[0] = (Math.sin(Date.now() * 0.005 + this.x)) * 10;
+        this.legs[1] = (Math.sin(Date.now() * 0.005 + this.x + 100)) * 10;
 
-    // Анимация ног
-    const legOffset = Math.sin(frameIndex) * 3;
-    ctx.fillStyle = "white";
-    ctx.fillRect(-cowSize / 3, cowSize / 6, 8, 10); // Левая передняя
-    ctx.fillRect(cowSize / 3 - 8, cowSize / 6, 8, 10); // Правая передняя
-    ctx.fillRect(-cowSize / 3, cowSize / 2 - 5 + legOffset, 8, 10); // Левая задняя
-    ctx.fillRect(cowSize / 3 - 8, cowSize / 2 - 5 + legOffset, 8, 10); // Правая задняя
+        // Проверка границ
+        if (this.y + cowHeight > canvas.height || this.y < 0) {
+          this.vy *= -0.5;
+        }
 
-    ctx.restore();
-  }
+        // Движение влево/вправо
+        if (this.facingRight) {
+          this.x += cowSpeed;
+        } else {
+          this.x -= cowSpeed;
+        }
 
-  isHit(x, y) {
-    return (
-      x >= this.x &&
-      x <= this.x + cowSize &&
-      y >= this.y &&
-      y <= this.y + cowSize
-    );
-  }
-}
+        // Обратный ход
+        if (this.x > canvas.width + cowWidth) {
+          this.x = -cowWidth;
+          this.y = Math.random() * (canvas.height - cowHeight - 100) + 50;
+          this.vy = 0;
+        } else if (this.x < -cowWidth) {
+          this.x = canvas.width;
+          this.y = Math.random() * (canvas.height - cowHeight - 100) + 50;
+          this.vy = 0;
+        }
+      }
 
-function spawnCow() {
-  cows.push(new Cow());
-}
+      draw() {
+        ctx.save();
+        ctx.translate(this.x + cowWidth / 2, this.y + cowHeight / 2);
+        ctx.rotate(this.angle);
 
-function update() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Тело коровы
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, 25, 0, Math.PI * 2);
+        ctx.fill();
 
-  // Звёзды
-  for (let i = 0; i < 100; i++) {
-    ctx.fillStyle = "white";
-    ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 1, 1);
-  }
+        // Голова (прозрачный шлем)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.beginPath();
+        ctx.arc(0, -30, 15, 0, Math.PI * 2);
+        ctx.fill();
 
-  cows.forEach((cow) => {
-    cow.update();
-    cow.draw();
-  });
+        // Рога
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-10, -35);
+        ctx.lineTo(-20, -50);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(10, -35);
+        ctx.lineTo(20, -50);
+        ctx.stroke();
 
-  // Очистить мёртвых коров
-  cows = cows.filter((cow) => cow.alive);
+        // Глаза
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(-7, -35, 3, 0, Math.PI * 2);
+        ctx.arc(7, -35, 3, 0, Math.PI * 2);
+        ctx.fill();
 
-  requestAnimationFrame(update);
-}
+        // Нос
+        ctx.fillStyle = '#8b4513';
+        ctx.beginPath();
+        ctx.arc(0, -20, 5, 0, Math.PI * 2);
+        ctx.fill();
 
-function shoot(x, y) {
-  const now = Date.now();
-  if (now - lastShotTime < shootCooldown) return;
-  lastShotTime = now;
+        // Ноздри
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(-2, -18, 2, 0, Math.PI * 2);
+        ctx.arc(2, -18, 2, 0, Math.PI * 2);
+        ctx.fill();
 
-  cows.forEach((cow) => {
-    if (cow.isHit(x, y)) {
-      cow.alive = false;
-      score++;
-      document.getElementById("score").innerText = `Score: ${score}`;
+        // Ноги
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-5, 10 + this.legs[0], 5, 0, Math.PI * 2);
+        ctx.arc(5, 10 + this.legs[1], 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      checkHit(x, y) {
+        return (
+          x > this.x &&
+          x < this.x + cowWidth &&
+          y > this.y &&
+          y < this.y + cowHeight
+        );
+      }
     }
-  });
-}
 
-canvas.addEventListener("click", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  shoot(x, y);
-});
+    function spawnCows() {
+      for (let i = 0; i < 3; i++) {
+        cows.push(new Cow(Math.random() * canvas.width));
+      }
+    }
 
-// Мобильные устройства (Telegram Web App)
-canvas.addEventListener("touchstart", (e) => {
-  const touch = e.touches[0];
-  const rect = canvas.getBoundingClientRect();
-  const x = touch.clientX - rect.left;
-  const y = touch.clientY - rect.top;
-  shoot(x, y);
-});
+    function gameLoop() {
+      if (gameOver) return;
 
-// Периодическое появление коров
-setInterval(spawnCow, 1000);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-update();
-</script>
+      cows.forEach((cow, index) => {
+        cow.update();
+        cow.draw();
+
+        if (cow.checkHit(mouseX, mouseY)) {
+          cows.splice(index, 1);
+          score++;
+          spawnCows();
+        }
+      });
+
+      // Отрисовка счета
+      ctx.fillStyle = 'white';
+      ctx.font = '20px Arial';
+      ctx.fillText(`Счет: ${score}`, 20, 30);
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    let mouseX = 0;
+    let mouseY = 0;
+
+    canvas.addEventListener('click', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    function startGame() {
+      cows = [];
+      score = 0;
+      gameOver = false;
+      spawnCows();
+      gameLoop();
+    }
+
+    document.getElementById('game-over').addEventListener('click', () => {
+      startGame();
+      document.getElementById('game-over').style.display = 'none';
+    });
+
+    startGame();
+  </script>
 </body>
 </html>
