@@ -153,19 +153,6 @@
             z-index: 100;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
         }
-        .ammo-bar {
-            width: 300px;
-            height: 20px;
-            background-color: #3399ff;
-            border-radius: 10px;
-            position: relative;
-        }
-        .ammo-fill {
-            height: 100%;
-            background-color: yellow;
-            border-radius: 10px;
-            transition: width 0.3s ease-in-out;
-        }
     </style>
 </head>
 <body>
@@ -177,7 +164,7 @@
     <div id="gameOverMenu" class="menu" style="display: none;">
         <h1>МИССИЯ ЗАВЕРШЕНА!</h1>
         <p>Счет: <span id="finalScore">0</span></p>
-        <p>Попаданий/Промахов: <span id="finalHitsMisses">0</span></p>
+        <p>Попаданий/Промахов: <span id="finalHitsMisses">0/0</span></p>
         <p>Уровень: <span id="finalLevel">1</span></p>
         <button onclick="startGame()">ИГРАТЬ СНОВА</button>
     </div>
@@ -199,20 +186,11 @@
     <div id="bottomHUD">
         <div class="hud-item">
             <div class="hud-label">ПАТРОНЫ</div>
-            <div class="hud-value">
-                <div class="ammo-bar" id="ammoBar">
-                    <div class="ammo-fill" id="ammoFill"></div>
-                </div>
-            </div>
+            <div class="hud-value" id="ammo"></div>
         </div>
-        <div class="hud-item">
-            <div class="hud-label">УРОВЕНЬ</div>
-            <div class="hud-value" id="levelDisplayValue">1</div>
-        </div>
-        <div class="hud-item">
-            <div class="hud-label">ПОПАДАНИЯ/ПРОМАХИ</div>
-            <div class="hud-value" id="hitsMisses">0</div>
-        </div>
+    </div>
+    <div id="levelDisplay">
+        Уровень: <span id="currentLevel">1</span>
     </div>
     <canvas id="gameCanvas"></canvas>
     <script>
@@ -230,7 +208,8 @@
         let score = 0;
         let lives = 3;
         let timeLeft = 60;
-        let hitsMisses = 0;
+        let hits = 0;
+        let misses = 0;
         let ammo = 5;
         let isReloading = false;
         let gameTimer;
@@ -290,10 +269,10 @@
                 stars.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
-                    size: Math.random() * 10 + 8,
+                    size: Math.random() * 5 + 3,
                     alpha: Math.random() * 0.8 + 0.2,
                     speed: Math.random() * 0.2 + 0.1,
-                    color: Math.random() > 0.5 ? '#3399ff' : '#ffcc00',
+                    color: Math.random() > 0.5 ? '#3399ff' : '#ffd700',
                     phase: Math.random() * Math.PI * 2,
                     rotation: Math.random() * Math.PI * 2
                 });
@@ -422,108 +401,89 @@
                     ctx.stroke();
                     // Head at the end of body
                     const headX = this.width/2;
-                    // Head with helmet
-                    ctx.fillStyle = 'white'; // White head
+                    // White head with transparent helmet
+                    ctx.fillStyle = 'white';
                     ctx.beginPath();
                     ctx.arc(headX, 0, this.headRadius, 0, Math.PI * 2);
                     ctx.fill();
                     // Transparent helmet
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.globalAlpha = 0.3;
                     ctx.beginPath();
                     ctx.arc(headX, 0, this.headRadius - 2, 0, Math.PI * 2);
                     ctx.fill();
-                    // Eyes (centered horizontally on head)
+                    ctx.globalAlpha = 1;
+                    // Eyes (centered horizontally on head) with animation
                     const eyeYOffset = 6;
+                    const eyeWiggle = Math.sin(Date.now() / 500 + this.x * 0.01) * 2;
                     // Left eye
                     ctx.fillStyle = 'white';
                     ctx.beginPath();
-                    ctx.arc(headX - 5, -eyeYOffset, 5, 0, Math.PI * 2);
+                    ctx.arc(headX - 5, -eyeYOffset + eyeWiggle, 5, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.arc(headX - 5, -eyeYOffset, 3, 0, Math.PI * 2);
+                    ctx.arc(headX - 5, -eyeYOffset + eyeWiggle, 3, 0, Math.PI * 2);
                     ctx.fill();
                     // Eye highlight
                     ctx.fillStyle = 'white';
                     ctx.beginPath();
-                    ctx.arc(headX - 6, -eyeYOffset - 2, 1.5, 0, Math.PI * 2);
+                    ctx.arc(headX - 6, -eyeYOffset - 2 + eyeWiggle, 1.5, 0, Math.PI * 2);
                     ctx.fill();
                     // Right eye
                     ctx.fillStyle = 'white';
                     ctx.beginPath();
-                    ctx.arc(headX + 5, -eyeYOffset, 5, 0, Math.PI * 2);
+                    ctx.arc(headX + 5, -eyeYOffset + eyeWiggle, 5, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.arc(headX + 5, -eyeYOffset, 3, 0, Math.PI * 2);
+                    ctx.arc(headX + 5, -eyeYOffset + eyeWiggle, 3, 0, Math.PI * 2);
                     ctx.fill();
                     // Eye highlight
                     ctx.fillStyle = 'white';
                     ctx.beginPath();
-                    ctx.arc(headX + 4, -eyeYOffset - 2, 1.5, 0, Math.PI * 2);
+                    ctx.arc(headX + 4, -eyeYOffset - 2 + eyeWiggle, 1.5, 0, Math.PI * 2);
                     ctx.fill();
-                    // Nose (beige with nostrils)
+                    // Nose (beige with nostrils) closer to eyes
                     ctx.fillStyle = '#f5d0b0';
                     ctx.beginPath();
-                    ctx.ellipse(headX, eyeYOffset + 5, 8, 6, 0, 0, Math.PI * 2);
+                    ctx.ellipse(headX, eyeYOffset + 3, 8, 6, 0, 0, Math.PI * 2);
                     ctx.fill();
                     // Nostrils
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.arc(headX - 3, eyeYOffset + 5, 2, 0, Math.PI * 2);
+                    ctx.arc(headX - 3, eyeYOffset + 3, 2, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.beginPath();
-                    ctx.arc(headX + 3, eyeYOffset + 5, 2, 0, Math.PI * 2);
+                    ctx.arc(headX + 3, eyeYOffset + 3, 2, 0, Math.PI * 2);
                     ctx.fill();
-                    // Horns (bull-like horns)
+                    // Goat-like horns (smaller)
                     ctx.fillStyle = '#ffcc99';
                     ctx.beginPath();
-                    ctx.moveTo(headX - 15, -this.headRadius + 5);
-                    ctx.lineTo(headX - 25, -this.headRadius - 10);
-                    ctx.lineTo(headX - 10, -this.headRadius);
+                    ctx.moveTo(headX - 10, -this.headRadius + 5);
+                    ctx.lineTo(headX - 15, -this.headRadius - 5);
+                    ctx.lineTo(headX - 5, -this.headRadius);
                     ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
                     ctx.beginPath();
-                    ctx.moveTo(headX + 15, -this.headRadius + 5);
-                    ctx.lineTo(headX + 25, -this.headRadius - 10);
-                    ctx.lineTo(headX + 10, -this.headRadius);
+                    ctx.moveTo(headX + 10, -this.headRadius + 5);
+                    ctx.lineTo(headX + 15, -this.headRadius - 5);
+                    ctx.lineTo(headX + 5, -this.headRadius);
                     ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
-                    // Wings from center top (realistic bird-like animation)
-                    const wingYOffset = Math.sin(this.wingPhase) * 15;
-                    ctx.fillStyle = cowTypes[this.type].wingColor;
+                    // Simple stick wings
+                    ctx.strokeStyle = '#666';
+                    ctx.lineWidth = 4;
                     // Right wing
                     ctx.beginPath();
                     ctx.moveTo(5, -5);
-                    ctx.bezierCurveTo(
-                        20, -10 + wingYOffset/2,
-                        30, -30 + wingYOffset,
-                        5, -40 + wingYOffset
-                    );
-                    ctx.bezierCurveTo(
-                        15, -20 + wingYOffset/2,
-                        15, -10 + wingYOffset/4,
-                        5, -5
-                    );
-                    ctx.fill();
-                    ctx.strokeStyle = '#666';
+                    ctx.lineTo(5, -40);
                     ctx.stroke();
                     // Left wing
                     ctx.beginPath();
                     ctx.moveTo(-5, -5);
-                    ctx.bezierCurveTo(
-                        -20, -10 + wingYOffset/2,
-                        -30, -30 + wingYOffset,
-                        -5, -40 + wingYOffset
-                    );
-                    ctx.bezierCurveTo(
-                        -15, -20 + wingYOffset/2,
-                        -15, -10 + wingYOffset/4,
-                        -5, -5
-                    );
-                    ctx.fill();
+                    ctx.lineTo(-5, -40);
                     ctx.stroke();
                     // Legs (4 legs with animation)
                     ctx.strokeStyle = '#666';
@@ -663,7 +623,8 @@
             score = 0;
             lives = 3;
             timeLeft = config.levelDuration;
-            hitsMisses = 0;
+            hits = 0;
+            misses = 0;
             ammo = 5;
             isReloading = false;
             level = 1;
@@ -698,7 +659,7 @@
             const maxCows = Math.min(8, config.maxCows + Math.floor(level / 2));
             config.maxCows = maxCows;
             // Flash level display
-            const levelDisplay = document.getElementById('levelDisplayValue');
+            const levelDisplay = document.getElementById('levelDisplay');
             levelDisplay.style.color = '#ffcc00';
             levelDisplay.style.textShadow = '0 0 10px #ffcc00';
             setTimeout(() => {
@@ -712,7 +673,7 @@
             clearTimeout(reloadTimeout);
             document.getElementById('gameOverMenu').style.display = 'block';
             document.getElementById('finalScore').textContent = score;
-            document.getElementById('finalHitsMisses').textContent = hitsMisses;
+            document.getElementById('finalHitsMisses').textContent = `${hits}/${misses}`;
             document.getElementById('finalLevel').textContent = level;
         }
         function updateHUD() {
@@ -727,13 +688,22 @@
                     heart.classList.remove('burned');
                 }
             });
-            // Update ammo bar
-            const ammoFill = document.getElementById('ammoFill');
-            const percent = (ammo / 5) * 100;
-            ammoFill.style.width = `${percent}%`;
+            // Update ammo (yellow rectangles)
+            const ammoDiv = document.getElementById('ammo');
+            ammoDiv.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const rect = document.createElement('div');
+                rect.style.width = '20px';
+                rect.style.height = '10px';
+                rect.style.margin = '0 2px';
+                rect.style.backgroundColor = 'yellow';
+                rect.style.opacity = i < ammo ? '1' : '0.3';
+                rect.style.transition = 'opacity 0.3s';
+                ammoDiv.appendChild(rect);
+            }
         }
         function updateLevelDisplay() {
-            document.getElementById('levelDisplayValue').textContent = level;
+            document.getElementById('currentLevel').textContent = level;
         }
         function spawnCow() {
             if (!gameActive || timeLeft <= 0) return;
@@ -773,7 +743,7 @@
                     cow.die();
                     deadCows.push(cow);
                     score += cowTypes[cow.type].score * level;
-                    hitsMisses++;
+                    hits++;
                     updateHUD();
                     shots.push(new Shot(x, y));
                     hit = true;
@@ -796,7 +766,7 @@
                 }
             }
             if (!hit) {
-                hitsMisses++;
+                misses++;
                 lives = Math.max(0, lives - 1);
                 updateHUD();
                 if (lives <= 0) {
