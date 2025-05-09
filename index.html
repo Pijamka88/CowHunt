@@ -162,7 +162,7 @@
     <div id="gameOverMenu" class="menu" style="display: none;">
         <h1>МИССИЯ ЗАВЕРШЕНА!</h1>
         <p>Счет: <span id="finalScore">0</span></p>
-        <p>Попаданий/Промахов: <span id="finalHitsMisses">0/0</span></p>
+        <p>Попад/Промах: <span id="finalHitsMisses">0/0</span></p>
         <p>Уровень: <span id="finalLevel">1</span></p>
         <button onclick="startGame()">ИГРАТЬ СНОВА</button>
     </div>
@@ -194,7 +194,7 @@
             <div class="hud-value" id="currentLevel">1</div>
         </div>
         <div class="hud-item">
-            <div class="hud-label">ПОПАДАНИЯ/ПРОМАХИ</div>
+            <div class="hud-label">ПОПАД/ПРОМАХ</div>
             <div class="hud-value" id="hitsMisses">0/0</div>
         </div>
     </div>
@@ -233,10 +233,10 @@
             spawnInterval: 1500,
             maxCows: 4,
             cowWidth: 80,
-            cowHeight: 40,
+            cowHeight: 50,  // Более овальное тело
             headRadius: 20,
             reloadTime: 1500,
-            starCount: 100,  // Увеличено количество звезд
+            starCount: 70,
             nebulaCount: 3,
             lifeBonusChance: 0.15,
             levelDuration: 60,
@@ -246,32 +246,32 @@
         // Cow types
         const cowTypes = [
             { // Type 0 - Basic
-                color: '#ffffff',  // Более белый цвет
+                color: '#ffffff',  // Белое тело
                 speed: 1.5,
-                score: 100,
+                score: 30,  // Уменьшено в 3 раза
                 movement: 'linear',
-                wingColor: '#cccccc'  // Серый цвет для палок-крыльев
+                wingColor: '#3399ff'  // Синие крылья
             },
             { // Type 1 - Zigzag
                 color: '#f8f8f8',
                 speed: 2.0,
-                score: 150,
+                score: 45,
                 movement: 'zigzag',
-                wingColor: '#bbbbbb'
+                wingColor: '#3070b0'
             },
             { // Type 2 - Circular
                 color: '#f0f0f0',
                 speed: 1.8,
-                score: 200,
+                score: 60,
                 movement: 'circular',
-                wingColor: '#aaaaaa'
+                wingColor: '#286090'
             },
             { // Type 3 - Fast
                 color: '#e8e8e8',
                 speed: 2.5,
-                score: 250,
+                score: 75,
                 movement: 'linear',
-                wingColor: '#999999'
+                wingColor: '#204d74'
             }
         ];
 
@@ -282,7 +282,7 @@
                 stars.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
-                    size: Math.random() * 3 + 2,  // Уменьшен размер звезд
+                    size: Math.random() * 8 + 6,  // Увеличен размер звезд
                     alpha: Math.random() * 0.8 + 0.2,
                     speed: Math.random() * 0.2 + 0.1,
                     color: Math.random() > 0.5 ? '#FFD700' : '#40E0D0',  // Золотой и бирюзовый
@@ -487,36 +487,50 @@
                         ctx.scale(-1, 1);
                     }
                     
-                    // Body (horizontal)
+                    // Body (oval)
                     ctx.fillStyle = cowTypes[this.type].color;
                     ctx.beginPath();
                     ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
                     ctx.fill();
-                    ctx.strokeStyle = '#666';
+                    ctx.strokeStyle = '#000';  // Черная окантовка
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
                     // Head at the end of body
                     const headX = this.width/2;
                     
-                    // White head with outline
+                    // White head with helmet
                     ctx.fillStyle = '#ffffff';
                     ctx.beginPath();
                     ctx.arc(headX, 0, this.headRadius, 0, Math.PI * 2);
                     ctx.fill();
-                    ctx.strokeStyle = '#666';
+                    ctx.strokeStyle = '#000';
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
-                    // Transparent helmet
-                    ctx.fillStyle = 'rgba(100, 200, 255, 0.3)';
+                    // Transparent blue helmet
+                    ctx.fillStyle = 'rgba(51, 153, 255, 0.3)';
                     ctx.beginPath();
                     ctx.arc(headX, 0, this.headRadius - 2, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Eyes with animation (blinking)
+                    // Eyebrows (stick-like)
                     const eyeYOffset = 6;
-                    const eyeClose = Math.abs(Math.sin(this.eyePhase)) * 0.7;
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 2;
+                    // Left eyebrow
+                    ctx.beginPath();
+                    ctx.moveTo(headX - 10, -eyeYOffset - 8);
+                    ctx.lineTo(headX - 2, -eyeYOffset - 6);
+                    ctx.stroke();
+                    // Right eyebrow
+                    ctx.beginPath();
+                    ctx.moveTo(headX + 10, -eyeYOffset - 8);
+                    ctx.lineTo(headX + 2, -eyeYOffset - 6);
+                    ctx.stroke();
+                    
+                    // Eyes with animation (random blinking)
+                    const eyeClose = Math.sin(this.eyePhase * 2) > 0.7 ? 1 : 0;
                     
                     // Left eye
                     ctx.fillStyle = 'white';
@@ -525,7 +539,7 @@
                     ctx.fill();
                     
                     ctx.fillStyle = '#333';
-                    if (eyeClose > 0.6) {
+                    if (eyeClose) {
                         // Closed eye
                         ctx.beginPath();
                         ctx.moveTo(headX - 10, -eyeYOffset);
@@ -534,7 +548,7 @@
                     } else {
                         // Open eye
                         ctx.beginPath();
-                        ctx.arc(headX - 5, -eyeYOffset, 3 * (1 - eyeClose), 0, Math.PI * 2);
+                        ctx.arc(headX - 5, -eyeYOffset, 3, 0, Math.PI * 2);
                         ctx.fill();
                         
                         // Eye highlight
@@ -551,7 +565,7 @@
                     ctx.fill();
                     
                     ctx.fillStyle = '#333';
-                    if (eyeClose > 0.6) {
+                    if (eyeClose) {
                         // Closed eye
                         ctx.beginPath();
                         ctx.moveTo(headX, -eyeYOffset);
@@ -560,7 +574,7 @@
                     } else {
                         // Open eye
                         ctx.beginPath();
-                        ctx.arc(headX + 5, -eyeYOffset, 3 * (1 - eyeClose), 0, Math.PI * 2);
+                        ctx.arc(headX + 5, -eyeYOffset, 3, 0, Math.PI * 2);
                         ctx.fill();
                         
                         // Eye highlight
@@ -573,55 +587,57 @@
                     // Nose (ближе к глазам)
                     ctx.fillStyle = '#f5d0b0';
                     ctx.beginPath();
-                    ctx.ellipse(headX, eyeYOffset - 2, 8, 6, 0, 0, Math.PI * 2);  // Поднят нос выше
+                    ctx.ellipse(headX, eyeYOffset - 5, 8, 6, 0, 0, Math.PI * 2);  // Поднят нос выше
                     ctx.fill();
                     
                     // Nostrils
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.arc(headX - 3, eyeYOffset - 2, 2, 0, Math.PI * 2);
+                    ctx.arc(headX - 3, eyeYOffset - 5, 2, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.beginPath();
-                    ctx.arc(headX + 3, eyeYOffset - 2, 2, 0, Math.PI * 2);
+                    ctx.arc(headX + 3, eyeYOffset - 5, 2, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Goat horns (козьи рога)
-                    ctx.fillStyle = '#d2b48c';
-                    ctx.lineWidth = 2;
-                    
+                    // Small brown horns (небольшие коричневые рожки)
+                    ctx.fillStyle = '#8B4513';  // Коричневый цвет
                     // Left horn
                     ctx.beginPath();
-                    ctx.moveTo(headX - 10, -this.headRadius + 5);
-                    ctx.lineTo(headX - 15, -this.headRadius - 10);
-                    ctx.lineTo(headX - 20, -this.headRadius - 15);
-                    ctx.stroke();
-                    
+                    ctx.moveTo(headX - 8, -this.headRadius + 5);
+                    ctx.lineTo(headX - 12, -this.headRadius - 5);
+                    ctx.lineTo(headX - 6, -this.headRadius);
+                    ctx.closePath();
+                    ctx.fill();
                     // Right horn
                     ctx.beginPath();
-                    ctx.moveTo(headX + 10, -this.headRadius + 5);
-                    ctx.lineTo(headX + 15, -this.headRadius - 10);
-                    ctx.lineTo(headX + 20, -this.headRadius - 15);
-                    ctx.stroke();
+                    ctx.moveTo(headX + 8, -this.headRadius + 5);
+                    ctx.lineTo(headX + 12, -this.headRadius - 5);
+                    ctx.lineTo(headX + 6, -this.headRadius);
+                    ctx.closePath();
+                    ctx.fill();
                     
-                    // Stick wings (палки вместо крыльев)
+                    // Wings (одно крыло за телом)
                     ctx.strokeStyle = cowTypes[this.type].wingColor;
                     ctx.lineWidth = 3;
                     
-                    // Right wing (stick)
+                    // Front wing (stick)
                     ctx.beginPath();
                     ctx.moveTo(5, -5);
                     ctx.lineTo(25, -25 + Math.sin(this.wingPhase) * 10);
                     ctx.stroke();
                     
-                    // Left wing (stick)
+                    // Back wing (behind body)
+                    ctx.save();
+                    ctx.translate(-this.width/3, 0);
                     ctx.beginPath();
-                    ctx.moveTo(-5, -5);
-                    ctx.lineTo(-25, -25 + Math.sin(this.wingPhase) * 10);
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(-20, -20 + Math.sin(this.wingPhase + Math.PI) * 10);
                     ctx.stroke();
+                    ctx.restore();
                     
-                    // Legs (4 legs with animation)
-                    ctx.strokeStyle = '#666';
-                    ctx.lineWidth = 4;
+                    // Legs (4 legs - shorter and thicker, white)
+                    ctx.strokeStyle = '#ffffff';  // Белые ноги
+                    ctx.lineWidth = 6;  // Толще
                     
                     const legPairs = [
                         { x: -this.width/4, offset: 0 },
@@ -632,8 +648,8 @@
                     
                     legPairs.forEach((leg, i) => {
                         const legSwing = Math.sin(this.legPhase + leg.offset) * 0.3;
-                        const upperLegLength = 15;
-                        const lowerLegLength = 12;
+                        const upperLegLength = 10;  // Короче
+                        const lowerLegLength = 8;   // Короче
                         
                         ctx.beginPath();
                         ctx.moveTo(leg.x, this.height/2);
@@ -650,9 +666,9 @@
                         // Hooves (black squares)
                         ctx.fillStyle = '#333';
                         ctx.fillRect(
-                            leg.x + Math.sin(legSwing) * 8 - 3,
-                            this.height/2 + upperLegLength + lowerLegLength - 3,
-                            6, 6
+                            leg.x + Math.sin(legSwing) * 8 - 4,
+                            this.height/2 + upperLegLength + lowerLegLength - 4,
+                            8, 8
                         );
                     });
                 } else {
@@ -666,16 +682,22 @@
                         
                         if (part.type === 'body') {
                             // Body part
-                            ctx.fillStyle = '#888';
+                            ctx.fillStyle = cowTypes[this.type].color;
                             ctx.beginPath();
                             ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
                             ctx.fill();
+                            ctx.strokeStyle = '#000';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
                         } else if (part.type === 'head') {
                             // Head part
                             ctx.fillStyle = '#ffffff';
                             ctx.beginPath();
                             ctx.arc(0, 0, this.headRadius, 0, Math.PI * 2);
                             ctx.fill();
+                            ctx.strokeStyle = '#000';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
                             
                             // X eyes
                             ctx.strokeStyle = '#333';
@@ -695,16 +717,16 @@
                             ctx.stroke();
                         } else if (part.type === 'leg') {
                             // Leg part
-                            ctx.strokeStyle = '#666';
-                            ctx.lineWidth = 4;
+                            ctx.strokeStyle = '#ffffff';
+                            ctx.lineWidth = 6;
                             ctx.beginPath();
                             ctx.moveTo(0, 0);
-                            ctx.lineTo(0, 15);
+                            ctx.lineTo(0, 10);
                             ctx.stroke();
                             
                             // Hoof
                             ctx.fillStyle = '#333';
-                            ctx.fillRect(-3, 15 - 3, 6, 6);
+                            ctx.fillRect(-4, 10 - 4, 8, 8);
                         }
                         
                         ctx.restore();
@@ -940,7 +962,7 @@
                     cow.die();
                     deadCows.push(cow);
                     
-                    score += cowTypes[cow.type].score * level;
+                    score += cowTypes[cow.type].score;
                     hits++;
                     updateHUD();
                     shots.push(new Shot(x, y));
@@ -1015,8 +1037,11 @@
         }
 
         function drawBackground() {
-            // Draw space background
-            ctx.fillStyle = '#002244';
+            // Draw space background with gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#003366');
+            gradient.addColorStop(1, '#001a33');
+            ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             // Draw nebulas
