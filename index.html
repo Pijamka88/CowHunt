@@ -8,12 +8,12 @@
             margin: 0;
             overflow: hidden;
             touch-action: none;
-            background: #003366;
+            background: #002855;
             font-family: 'Arial', sans-serif;
             color: white;
         }
         #gameCanvas {
-            background: #003366;
+            background: #002855;
             display: block;
         }
         .menu {
@@ -205,8 +205,11 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
-        // Game area padding
-        const gameAreaPadding = 80;
+        // Game area with top and bottom margins
+        const gameArea = {
+            top: 100,
+            bottom: 100
+        };
         
         // Game state
         let gameActive = false;
@@ -238,9 +241,9 @@
             maxCows: 4,
             cowWidth: 80,
             cowHeight: 50,
-            headRadius: 16,  // Уменьшен размер головы
+            headRadius: 16,  // Уменьшена голова
             reloadTime: 1500,
-            starCount: 50,   // Уменьшено количество звезд
+            starCount: 50,    // Уменьшено количество звезд
             planetCount: 3,
             nebulaCount: 3,
             lifeBonusChance: 0.15,
@@ -251,32 +254,32 @@
         // Cow types
         const cowTypes = [
             { // Type 0 - Basic
-                color: '#ffffff',
+                color: '#f8f8f8',
                 speed: 3.0,
                 score: 20,
                 movement: 'linear',
                 wingColor: 'rgba(150, 200, 255, 0.7)'
             },
             { // Type 1 - Zigzag
-                color: '#f8f8f8',
+                color: '#e8e8e8',
                 speed: 4.0,
                 score: 30,
                 movement: 'zigzag',
-                wingColor: 'rgba(140, 190, 255, 0.7)'
+                wingColor: 'rgba(130, 180, 255, 0.7)'
             },
             { // Type 2 - Circular
-                color: '#f0f0f0',
+                color: '#d8d8d8',
                 speed: 3.6,
                 score: 40,
                 movement: 'circular',
-                wingColor: 'rgba(130, 180, 255, 0.7)'
+                wingColor: 'rgba(110, 160, 255, 0.7)'
             },
             { // Type 3 - Fast
-                color: '#e8e8e8',
+                color: '#c8c8c8',
                 speed: 5.0,
                 score: 50,
                 movement: 'linear',
-                wingColor: 'rgba(120, 170, 255, 0.7)'
+                wingColor: 'rgba(90, 140, 255, 0.7)'
             }
         ];
 
@@ -286,7 +289,7 @@
             for (let i = 0; i < config.starCount; i++) {
                 stars.push({
                     x: Math.random() * canvas.width,
-                    y: Math.random() * (canvas.height - gameAreaPadding * 2) + gameAreaPadding,
+                    y: Math.random() * (canvas.height - gameArea.top - gameArea.bottom) + gameArea.top,
                     size: Math.random() * 8 + 6,  // Увеличен размер звезд
                     alpha: Math.random() * 0.8 + 0.2,
                     speed: Math.random() * 0.2 + 0.1,
@@ -297,26 +300,42 @@
             }
         }
 
-        // Initialize planets
+        // Initialize planets with no overlapping
         function initPlanets() {
             planets = [];
-            for (let i = 0; i < config.planetCount; i++) {
-                const planetColors = [
-                    ['#FFD700', '#FFC000'], // Gold gradient
-                    ['#40E0D0', '#20B2AA'], // Turquoise gradient
-                    ['#FF8C00', '#FF6347']  // Orange gradient
-                ];
-                const colors = planetColors[i % planetColors.length];
-                
-                planets.push({
+            let attempts = 0;
+            const maxAttempts = 100;
+            
+            while (planets.length < config.planetCount && attempts < maxAttempts) {
+                attempts++;
+                const radius = Math.random() * 80 + 60;
+                const newPlanet = {
                     x: Math.random() * canvas.width,
-                    y: Math.random() * (canvas.height - gameAreaPadding * 2) + gameAreaPadding,
-                    radius: Math.random() * 60 + 80,
-                    colors: colors,
+                    y: Math.random() * (canvas.height - gameArea.top - gameArea.bottom - radius*2) + gameArea.top + radius,
+                    radius: radius,
+                    color1: Math.random() > 0.5 ? '#FFD700' : '#40E0D0',
+                    color2: Math.random() > 0.5 ? '#FFA500' : '#20B2AA',
                     rotation: 0,
                     rotationSpeed: (Math.random() - 0.5) * 0.005,
-                    speed: Math.random() * 0.2 + 0.1
-                });
+                    speed: Math.random() * 0.1 + 0.05
+                };
+                
+                let overlapping = false;
+                for (const planet of planets) {
+                    const dx = newPlanet.x - planet.x;
+                    const dy = newPlanet.y - planet.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const minDistance = newPlanet.radius + planet.radius + 50;
+                    
+                    if (distance < minDistance) {
+                        overlapping = true;
+                        break;
+                    }
+                }
+                
+                if (!overlapping) {
+                    planets.push(newPlanet);
+                }
             }
         }
 
@@ -326,7 +345,7 @@
             for (let i = 0; i < config.nebulaCount; i++) {
                 nebulas.push({
                     x: Math.random() * canvas.width,
-                    y: Math.random() * (canvas.height - gameAreaPadding * 2) + gameAreaPadding,
+                    y: Math.random() * (canvas.height - gameArea.top - gameArea.bottom) + gameArea.top,
                     radius: Math.random() * 400 + 300,
                     color: `hsla(${210 + Math.random() * 30}, 80%, 60%, ${Math.random() * 0.1 + 0.05})`,
                     speed: Math.random() * 0.1 + 0.05,
@@ -345,17 +364,18 @@
                 this.reset();
                 this.alive = true;
                 this.wingPhase = Math.random() * Math.PI * 2;
-                this.wingSpeed = Math.random() * 0.1 + 0.1;
+                this.wingSpeed = Math.random() * 0.05 + 0.05;
                 this.deathAnimation = 0;
                 this.movementPhase = 0;
                 this.originalY = 0;
                 this.legPhase = 0;
-                this.legSpeed = Math.random() * 0.2 + 0.2;
+                this.legSpeed = Math.random() * 0.1 + 0.1;
                 this.eyePhase = Math.random() * Math.PI * 2;
-                this.eyeSpeed = Math.random() * 0.2 + 0.1;
+                this.eyeSpeed = Math.random() * 0.02 + 0.01; // Более редкое моргание
                 this.deathParts = [];
-                this.wingAngle = 0;
-                this.wingDirection = 1;
+                this.lastBlinkTime = 0;
+                this.blinkInterval = 3000 + Math.random() * 5000; // Интервал между морганиями
+                this.blinkDuration = 0;
             }
 
             reset() {
@@ -365,13 +385,13 @@
                 if (this.direction === 1) {
                     // Left to right
                     this.x = -this.width;
-                    this.y = Math.random() * (canvas.height - gameAreaPadding * 2 - 100) + gameAreaPadding + 50;
+                    this.y = Math.random() * (canvas.height - gameArea.top - gameArea.bottom - this.height*2) + gameArea.top + this.height;
                     this.vx = cowTypes[this.type].speed * (1 + level * 0.1);
                     this.vy = (Math.random() - 0.5) * cowTypes[this.type].speed * 0.5;
                 } else {
                     // Right to left
                     this.x = canvas.width + this.width;
-                    this.y = Math.random() * (canvas.height - gameAreaPadding * 2 - 100) + gameAreaPadding + 50;
+                    this.y = Math.random() * (canvas.height - gameArea.top - gameArea.bottom - this.height*2) + gameArea.top + this.height;
                     this.vx = -cowTypes[this.type].speed * (1 + level * 0.1);
                     this.vy = (Math.random() - 0.5) * cowTypes[this.type].speed * 0.5;
                 }
@@ -383,19 +403,24 @@
                 this.legPhase = 0;
                 this.eyePhase = Math.random() * Math.PI * 2;
                 this.deathParts = [];
-                this.wingAngle = 0;
-                this.wingDirection = 1;
+                this.lastBlinkTime = Date.now();
+                this.blinkDuration = 0;
             }
 
             updateMovement() {
                 this.movementPhase += 0.02;
                 this.legPhase += this.legSpeed;
-                this.eyePhase += this.eyeSpeed;
                 
-                // Wing animation
-                this.wingAngle += 0.1 * this.wingDirection;
-                if (this.wingAngle > Math.PI/4 || this.wingAngle < -Math.PI/4) {
-                    this.wingDirection *= -1;
+                // Update blinking
+                const now = Date.now();
+                if (now - this.lastBlinkTime > this.blinkInterval) {
+                    this.blinkDuration = 200 + Math.random() * 100;
+                    this.lastBlinkTime = now;
+                    this.blinkInterval = 3000 + Math.random() * 5000;
+                }
+                
+                if (this.blinkDuration > 0) {
+                    this.blinkDuration -= 16; // ~60fps
                 }
                 
                 switch(cowTypes[this.type].movement) {
@@ -490,16 +515,13 @@
                 if (this.alive) {
                     this.updateMovement();
                     this.x += this.vx;
+                    this.wingPhase += this.wingSpeed;
                     
                     // Reset if out of bounds
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
                         (this.direction === -1 && this.x < -this.width*2)) {
                         this.reset();
                     }
-                    
-                    // Keep within game area
-                    if (this.y < gameAreaPadding) this.y = gameAreaPadding;
-                    if (this.y > canvas.height - gameAreaPadding) this.y = canvas.height - gameAreaPadding;
                 } else {
                     // Death animation - update parts
                     this.deathAnimation -= 0.01;
@@ -548,141 +570,155 @@
                     ctx.arc(headX, 0, this.headRadius, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Blue transparent helmet with white outline
-                    ctx.strokeStyle = 'white';
-                    ctx.lineWidth = 2;
+                    // Bigger transparent blue helmet with white outline
                     ctx.fillStyle = 'rgba(100, 200, 255, 0.3)';
                     ctx.beginPath();
-                    ctx.arc(headX, 0, this.headRadius + 5, 0, Math.PI * 2);  // Увеличен шлем
+                    ctx.arc(headX, 0, this.headRadius + 5, 0, Math.PI * 2);
                     ctx.fill();
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 1;
                     ctx.stroke();
                     
-                    // Anime-style eyes with animation (blinking)
+                    // Anime-style eyes
                     const eyeYOffset = 6;
-                    const eyeClose = Math.abs(Math.sin(this.eyePhase * 2)) * 0.8;
+                    const isBlinking = this.blinkDuration > 0;
+                    const blinkProgress = isBlinking ? 
+                        Math.min(1, (200 - this.blinkDuration) / 200) : 0;
                     
-                    // Small eyebrows
+                    // Eyebrows (smaller)
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.ellipse(headX - 6, -eyeYOffset - 5, 4, 1, 0, 0, Math.PI * 2);
+                    ctx.ellipse(headX - 6, -eyeYOffset - 6, 4, 1.5, 0, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.beginPath();
-                    ctx.ellipse(headX + 6, -eyeYOffset - 5, 4, 1, 0, 0, Math.PI * 2);
+                    ctx.ellipse(headX + 6, -eyeYOffset - 6, 4, 1.5, 0, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Left eye (anime style)
-                    if (eyeClose > 0.7) {
-                        // Closed eye (simple line)
+                    // Left eye
+                    if (!isBlinking || blinkProgress > 0.5) {
+                        const eyeOpenness = isBlinking ? 
+                            Math.min(1, blinkProgress * 2) : 1;
+                        
+                        ctx.fillStyle = 'white';
+                        ctx.beginPath();
+                        ctx.ellipse(
+                            headX - 6, 
+                            -eyeYOffset, 
+                            5, 
+                            5 * eyeOpenness, 
+                            0, 0, Math.PI * 2
+                        );
+                        ctx.fill();
+                        
+                        // Eye pupil
+                        ctx.fillStyle = '#333';
+                        ctx.beginPath();
+                        ctx.arc(headX - 6, -eyeYOffset, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Eye shine
+                        ctx.fillStyle = 'white';
+                        ctx.beginPath();
+                        ctx.arc(headX - 7, -eyeYOffset - 1, 1, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        // Closed eye
                         ctx.strokeStyle = '#333';
                         ctx.lineWidth = 2;
                         ctx.beginPath();
                         ctx.moveTo(headX - 10, -eyeYOffset);
                         ctx.lineTo(headX - 2, -eyeYOffset);
                         ctx.stroke();
-                    } else {
-                        // Open eye
+                    }
+                    
+                    // Right eye
+                    if (!isBlinking || blinkProgress > 0.5) {
+                        const eyeOpenness = isBlinking ? 
+                            Math.min(1, blinkProgress * 2) : 1;
+                        
                         ctx.fillStyle = 'white';
                         ctx.beginPath();
-                        ctx.ellipse(headX - 6, -eyeYOffset, 6, 8 * (1 - eyeClose), 0, 0, Math.PI * 2);
+                        ctx.ellipse(
+                            headX + 6, 
+                            -eyeYOffset, 
+                            5, 
+                            5 * eyeOpenness, 
+                            0, 0, Math.PI * 2
+                        );
                         ctx.fill();
                         
-                        // Iris
+                        // Eye pupil
                         ctx.fillStyle = '#333';
                         ctx.beginPath();
-                        ctx.ellipse(headX - 6, -eyeYOffset + 2, 3, 4 * (1 - eyeClose), 0, 0, Math.PI * 2);
+                        ctx.arc(headX + 6, -eyeYOffset, 2, 0, Math.PI * 2);
                         ctx.fill();
                         
                         // Eye shine
                         ctx.fillStyle = 'white';
                         ctx.beginPath();
-                        ctx.arc(headX - 8, -eyeYOffset - 1, 2, 0, Math.PI * 2);
+                        ctx.arc(headX + 5, -eyeYOffset - 1, 1, 0, Math.PI * 2);
                         ctx.fill();
-                    }
-                    
-                    // Right eye (anime style)
-                    if (eyeClose > 0.7) {
-                        // Closed eye (simple line)
+                    } else {
+                        // Closed eye
                         ctx.strokeStyle = '#333';
                         ctx.lineWidth = 2;
                         ctx.beginPath();
                         ctx.moveTo(headX + 2, -eyeYOffset);
                         ctx.lineTo(headX + 10, -eyeYOffset);
                         ctx.stroke();
-                    } else {
-                        // Open eye
-                        ctx.fillStyle = 'white';
-                        ctx.beginPath();
-                        ctx.ellipse(headX + 6, -eyeYOffset, 6, 8 * (1 - eyeClose), 0, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        // Iris
-                        ctx.fillStyle = '#333';
-                        ctx.beginPath();
-                        ctx.ellipse(headX + 6, -eyeYOffset + 2, 3, 4 * (1 - eyeClose), 0, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        // Eye shine
-                        ctx.fillStyle = 'white';
-                        ctx.beginPath();
-                        ctx.arc(headX + 4, -eyeYOffset - 1, 2, 0, Math.PI * 2);
-                        ctx.fill();
                     }
                     
-                    // Big nose
+                    // Bigger nose
                     ctx.fillStyle = '#f5d0b0';
                     ctx.beginPath();
-                    ctx.ellipse(headX, eyeYOffset - 2, 10, 8, 0, 0, Math.PI * 2);
+                    ctx.ellipse(headX, eyeYOffset - 3, 10, 8, 0, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Elongated nostrils
+                    // Nostrils (elongated)
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
-                    ctx.ellipse(headX - 4, eyeYOffset - 2, 2, 3, 0, 0, Math.PI * 2);
+                    ctx.ellipse(headX - 4, eyeYOffset - 1, 2, 3, 0, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.beginPath();
-                    ctx.ellipse(headX + 4, eyeYOffset - 2, 2, 3, 0, 0, Math.PI * 2);
+                    ctx.ellipse(headX + 4, eyeYOffset - 1, 2, 3, 0, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Brown horns (небольшие рожки)
-                    ctx.fillStyle = '#8B4513';
-                    ctx.lineWidth = 2;
-                    
-                    // Left horn
-                    ctx.beginPath();
-                    ctx.moveTo(headX - 6, -this.headRadius + 2);
-                    ctx.lineTo(headX - 10, -this.headRadius - 8);
-                    ctx.lineTo(headX - 8, -this.headRadius - 6);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                    
-                    // Right horn
-                    ctx.beginPath();
-                    ctx.moveTo(headX + 6, -this.headRadius + 2);
-                    ctx.lineTo(headX + 10, -this.headRadius - 8);
-                    ctx.lineTo(headX + 8, -this.headRadius - 6);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                    
-                    // Wings (переработанный дизайн)
-                    ctx.strokeStyle = cowTypes[this.type].wingColor;
-                    ctx.fillStyle = cowTypes[this.type].wingColor;
+                    // Goat horns (козьи рожки)
+                    ctx.fillStyle = '#8B4513'; // Коричневый цвет
                     ctx.lineWidth = 3;
                     
-                    // Front wing (feather-like)
+                    // Left horn (изогнутый)
+                    ctx.beginPath();
+                    ctx.moveTo(headX - 6, -this.headRadius + 2);
+                    ctx.quadraticCurveTo(
+                        headX - 12, -this.headRadius - 8,
+                        headX - 15, -this.headRadius - 15
+                    );
+                    ctx.stroke();
+                    
+                    // Right horn (изогнутый)
+                    ctx.beginPath();
+                    ctx.moveTo(headX + 6, -this.headRadius + 2);
+                    ctx.quadraticCurveTo(
+                        headX + 12, -this.headRadius - 8,
+                        headX + 15, -this.headRadius - 15
+                    );
+                    ctx.stroke();
+                    
+                    // Wings - completely redesigned
+                    ctx.strokeStyle = cowTypes[this.type].wingColor;
+                    ctx.lineWidth = 4;
+                    ctx.fillStyle = cowTypes[this.type].wingColor;
+                    
+                    // Front wing (visible)
                     ctx.save();
-                    ctx.translate(5, -5);
-                    ctx.rotate(this.wingAngle);
+                    ctx.translate(10, -5);
+                    ctx.rotate(Math.sin(this.wingPhase) * 0.3);
                     
                     ctx.beginPath();
                     ctx.moveTo(0, 0);
-                    ctx.lineTo(20, -10);
-                    ctx.lineTo(25, -20);
-                    ctx.lineTo(20, -30);
-                    ctx.lineTo(0, -40);
-                    ctx.lineTo(-5, -30);
-                    ctx.lineTo(0, -20);
+                    ctx.lineTo(20, -15);
+                    ctx.lineTo(25, -5);
                     ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
@@ -691,27 +727,23 @@
                     
                     // Back wing (behind body)
                     ctx.save();
-                    ctx.translate(-5, -5);
-                    ctx.rotate(-this.wingAngle);
-                    ctx.globalAlpha = 0.7;
+                    ctx.translate(-10, -5);
+                    ctx.rotate(Math.sin(this.wingPhase + Math.PI) * 0.3);
+                    ctx.globalAlpha = 0.6;
                     
                     ctx.beginPath();
                     ctx.moveTo(0, 0);
-                    ctx.lineTo(-20, -10);
-                    ctx.lineTo(-25, -20);
-                    ctx.lineTo(-20, -30);
-                    ctx.lineTo(0, -40);
-                    ctx.lineTo(5, -30);
-                    ctx.lineTo(0, -20);
+                    ctx.lineTo(-20, -15);
+                    ctx.lineTo(-25, -5);
                     ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
                     
                     ctx.restore();
                     
-                    // Legs (4 legs, shorter)
+                    // Legs (4 legs, thicker and shorter)
                     ctx.strokeStyle = '#666';
-                    ctx.lineWidth = 4;
+                    ctx.lineWidth = 5; // Толще
                     
                     const legPairs = [
                         { x: -this.width/4, offset: 0 },
@@ -722,8 +754,8 @@
                     
                     legPairs.forEach((leg, i) => {
                         const legSwing = Math.sin(this.legPhase + leg.offset) * 0.3;
-                        const upperLegLength = 10; // Укороченные ноги
-                        const lowerLegLength = 8;  // Укороченные ноги
+                        const upperLegLength = 12; // Короче
+                        const lowerLegLength = 10; // Короче
                         
                         ctx.beginPath();
                         ctx.moveTo(leg.x, this.height/2);
@@ -740,9 +772,9 @@
                         // Hooves (black squares)
                         ctx.fillStyle = '#333';
                         ctx.fillRect(
-                            leg.x + Math.sin(legSwing) * 8 - 3,
-                            this.height/2 + upperLegLength + lowerLegLength - 3,
-                            6, 6
+                            leg.x + Math.sin(legSwing) * 8 - 4,
+                            this.height/2 + upperLegLength + lowerLegLength - 4,
+                            8, 8
                         );
                     });
                 } else {
@@ -770,34 +802,62 @@
                             ctx.arc(0, 0, this.headRadius, 0, Math.PI * 2);
                             ctx.fill();
                             
+                            // Helmet
+                            ctx.fillStyle = 'rgba(100, 200, 255, 0.3)';
+                            ctx.beginPath();
+                            ctx.arc(0, 0, this.headRadius + 5, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = 'white';
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                            
                             // X eyes
                             ctx.strokeStyle = '#333';
                             ctx.lineWidth = 3;
                             ctx.beginPath();
-                            ctx.moveTo(-8, -8);
-                            ctx.lineTo(-2, -2);
-                            ctx.moveTo(-2, -8);
-                            ctx.lineTo(-8, -2);
+                            ctx.moveTo(-6, -6);
+                            ctx.lineTo(0, 0);
+                            ctx.moveTo(0, -6);
+                            ctx.lineTo(-6, 0);
                             ctx.stroke();
                             
                             ctx.beginPath();
-                            ctx.moveTo(8, -8);
-                            ctx.lineTo(2, -2);
-                            ctx.moveTo(2, -8);
-                            ctx.lineTo(8, -2);
+                            ctx.moveTo(6, -6);
+                            ctx.lineTo(0, 0);
+                            ctx.moveTo(0, -6);
+                            ctx.lineTo(6, 0);
+                            ctx.stroke();
+                            
+                            // Horns
+                            ctx.strokeStyle = '#8B4513';
+                            ctx.lineWidth = 3;
+                            ctx.beginPath();
+                            ctx.moveTo(-6, -this.headRadius + 2);
+                            ctx.quadraticCurveTo(
+                                -12, -this.headRadius - 8,
+                                -15, -this.headRadius - 15
+                            );
+                            ctx.stroke();
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(6, -this.headRadius + 2);
+                            ctx.quadraticCurveTo(
+                                12, -this.headRadius - 8,
+                                15, -this.headRadius - 15
+                            );
                             ctx.stroke();
                         } else if (part.type === 'leg') {
                             // Leg part
                             ctx.strokeStyle = '#666';
-                            ctx.lineWidth = 4;
+                            ctx.lineWidth = 5;
                             ctx.beginPath();
                             ctx.moveTo(0, 0);
-                            ctx.lineTo(0, 10);
+                            ctx.lineTo(0, 12);
                             ctx.stroke();
                             
                             // Hoof
                             ctx.fillStyle = '#333';
-                            ctx.fillRect(-3, 10 - 3, 6, 6);
+                            ctx.fillRect(-4, 12 - 4, 8, 8);
                         }
                         
                         ctx.restore();
@@ -1016,7 +1076,7 @@
                 // Check head hit
                 const headX = cow.direction === 1 ? cow.x + cow.width/2 : cow.x - cow.width/2;
                 const headY = cow.y;
-                const headRadius = cow.headRadius;
+                const headRadius = cow.headRadius + 5; // Учитываем шлем
                 
                 // Check if point is in body ellipse
                 const normalizedX = (x - bodyX) / bodyRadiusX;
@@ -1110,7 +1170,7 @@
 
         function drawBackground() {
             // Draw space background
-            ctx.fillStyle = '#003366';
+            ctx.fillStyle = '#002855';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             // Draw nebulas with rotation
@@ -1125,7 +1185,7 @@
                     0, 0, nebula.radius
                 );
                 gradient.addColorStop(0, nebula.color);
-                gradient.addColorStop(1, 'rgba(0, 51, 102, 0)');
+                gradient.addColorStop(1, 'rgba(0, 40, 85, 0)');
                 
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
@@ -1138,7 +1198,7 @@
                 nebula.x += nebula.speed;
                 if (nebula.x > canvas.width + nebula.radius) {
                     nebula.x = -nebula.radius;
-                    nebula.y = Math.random() * (canvas.height - gameAreaPadding * 2) + gameAreaPadding;
+                    nebula.y = Math.random() * (canvas.height - gameArea.top - gameArea.bottom) + gameArea.top;
                 }
             });
             
@@ -1147,14 +1207,16 @@
                 ctx.save();
                 ctx.translate(planet.x, planet.y);
                 planet.rotation += planet.rotationSpeed;
+                ctx.rotate(planet.rotation);
                 
-                // Planet gradient
+                // Planet body with gradient
                 const gradient = ctx.createRadialGradient(
                     0, 0, 0,
                     0, 0, planet.radius
                 );
-                gradient.addColorStop(0, planet.colors[0]);
-                gradient.addColorStop(1, planet.colors[1]);
+                gradient.addColorStop(0, planet.color1);
+                gradient.addColorStop(0.7, planet.color2);
+                gradient.addColorStop(1, planet.color2);
                 
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
@@ -1162,10 +1224,10 @@
                 ctx.fill();
                 
                 // Planet details
-                ctx.fillStyle = planet.colors[1];
-                for (let i = 0; i < 10; i++) {
+                ctx.fillStyle = planet.color2;
+                for (let i = 0; i < 5; i++) {
                     const angle = Math.random() * Math.PI * 2;
-                    const dist = Math.random() * planet.radius * 0.8;
+                    const dist = Math.random() * planet.radius * 0.7;
                     const size = Math.random() * planet.radius * 0.2 + planet.radius * 0.1;
                     
                     ctx.beginPath();
@@ -1185,7 +1247,7 @@
                 planet.x += planet.speed;
                 if (planet.x > canvas.width + planet.radius) {
                     planet.x = -planet.radius;
-                    planet.y = Math.random() * (canvas.height - gameAreaPadding * 2) + gameAreaPadding;
+                    planet.y = Math.random() * (canvas.height - gameArea.top - gameArea.bottom - planet.radius*2) + gameArea.top + planet.radius;
                 }
             });
             
@@ -1208,14 +1270,9 @@
                 star.x += star.speed;
                 if (star.x > canvas.width) {
                     star.x = 0;
-                    star.y = Math.random() * (canvas.height - gameAreaPadding * 2) + gameAreaPadding;
+                    star.y = Math.random() * (canvas.height - gameArea.top - gameArea.bottom) + gameArea.top;
                 }
             });
-            
-            // Draw game area boundaries
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-            ctx.fillRect(0, 0, canvas.width, gameAreaPadding);
-            ctx.fillRect(0, canvas.height - gameAreaPadding, canvas.width, gameAreaPadding);
         }
 
         function drawLifeBonuses() {
@@ -1303,9 +1360,6 @@
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            
-            // Don't shoot in padded areas
-            if (y < gameAreaPadding || y > canvas.height - gameAreaPadding) return;
             
             if (ammo > 0) {
                 ammo--;
