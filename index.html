@@ -50,24 +50,24 @@
             font-size: 1.2em;
             margin-top: 20px;
             cursor: pointer;
-            background: linear-gradient(to bottom, #0066cc, #004499);
+            background: linear-gradient(to bottom, #0077ff, #00aaff);
             border: 2px solid #66b3ff;
             color: white;
             border-radius: 10px;
             transition: all 0.3s;
-            box-shadow: 0 5px 15px rgba(51, 153, 255, 0.5),
-                        0 0 10px rgba(100, 200, 255, 0.8),
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2), 
+                        0 0 10px rgba(0, 191, 255, 0.7),
                         inset 0 0 5px rgba(255, 255, 255, 0.5);
-            text-shadow: 0 0 5px rgba(100, 200, 255, 0.8);
             position: relative;
             overflow: hidden;
         }
         .menu button:hover {
-            background: linear-gradient(to bottom, #0077dd, #0055aa);
+            background: linear-gradient(to bottom, #00aaff, #0077ff);
             transform: scale(1.05);
-            box-shadow: 0 7px 20px rgba(51, 153, 255, 0.8),
-                        0 0 15px rgba(100, 200, 255, 1),
-                        inset 0 0 10px rgba(255, 255, 255, 0.8);
+            box-shadow: 0 7px 20px rgba(51, 153, 255, 0.6), 
+                         0 0 15px rgba(0, 191, 255, 0.9),
+                         inset 0 0 8px rgba(255, 255, 255, 0.7);
+            border-color: #99ccff;
         }
         .menu button::before {
             content: '';
@@ -78,15 +78,18 @@
             height: 200%;
             background: linear-gradient(
                 to bottom right,
+                rgba(255, 255, 255, 0) 0%,
                 rgba(255, 255, 255, 0) 45%,
-                rgba(255, 255, 255, 0.8) 50%,
-                rgba(255, 255, 255, 0) 55%
+                rgba(255, 255, 255, 0.5) 50%,
+                rgba(255, 255, 255, 0) 55%,
+                rgba(255, 255, 255, 0) 100%
             );
             transform: rotate(30deg);
             animation: shine 3s infinite;
         }
         @keyframes shine {
             0% { transform: translateX(-100%) rotate(30deg); }
+            20% { transform: translateX(100%) rotate(30deg); }
             100% { transform: translateX(100%) rotate(30deg); }
         }
         #topHUD {
@@ -157,18 +160,19 @@
         }
         .level-up {
             position: fixed;
-            top: 120px; /* Перенесено ниже HUD */
+            top: 120px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(255, 215, 0, 0.9);
-            color: white;
-            padding: 15px 30px;
+            color: #333;
+            padding: 10px 20px;
             border-radius: 10px;
-            font-size: 24px;
+            font-size: 20px;
             z-index: 100;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
             display: none;
+            font-weight: bold;
         }
         .life-bonus {
             position: absolute;
@@ -219,6 +223,9 @@
     </style>
 </head>
 <body>
+    <audio id="deathSound" src="Death Cow.mp3" preload="auto"></audio>
+    <audio id="backgroundMusic" src="Last Call.m4a" loop preload="auto"></audio>
+
     <div id="mainMenu" class="menu">
         <h1>COSMIC COW HUNT</h1>
         <p>Уничтожьте космических коров и пройдите все уровни!</p>
@@ -235,6 +242,7 @@
         <p>Убийства/промахи: <span id="finalHits">0</span>/<span id="finalMisses">0</span></p>
         <p>Уровень: <span id="finalLevel">1</span></p>
         <button onclick="startGame()">ИГРАТЬ СНОВА</button>
+        <button onclick="returnToMainMenu()">ГЛАВНОЕ МЕНЮ</button>
     </div>
 
     <div id="reloading" class="reloading" style="display: none;">ПЕРЕЗАРЯДКА...</div>
@@ -277,9 +285,6 @@
     </div>
 
     <canvas id="gameCanvas"></canvas>
-
-    <audio id="deathSound" src="https://raw.githubusercontent.com/yourusername/yourrepo/main/Death%20Cow.mp3" preload="auto"></audio>
-    <audio id="backgroundMusic" src="https://raw.githubusercontent.com/yourusername/yourrepo/main/Last%20Call.m4a" loop preload="auto"></audio>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -327,8 +332,8 @@
             playAreaTop: 100,
             playAreaBottom: 100,
             planetCount: 3,
-            planetMinRadius: 150,
-            planetMaxRadius: 250
+            planetMinRadius: 100,
+            planetMaxRadius: 200
         };
 
         // Cow types and colors
@@ -336,7 +341,7 @@
         const cowTypes = [
             { // Type 0 - Zigzag
                 speed: 3.5,
-                score: 22, // Уменьшено в 2 раза
+                score: 20, // Уменьшено в 2 раза
                 movement: 'zigzag',
                 wingColor: 'rgba(80, 180, 240, 0.6)'
             },
@@ -348,7 +353,7 @@
             },
             { // Type 2 - Fast
                 speed: 4.0,
-                score: 37, // Уменьшено в 2 раза
+                score: 35, // Уменьшено в 2 раза
                 movement: 'linear',
                 wingColor: 'rgba(40, 140, 200, 0.6)'
             }
@@ -425,6 +430,11 @@
             planets = [];
             const planetColors = ['#40E0D0', '#00CED1', '#FFD700', '#FFA500'];
             
+            // Adjust planet sizes for mobile
+            const isMobile = window.innerWidth < 768;
+            const minRadius = isMobile ? 50 : config.planetMinRadius;
+            const maxRadius = isMobile ? 150 : config.planetMaxRadius;
+            
             for (let i = 0; i < config.planetCount; i++) {
                 let newPlanet, overlapping;
                 let attempts = 0;
@@ -434,7 +444,7 @@
                     newPlanet = {
                         x: Math.random() * canvas.width,
                         y: Math.random() * canvas.height,
-                        radius: Math.random() * (config.planetMaxRadius - config.planetMinRadius) + config.planetMinRadius,
+                        radius: Math.random() * (maxRadius - minRadius) + minRadius,
                         color: planetColors[Math.floor(Math.random() * planetColors.length)],
                         rotation: Math.random() * Math.PI * 2,
                         rotationSpeed: Math.random() * 0.002 - 0.001
@@ -548,7 +558,7 @@
                 this.rotation = 0;
                 this.deathAnimationProgress = 0;
                 
-                // Проигрываем звук смерти коровы
+                // Play death sound
                 deathSound.currentTime = 0;
                 deathSound.play();
                 
@@ -685,9 +695,9 @@
                         width: 15,
                         height: 15
                     },
-                    { // Вымя (перенесено вперед перед ногами)
+                    { // Вымя
                         x: this.x - (this.direction === 1 ? this.width/8 : -this.width/8),
-                        y: this.y + this.height/3,
+                        y: this.y + this.height/2.5,
                         vx: (Math.random() - 0.5) * 3,
                         vy: (Math.random() - 0.5) * 3,
                         rotation: 0,
@@ -761,6 +771,62 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
+                    // Вымя (теперь рисуется перед ногами)
+                    ctx.fillStyle = '#FFC0CB';
+                    ctx.beginPath();
+                    ctx.ellipse(-this.width/8, this.height/2.5, 12, 8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#FF69B4';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Соски (3 штуки)
+                    ctx.fillStyle = '#D88';
+                    for (let i = 0; i < 3; i++) {
+                        const nippleX = -this.width/8 - 6 + i * 6;
+                        const nippleY = this.height/2.5 + 6;
+                        ctx.beginPath();
+                        ctx.ellipse(nippleX, nippleY, 2, 3, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    
+                    // Legs (серые, опущены ниже)
+                    ctx.strokeStyle = '#888';
+                    ctx.lineWidth = 6;
+                    
+                    const legPairs = [
+                        { x: -this.width/4, offset: 0 },
+                        { x: -this.width/4 + 15, offset: Math.PI },
+                        { x: -this.width/4 + 30, offset: 0 },
+                        { x: -this.width/4 + 45, offset: Math.PI }
+                    ];
+                    
+                    legPairs.forEach((leg, i) => {
+                        const legSwing = Math.sin(this.legPhase + leg.offset) * 0.3;
+                        const upperLegLength = 10;
+                        const lowerLegLength = 8;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(leg.x, this.height/2.5);
+                        ctx.lineTo(
+                            leg.x + Math.sin(legSwing) * 5,
+                            this.height/2.5 + upperLegLength
+                        );
+                        ctx.lineTo(
+                            leg.x + Math.sin(legSwing) * 8,
+                            this.height/2.5 + upperLegLength + lowerLegLength
+                        );
+                        ctx.stroke();
+                        
+                        // Hooves (темно-синие)
+                        ctx.fillStyle = '#3E3D5C';
+                        ctx.fillRect(
+                            leg.x + Math.sin(legSwing) * 8 - 3,
+                            this.height/2.5 + upperLegLength + lowerLegLength - 3,
+                            6, 6
+                        );
+                    });
+                    
                     // Head at the end of body
                     const headX = this.width/2;
                     
@@ -781,25 +847,6 @@
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; // Белая окантовка
                     ctx.lineWidth = 2;
                     ctx.stroke();
-                    
-                    // Вымя (перенесено вперед перед ногами)
-                    ctx.fillStyle = '#FFC0CB';
-                    ctx.beginPath();
-                    ctx.ellipse(-this.width/8, this.height/3, 12, 8, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = '#FF69B4';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                    
-                    // Соски (3 штуки)
-                    ctx.fillStyle = '#D88';
-                    for (let i = 0; i < 3; i++) {
-                        const nippleX = -this.width/8 - 6 + i * 6;
-                        const nippleY = this.height/3 + 6;
-                        ctx.beginPath();
-                        ctx.ellipse(nippleX, nippleY, 2, 3, 0, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
                     
                     // Ears в форме листа
                     // Left ear (повернуто влево)
@@ -999,19 +1046,19 @@
                     // Wings (увеличенные с синей окантовкой)
                     const wingYOffset = Math.sin(this.wingPhase) * 10;
                     
-                    // Back wing (перенесено левее)
+                    // Back wing
                     ctx.fillStyle = cowTypes[this.type].wingColor;
                     ctx.beginPath();
-                    ctx.moveTo(-15, -5); // Сдвинуто левее
+                    ctx.moveTo(-5, -5);
                     ctx.bezierCurveTo(
-                        -40, -20 + wingYOffset,
-                        -65, -30 + wingYOffset,
-                        -80, -5 + wingYOffset * 0.5
+                        -30, -20 + wingYOffset,
+                        -55, -30 + wingYOffset,
+                        -70, -5 + wingYOffset * 0.5
                     );
                     ctx.bezierCurveTo(
-                        -65, 15 + wingYOffset,
-                        -40, 0 + wingYOffset,
-                        -15, -5
+                        -55, 15 + wingYOffset,
+                        -30, 0 + wingYOffset,
+                        -5, -5
                     );
                     ctx.fill();
                     ctx.strokeStyle = 'rgba(0, 100, 200, 0.8)';
@@ -1037,43 +1084,6 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     ctx.globalCompositeOperation = 'source-over';
-                    
-                    // Legs (серые, опущены ниже)
-                    ctx.strokeStyle = '#888';
-                    ctx.lineWidth = 6;
-                    
-                    const legPairs = [
-                        { x: -this.width/4, offset: 0 },
-                        { x: -this.width/4 + 15, offset: Math.PI },
-                        { x: -this.width/4 + 30, offset: 0 },
-                        { x: -this.width/4 + 45, offset: Math.PI }
-                    ];
-                    
-                    legPairs.forEach((leg, i) => {
-                        const legSwing = Math.sin(this.legPhase + leg.offset) * 0.3;
-                        const upperLegLength = 10;
-                        const lowerLegLength = 8;
-                        
-                        ctx.beginPath();
-                        ctx.moveTo(leg.x, this.height/2.5);
-                        ctx.lineTo(
-                            leg.x + Math.sin(legSwing) * 5,
-                            this.height/2.5 + upperLegLength
-                        );
-                        ctx.lineTo(
-                            leg.x + Math.sin(legSwing) * 8,
-                            this.height/2.5 + upperLegLength + lowerLegLength
-                        );
-                        ctx.stroke();
-                        
-                        // Hooves (темно-синие)
-                        ctx.fillStyle = '#3E3D5C';
-                        ctx.fillRect(
-                            leg.x + Math.sin(legSwing) * 8 - 3,
-                            this.height/2.5 + upperLegLength + lowerLegLength - 3,
-                            6, 6
-                        );
-                    });
                     
                     // Tail (коричневый с кончиком светло-коричневым)
                     const tailX = -this.width/2;
@@ -1405,6 +1415,11 @@
             isReloading = false;
             level = 1;
             
+            // Start background music
+            backgroundMusic.currentTime = 0;
+            backgroundMusic.volume = 0.5;
+            backgroundMusic.play();
+            
             const heartElements = document.querySelectorAll('.heart');
             heartElements.forEach(heart => {
                 heart.classList.remove('burned');
@@ -1416,10 +1431,6 @@
             updateHUD();
             updateLevelDisplay();
             resizeCanvas();
-            
-            // Запускаем фоновую музыку
-            backgroundMusic.currentTime = 0;
-            backgroundMusic.play();
             
             clearInterval(gameTimer);
             gameTimer = setInterval(() => {
@@ -1434,6 +1445,20 @@
             spawnCow();
             lastTime = performance.now();
             gameLoop();
+        }
+
+        function returnToMainMenu() {
+            gameActive = false;
+            clearInterval(gameTimer);
+            clearInterval(levelTimer);
+            clearTimeout(reloadTimeout);
+            clearTimeout(levelUpDisplayTimeout);
+            
+            // Stop background music
+            backgroundMusic.pause();
+            
+            document.getElementById('mainMenu').style.display = 'block';
+            document.getElementById('gameOverMenu').style.display = 'none';
         }
 
         function updateAmmoDisplay() {
@@ -1473,14 +1498,15 @@
             clearInterval(levelTimer);
             clearTimeout(reloadTimeout);
             clearTimeout(levelUpDisplayTimeout);
+            
+            // Stop background music
+            backgroundMusic.pause();
+            
             document.getElementById('gameOverMenu').style.display = 'block';
             document.getElementById('finalScore').textContent = score;
             document.getElementById('finalHits').textContent = hits;
             document.getElementById('finalMisses').textContent = misses;
             document.getElementById('finalLevel').textContent = level;
-            
-            // Останавливаем фоновую музыку
-            backgroundMusic.pause();
             
             // Обновляем таблицу лидеров
             updateLeaderboard(score);
