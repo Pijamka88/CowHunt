@@ -225,11 +225,12 @@
 <body>
     <audio id="deathSound" src="Death-Cow.mp3" preload="auto"></audio>
     <audio id="backgroundMusic" src="Last-Call.mp3" loop preload="auto"></audio>
+    <audio id="clickSound" src="Click.mp3" preload="auto"></audio>
 
     <div id="mainMenu" class="menu">
         <h1>COSMIC COW HUNT</h1>
         <p>Охотьтесь на космических коров и станьте лучшим стрелком галактики!</p>
-        <button onclick="startGame()">НАЧАТЬ ИГРУ</button>
+        <button onclick="playClickSound(); startGame()">НАЧАТЬ ИГРУ</button>
         <div id="leaderboard">
             <h3>ТОП 10 ИГРОКОВ</h3>
             <div id="leaderboardList"></div>
@@ -239,14 +240,14 @@
     <div id="gameOverMenu" class="menu" style="display: none;">
         <h1>МИССИЯ ЗАВЕРШЕНА!</h1>
         <p>Счет: <span id="finalScore">0</span></p>
-        <p>Убийства/промахи: <span id="finalHits">0</span>/<span id="finalMisses">0</span></p>
+        <p>Убито/мимо: <span id="finalHits">0</span>/<span id="finalMisses">0</span></p>
         <p>Уровень: <span id="finalLevel">1</span></p>
-        <button onclick="startGame()">ИГРАТЬ СНОВА</button>
-        <button onclick="returnToMainMenu()">ГЛАВНОЕ МЕНЮ</button>
+        <button onclick="playClickSound(); startGame()">ИГРАТЬ СНОВА</button>
+        <button onclick="playClickSound(); returnToMainMenu()">ГЛАВНОЕ МЕНЮ</button>
     </div>
 
     <div id="reloading" class="reloading" style="display: none;">ПЕРЕЗАРЯДКА...</div>
-    <div id="levelUp" class="level-up">УРОВЕНЬ <span id="levelNumber">1</span>!</div>
+    <div id="levelUp" class="level-up" style="display: none;">НОВЫЙ УРОВЕНЬ <span id="levelNumber">1</span>!</div>
 
     <div id="topHUD">
         <div class="hud-item">
@@ -279,7 +280,7 @@
             <div class="hud-value" id="currentLevel">1</div>
         </div>
         <div class="hud-item">
-            <div class="hud-label">УБИЙСТВА/ПРОМАХИ</div>
+            <div class="hud-label">УБИТО/МИМО</div>
             <div class="hud-value" id="hitsMisses">0/0</div>
         </div>
     </div>
@@ -291,6 +292,7 @@
         const ctx = canvas.getContext('2d');
         const deathSound = document.getElementById('deathSound');
         const backgroundMusic = document.getElementById('backgroundMusic');
+        const clickSound = document.getElementById('clickSound');
         
         // Game state
         let gameActive = false;
@@ -315,6 +317,7 @@
         let levelTimer;
         let eyeAnimationPhase = 0;
         let levelUpDisplayTimeout;
+        let auroraPhase = 0;
 
         // Configuration
         const config = {
@@ -359,6 +362,11 @@
             }
         ];
 
+        function playClickSound() {
+            clickSound.currentTime = 0;
+            clickSound.play();
+        }
+
         // Leaderboard functions
         function getLeaderboard() {
             const leaderboard = localStorage.getItem('cosmicCowLeaderboard');
@@ -366,24 +374,27 @@
         }
 
         function updateLeaderboard(newScore) {
+            gameActive = false; // Добавляем эту строку, чтобы игра не продолжалась
             const leaderboard = getLeaderboard();
             const playerName = prompt('Введите ваше имя для таблицы лидеров:', 'Игрок') || 'Игрок';
             
-            leaderboard.push({
-                name: playerName,
-                score: newScore,
-                date: new Date().toLocaleDateString()
-            });
-            
-            // Sort by score descending
-            leaderboard.sort((a, b) => b.score - a.score);
-            
-            // Keep only top 10
-            if (leaderboard.length > 10) {
-                leaderboard.length = 10;
+            if (playerName !== null) { // Если пользователь не нажал "Отмена"
+                leaderboard.push({
+                    name: playerName,
+                    score: newScore,
+                    date: new Date().toLocaleDateString()
+                });
+                
+                // Sort by score descending
+                leaderboard.sort((a, b) => b.score - a.score);
+                
+                // Keep only top 10
+                if (leaderboard.length > 10) {
+                    leaderboard.length = 10;
+                }
+                
+                localStorage.setItem('cosmicCowLeaderboard', JSON.stringify(leaderboard));
             }
-            
-            localStorage.setItem('cosmicCowLeaderboard', JSON.stringify(leaderboard));
             displayLeaderboard();
         }
 
@@ -497,6 +508,7 @@
                 this.deathAnimationProgress = 0;
                 this.tongueOut = false;
                 this.tongueTimer = 0;
+                this.alpha = 1;
             }
 
             reset() {
@@ -527,6 +539,7 @@
                 this.deathAnimationProgress = 0;
                 this.tongueOut = false;
                 this.tongueTimer = 0;
+                this.alpha = 1;
             }
 
             updateMovement() {
@@ -574,6 +587,7 @@
                 this.fallSpeed = -5;
                 this.rotation = 0;
                 this.deathAnimationProgress = 0;
+                this.alpha = 1;
                 
                 // Play death sound
                 deathSound.currentTime = 0;
@@ -754,6 +768,7 @@
                 } else {
                     // Анимация смерти - разлетающиеся конечности в космосе
                     this.deathAnimationProgress += 0.02;
+                    this.alpha = 1 - (Date.now() - this.deathTime) / 4000;
                     
                     // Обновляем части тела
                     this.limbs.forEach(limb => {
@@ -1195,6 +1210,8 @@
                     ctx.fill();
                 } else {
                     // Анимация смерти - разлетающиеся конечности в космосе
+                    ctx.globalAlpha = this.alpha;
+                    
                     this.limbs.forEach(limb => {
                         ctx.save();
                         ctx.translate(limb.x, limb.y);
@@ -1438,6 +1455,8 @@
                         
                         ctx.restore();
                     });
+                    
+                    ctx.globalAlpha = 1;
                 }
                 
                 ctx.restore();
@@ -1497,7 +1516,7 @@
             draw() {
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
+                ctx.fillStyle = `rgba(100, 200, 255, ${this.alpha})`;
                 ctx.fill();
             }
 
@@ -1512,22 +1531,20 @@
             ctx.translate(planet.x, planet.y);
             ctx.rotate(planet.rotation);
             
-            // Градиент для планеты (более плавный)
+            // Градиент для планеты (радиальный)
             const gradient = ctx.createRadialGradient(
-                0, 0, planet.radius * 0.1,
+                0, 0, planet.radius * 0.3,
                 0, 0, planet.radius
             );
             
             // Добавляем цветовые остановки в зависимости от основного цвета
             if (planet.color === '#40E0D0' || planet.color === '#00CED1') {
                 gradient.addColorStop(0, '#00FFFF');
-                gradient.addColorStop(0.3, '#20B2AA');
-                gradient.addColorStop(0.6, planet.color);
+                gradient.addColorStop(0.5, planet.color);
                 gradient.addColorStop(1, '#008B8B');
             } else {
                 gradient.addColorStop(0, '#FFFF99');
-                gradient.addColorStop(0.3, '#FFD700');
-                gradient.addColorStop(0.6, planet.color);
+                gradient.addColorStop(0.5, planet.color);
                 gradient.addColorStop(1, '#CD853F');
             }
             
@@ -1551,6 +1568,35 @@
             ctx.fill();
             
             ctx.restore();
+        }
+
+        function drawAurora() {
+            auroraPhase += 0.002;
+            
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            gradient.addColorStop(0, 'rgba(255, 105, 180, 0.1)');
+            gradient.addColorStop(0.3, 'rgba(147, 112, 219, 0.1)');
+            gradient.addColorStop(0.6, 'rgba(100, 149, 237, 0.1)');
+            gradient.addColorStop(1, 'rgba(0, 191, 255, 0.1)');
+            
+            ctx.fillStyle = gradient;
+            
+            for (let i = 0; i < 5; i++) {
+                const height = 50 + Math.sin(auroraPhase + i) * 20;
+                const y = 50 + i * 30 + Math.sin(auroraPhase * 2 + i) * 10;
+                
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                
+                for (let x = 0; x < canvas.width; x += 20) {
+                    const wave = Math.sin(auroraPhase * 3 + x * 0.01 + i) * 30;
+                    ctx.lineTo(x, y + wave);
+                }
+                
+                ctx.lineTo(canvas.width, y);
+                ctx.closePath();
+                ctx.fill();
+            }
         }
 
         function showLevelUp() {
@@ -1774,16 +1820,11 @@
             
             if (!hit) {
                 misses++;
-                lives = Math.max(0, lives - 1);
                 updateHUD();
                 
-                if (lives <= 0) {
-                    endGame();
+                if (ammo <= 0 && !isReloading) {
+                    startReloading();
                 }
-            }
-            
-            if (ammo <= 0 && !isReloading) {
-                startReloading();
             }
         }
 
@@ -1823,6 +1864,9 @@
             gradient.addColorStop(1, '#003366');
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Рисуем северное сияние
+            drawAurora();
             
             // Рисуем планеты
             planets.forEach(planet => {
