@@ -125,12 +125,11 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            flex: 1;
         }
         .hud-label {
             font-size: 12px;
             color: #a3d1ff;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
         }
         .hud-value {
@@ -164,7 +163,7 @@
         }
         .level-up {
             position: fixed;
-            top: 90px;
+            top: 80px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(255, 215, 0, 0.7);
@@ -463,8 +462,42 @@
                         radius: Math.random() * (maxRadius - minRadius) + minRadius,
                         color: planetColors[Math.floor(Math.random() * planetColors.length)],
                         rotation: Math.random() * Math.PI * 2,
-                        rotationSpeed: Math.random() * 0.002 - 0.001
+                        rotationSpeed: Math.random() * 0.002 - 0.001,
+                        features: []
                     };
+                    
+                    // Add planet features (mountains, rivers, lakes)
+                    const featureCount = Math.floor(Math.random() * 5) + 3;
+                    for (let j = 0; j < featureCount; j++) {
+                        const featureType = Math.floor(Math.random() * 3);
+                        const angle = Math.random() * Math.PI * 2;
+                        const distance = Math.random() * 0.7 * newPlanet.radius;
+                        
+                        if (featureType === 0) { // Mountain
+                            newPlanet.features.push({
+                                type: 'mountain',
+                                angle: angle,
+                                distance: distance,
+                                height: Math.random() * 0.3 * newPlanet.radius + 0.1 * newPlanet.radius,
+                                width: Math.random() * 0.2 * newPlanet.radius + 0.1 * newPlanet.radius
+                            });
+                        } else if (featureType === 1) { // River
+                            newPlanet.features.push({
+                                type: 'river',
+                                angle: angle,
+                                distance: distance,
+                                length: Math.random() * 0.4 * newPlanet.radius + 0.2 * newPlanet.radius,
+                                width: Math.random() * 0.05 * newPlanet.radius + 0.02 * newPlanet.radius
+                            });
+                        } else { // Lake
+                            newPlanet.features.push({
+                                type: 'lake',
+                                angle: angle,
+                                distance: distance,
+                                radius: Math.random() * 0.15 * newPlanet.radius + 0.05 * newPlanet.radius
+                            });
+                        }
+                    }
                     
                     // Check for overlap with existing planets
                     for (const planet of planets) {
@@ -514,6 +547,7 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
+                this.lastUpdateTime = performance.now();
             }
 
             reset() {
@@ -545,22 +579,25 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
+                this.lastUpdateTime = performance.now();
             }
 
-            updateMovement() {
-                this.movementPhase += 0.02;
-                this.legPhase += this.legSpeed;
-                this.eyePhase += this.eyeSpeed;
-                this.tailPhase += this.tailSpeed;
+            updateMovement(deltaTime) {
+                const timeFactor = deltaTime / 16.67; // Normalize to 60fps
+                
+                this.movementPhase += 0.02 * timeFactor;
+                this.legPhase += this.legSpeed * timeFactor;
+                this.eyePhase += this.eyeSpeed * timeFactor;
+                this.tailPhase += this.tailSpeed * timeFactor;
                 
                 // Random tongue animation
-                if (Math.random() < 0.005) {
+                if (Math.random() < 0.005 * timeFactor) {
                     this.tongueOut = true;
                     this.tongueTimer = 30;
                 }
                 
                 if (this.tongueOut) {
-                    this.tongueTimer--;
+                    this.tongueTimer -= timeFactor;
                     if (this.tongueTimer <= 0) {
                         this.tongueOut = false;
                     }
@@ -572,7 +609,7 @@
                         break;
                     case 'circular':
                         this.y = this.originalY + Math.sin(this.movementPhase) * 80;
-                        this.x += Math.cos(this.movementPhase) * 0.5 * this.direction;
+                        this.x += Math.cos(this.movementPhase) * 0.5 * this.direction * timeFactor;
                         break;
                 }
                 
@@ -629,12 +666,16 @@
                             { // Левое ухо
                                 x: -this.headRadius * 0.6,
                                 y: -this.headRadius * 0.6,
-                                rotation: -Math.PI/2
+                                rotation: -Math.PI/2,
+                                width: this.headRadius * 0.6,
+                                height: this.headRadius * 0.6
                             },
                             { // Правое ухо
                                 x: this.headRadius * 0.6,
                                 y: -this.headRadius * 0.6,
-                                rotation: Math.PI/2
+                                rotation: Math.PI/2,
+                                width: this.headRadius * 0.6,
+                                height: this.headRadius * 0.6
                             }
                         ]
                     },
@@ -761,10 +802,14 @@
             }
 
             update() {
+                const currentTime = performance.now();
+                const deltaTime = currentTime - this.lastUpdateTime;
+                this.lastUpdateTime = currentTime;
+                
                 if (this.alive) {
-                    this.updateMovement();
-                    this.x += this.vx;
-                    this.wingPhase += this.wingSpeed;
+                    this.updateMovement(deltaTime);
+                    this.x += this.vx * (deltaTime / 16.67);
+                    this.wingPhase += this.wingSpeed * (deltaTime / 16.67);
                     
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
                         (this.direction === -1 && this.x < -this.width*2)) {
@@ -772,18 +817,18 @@
                     }
                 } else {
                     // Анимация смерти - разлетающиеся конечности в космосе
-                    this.deathAnimationProgress += 0.02;
+                    this.deathAnimationProgress += 0.02 * (deltaTime / 16.67);
                     this.alpha = Math.max(0, 1 - (Date.now() - this.deathTime) / 4000);
                     
                     // Обновляем части тела
                     this.limbs.forEach(limb => {
-                        limb.x += limb.vx;
-                        limb.y += limb.vy;
-                        limb.rotation += limb.rotationSpeed;
+                        limb.x += limb.vx * (deltaTime / 16.67);
+                        limb.y += limb.vy * (deltaTime / 16.67);
+                        limb.rotation += limb.rotationSpeed * (deltaTime / 16.67);
                         
                         // Обновляем таймер языка
                         if (limb.tongueTimer !== undefined) {
-                            limb.tongueTimer--;
+                            limb.tongueTimer -= (deltaTime / 16.67);
                             if (limb.tongueTimer <= 0) {
                                 limb.tongueOut = false;
                             }
@@ -791,7 +836,7 @@
                         
                         // Обновляем фазу крыльев
                         if (limb.wingPhase !== undefined) {
-                            limb.wingPhase += 0.05;
+                            limb.wingPhase += 0.05 * (deltaTime / 16.67);
                         }
                         
                         // Через некоторое время показываем мертвые глаза
@@ -1125,6 +1170,7 @@
                         -20, 5 + wingYOffset * 0.3,
                         -5, -5
                     );
+                    ctx.closePath();
                     ctx.fill();
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.lineWidth = 2;
@@ -1160,6 +1206,7 @@
                         20, 5 + wingYOffset * 0.3,
                         5, -5
                     );
+                    ctx.closePath();
                     ctx.fill();
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.lineWidth = 2;
@@ -1306,7 +1353,7 @@
                                 });
                             }
                             
-                            // Уши (такие же как у живой коровы)
+                            // Уши (исправленные, такие же как у живой коровы)
                             if (limb.ears) {
                                 limb.ears.forEach(ear => {
                                     ctx.save();
@@ -1317,11 +1364,11 @@
                                     ctx.beginPath();
                                     ctx.moveTo(0, 0);
                                     ctx.quadraticCurveTo(
-                                        -limb.width/4, -limb.height/4,
-                                        0, -limb.height * 0.75
+                                        -ear.width * 0.5, -ear.height * 0.4,
+                                        0, -ear.height * 0.75
                                     );
                                     ctx.quadraticCurveTo(
-                                        limb.width/4, -limb.height/4,
+                                        ear.width * 0.5, -ear.height * 0.4,
                                         0, 0
                                     );
                                     ctx.closePath();
@@ -1335,11 +1382,11 @@
                                     ctx.beginPath();
                                     ctx.moveTo(0, 0);
                                     ctx.quadraticCurveTo(
-                                        -limb.width/6, -limb.height/6,
-                                        0, -limb.height * 0.6
+                                        -ear.width * 0.3, -ear.height * 0.3,
+                                        0, -ear.height * 0.6
                                     );
                                     ctx.quadraticCurveTo(
-                                        limb.width/6, -limb.height/6,
+                                        ear.width * 0.3, -ear.height * 0.3,
                                         0, 0
                                     );
                                     ctx.closePath();
@@ -1557,6 +1604,71 @@
             ctx.beginPath();
             ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
             ctx.fill();
+            
+            // Рисуем особенности планеты (горы, реки, озера)
+            planet.features.forEach(feature => {
+                const featureX = Math.cos(feature.angle) * feature.distance;
+                const featureY = Math.sin(feature.angle) * feature.distance;
+                
+                ctx.save();
+                ctx.translate(featureX, featureY);
+                
+                if (feature.type === 'mountain') {
+                    // Гора
+                    ctx.fillStyle = '#5A4D41';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(-feature.width/2, feature.height);
+                    ctx.lineTo(feature.width/2, feature.height);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Снежная вершина
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.beginPath();
+                    ctx.moveTo(0, -feature.height * 0.2);
+                    ctx.lineTo(-feature.width * 0.3, feature.height * 0.3);
+                    ctx.lineTo(feature.width * 0.3, feature.height * 0.3);
+                    ctx.closePath();
+                    ctx.fill();
+                } else if (feature.type === 'river') {
+                    // Река
+                    ctx.rotate(feature.angle + Math.PI/2);
+                    ctx.fillStyle = '#1E90FF';
+                    ctx.beginPath();
+                    ctx.moveTo(-feature.width/2, 0);
+                    ctx.quadraticCurveTo(
+                        0, feature.length * 0.3,
+                        feature.width/2, 0
+                    );
+                    ctx.quadraticCurveTo(
+                        0, -feature.length * 0.3,
+                        -feature.width/2, 0
+                    );
+                    ctx.closePath();
+                    ctx.fill();
+                } else if (feature.type === 'lake') {
+                    // Озеро
+                    ctx.fillStyle = '#1E90FF';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, feature.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Блики на озере
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(
+                        feature.radius * 0.3, 
+                        -feature.radius * 0.3, 
+                        feature.radius * 0.2, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            });
             
             ctx.restore();
         }
