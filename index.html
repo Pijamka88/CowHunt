@@ -9,7 +9,7 @@
             margin: 0;
             overflow: hidden;
             touch-action: none;
-            background: linear-gradient(to bottom, #001a33, #003366);
+            background: linear-gradient(to bottom, #000d1a, #002244);
             background-attachment: fixed;
             font-family: 'Arial', sans-serif;
             color: white;
@@ -130,7 +130,7 @@
         .hud-label {
             font-size: 12px;
             color: #a3d1ff;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
         }
         .hud-value {
@@ -164,7 +164,7 @@
         }
         .level-up {
             position: fixed;
-            top: 90px;
+            top: 80px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(255, 215, 0, 0.7);
@@ -514,6 +514,7 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
+                this.lastUpdateTime = performance.now();
             }
 
             reset() {
@@ -545,22 +546,26 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
+                this.lastUpdateTime = performance.now();
             }
 
-            updateMovement() {
-                this.movementPhase += 0.02;
-                this.legPhase += this.legSpeed;
-                this.eyePhase += this.eyeSpeed;
-                this.tailPhase += this.tailSpeed;
+            updateMovement(currentTime) {
+                const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
+                this.lastUpdateTime = currentTime;
+                
+                this.movementPhase += 0.02 * deltaTime * 60;
+                this.legPhase += this.legSpeed * deltaTime * 60;
+                this.eyePhase += this.eyeSpeed * deltaTime * 60;
+                this.tailPhase += this.tailSpeed * deltaTime * 60;
                 
                 // Random tongue animation
-                if (Math.random() < 0.005) {
+                if (Math.random() < 0.005 * deltaTime * 60) {
                     this.tongueOut = true;
                     this.tongueTimer = 30;
                 }
                 
                 if (this.tongueOut) {
-                    this.tongueTimer--;
+                    this.tongueTimer -= deltaTime * 60;
                     if (this.tongueTimer <= 0) {
                         this.tongueOut = false;
                     }
@@ -572,7 +577,7 @@
                         break;
                     case 'circular':
                         this.y = this.originalY + Math.sin(this.movementPhase) * 80;
-                        this.x += Math.cos(this.movementPhase) * 0.5 * this.direction;
+                        this.x += Math.cos(this.movementPhase) * 0.5 * this.direction * deltaTime * 60;
                         break;
                 }
                 
@@ -760,11 +765,11 @@
                 }
             }
 
-            update() {
+            update(currentTime) {
                 if (this.alive) {
-                    this.updateMovement();
-                    this.x += this.vx;
-                    this.wingPhase += this.wingSpeed;
+                    this.updateMovement(currentTime);
+                    this.x += this.vx * ((currentTime - this.lastUpdateTime) / 1000) * 60;
+                    this.wingPhase += this.wingSpeed * ((currentTime - this.lastUpdateTime) / 1000) * 60;
                     
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
                         (this.direction === -1 && this.x < -this.width*2)) {
@@ -811,6 +816,7 @@
                         }
                     }
                 }
+                this.lastUpdateTime = currentTime;
             }
 
             draw() {
@@ -1125,6 +1131,7 @@
                         -20, 5 + wingYOffset * 0.3,
                         -5, -5
                     );
+                    ctx.closePath();
                     ctx.fill();
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.lineWidth = 2;
@@ -1160,6 +1167,7 @@
                         20, 5 + wingYOffset * 0.3,
                         5, -5
                     );
+                    ctx.closePath();
                     ctx.fill();
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.lineWidth = 2;
@@ -1306,7 +1314,7 @@
                                 });
                             }
                             
-                            // Уши (такие же как у живой коровы)
+                            // Уши (исправленные - теперь правильной формы)
                             if (limb.ears) {
                                 limb.ears.forEach(ear => {
                                     ctx.save();
@@ -1832,8 +1840,8 @@
 
         function drawBackground() {
             const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#001a33');
-            gradient.addColorStop(1, '#003366');
+            gradient.addColorStop(0, '#000d1a');
+            gradient.addColorStop(1, '#002244');
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
@@ -1900,12 +1908,12 @@
             drawBackground();
             
             cows.forEach(cow => {
-                cow.update();
+                cow.update(timestamp);
                 cow.draw();
             });
             
             deadCows.forEach(cow => {
-                cow.update();
+                cow.update(timestamp);
                 cow.draw();
             });
             
