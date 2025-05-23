@@ -163,14 +163,14 @@
             top: 120px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(255, 215, 0, 0.9);
-            color: #333;
+            background: rgba(255, 215, 0, 0.7);
+            color: white;
             padding: 10px 20px;
             border-radius: 10px;
             font-size: 20px;
             z-index: 100;
-            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
             display: none;
             font-weight: bold;
         }
@@ -225,11 +225,12 @@
 <body>
     <audio id="deathSound" src="Death-Cow.mp3" preload="auto"></audio>
     <audio id="backgroundMusic" src="Last-Call.mp3" loop preload="auto"></audio>
+    <audio id="clickSound" src="Click.mp3" preload="auto"></audio>
 
     <div id="mainMenu" class="menu">
         <h1>COSMIC COW HUNT</h1>
-        <p>Уничтожьте космических коров и пройдите все уровни!</p>
-        <button onclick="startGame()">НАЧАТЬ ИГРУ</button>
+        <p>Охотьтесь на космических коров и станьте лучшим стрелком галактики!</p>
+        <button onclick="playClickSound(); startGame()">НАЧАТЬ ИГРУ</button>
         <div id="leaderboard">
             <h3>ТОП 10 ИГРОКОВ</h3>
             <div id="leaderboardList"></div>
@@ -239,14 +240,14 @@
     <div id="gameOverMenu" class="menu" style="display: none;">
         <h1>МИССИЯ ЗАВЕРШЕНА!</h1>
         <p>Счет: <span id="finalScore">0</span></p>
-        <p>Убийства/промахи: <span id="finalHits">0</span>/<span id="finalMisses">0</span></p>
+        <p>Убито/мимо: <span id="finalHits">0</span>/<span id="finalMisses">0</span></p>
         <p>Уровень: <span id="finalLevel">1</span></p>
-        <button onclick="startGame()">ИГРАТЬ СНОВА</button>
-        <button onclick="returnToMainMenu()">ГЛАВНОЕ МЕНЮ</button>
+        <button onclick="playClickSound(); startGame()">ИГРАТЬ СНОВА</button>
+        <button onclick="playClickSound(); returnToMainMenu()">ГЛАВНОЕ МЕНЮ</button>
     </div>
 
     <div id="reloading" class="reloading" style="display: none;">ПЕРЕЗАРЯДКА...</div>
-    <div id="levelUp" class="level-up">УРОВЕНЬ <span id="levelNumber">1</span>!</div>
+    <div id="levelUp" class="reloading" style="display: none; top: 125px; background: rgba(255, 215, 0, 0.7);">УРОВЕНЬ <span id="levelNumber">1</span>!</div>
 
     <div id="topHUD">
         <div class="hud-item">
@@ -279,7 +280,7 @@
             <div class="hud-value" id="currentLevel">1</div>
         </div>
         <div class="hud-item">
-            <div class="hud-label">УБИЙСТВА/ПРОМАХИ</div>
+            <div class="hud-label">УБИТО/МИМО</div>
             <div class="hud-value" id="hitsMisses">0/0</div>
         </div>
     </div>
@@ -291,6 +292,7 @@
         const ctx = canvas.getContext('2d');
         const deathSound = document.getElementById('deathSound');
         const backgroundMusic = document.getElementById('backgroundMusic');
+        const clickSound = document.getElementById('clickSound');
         
         // Game state
         let gameActive = false;
@@ -315,6 +317,7 @@
         let levelTimer;
         let eyeAnimationPhase = 0;
         let levelUpDisplayTimeout;
+        let isGameOver = false;
 
         // Configuration
         const config = {
@@ -332,8 +335,8 @@
             playAreaTop: 100,
             playAreaBottom: 100,
             planetCount: 3,
-            planetMinRadius: 100,
-            planetMaxRadius: 200
+            planetMinRadius: 150,
+            planetMaxRadius: 300
         };
 
         // Cow types and colors
@@ -341,23 +344,28 @@
         const cowTypes = [
             { // Type 0 - Zigzag
                 speed: 3.5,
-                score: 20, // Уменьшено в 2 раза
+                score: 20,
                 movement: 'zigzag',
-                wingColor: 'rgba(80, 180, 240, 0.6)'
+                wingColor: 'rgba(200, 220, 255, 0.7)'
             },
             { // Type 1 - Circular
                 speed: 3.3,
-                score: 30, // Уменьшено в 2 раза
+                score: 30,
                 movement: 'circular',
-                wingColor: 'rgba(60, 160, 220, 0.6)'
+                wingColor: 'rgba(180, 200, 255, 0.7)'
             },
             { // Type 2 - Fast
                 speed: 4.0,
-                score: 35, // Уменьшено в 2 раза
+                score: 35,
                 movement: 'linear',
-                wingColor: 'rgba(40, 140, 200, 0.6)'
+                wingColor: 'rgba(160, 180, 255, 0.7)'
             }
         ];
+
+        function playClickSound() {
+            clickSound.currentTime = 0;
+            clickSound.play();
+        }
 
         // Leaderboard functions
         function getLeaderboard() {
@@ -366,25 +374,29 @@
         }
 
         function updateLeaderboard(newScore) {
+            isGameOver = true;
             const leaderboard = getLeaderboard();
             const playerName = prompt('Введите ваше имя для таблицы лидеров:', 'Игрок') || 'Игрок';
             
-            leaderboard.push({
-                name: playerName,
-                score: newScore,
-                date: new Date().toLocaleDateString()
-            });
-            
-            // Sort by score descending
-            leaderboard.sort((a, b) => b.score - a.score);
-            
-            // Keep only top 10
-            if (leaderboard.length > 10) {
-                leaderboard.length = 10;
+            if (playerName) {
+                leaderboard.push({
+                    name: playerName,
+                    score: newScore,
+                    date: new Date().toLocaleDateString()
+                });
+                
+                // Sort by score descending
+                leaderboard.sort((a, b) => b.score - a.score);
+                
+                // Keep only top 10
+                if (leaderboard.length > 10) {
+                    leaderboard.length = 10;
+                }
+                
+                localStorage.setItem('cosmicCowLeaderboard', JSON.stringify(leaderboard));
             }
-            
-            localStorage.setItem('cosmicCowLeaderboard', JSON.stringify(leaderboard));
             displayLeaderboard();
+            isGameOver = false;
         }
 
         function displayLeaderboard() {
@@ -432,8 +444,8 @@
             
             // Adjust planet sizes for mobile
             const isMobile = window.innerWidth < 768;
-            const minRadius = isMobile ? 50 : config.planetMinRadius;
-            const maxRadius = isMobile ? 150 : config.planetMaxRadius;
+            const minRadius = isMobile ? 75 : config.planetMinRadius;
+            const maxRadius = isMobile ? 200 : config.planetMaxRadius;
             
             for (let i = 0; i < config.planetCount; i++) {
                 let newPlanet, overlapping;
@@ -495,6 +507,9 @@
                 this.fallSpeed = 0;
                 this.rotation = 0;
                 this.deathAnimationProgress = 0;
+                this.tongueOut = false;
+                this.tongueTimer = 0;
+                this.alpha = 1;
             }
 
             reset() {
@@ -523,6 +538,9 @@
                 this.fallSpeed = 0;
                 this.rotation = 0;
                 this.deathAnimationProgress = 0;
+                this.tongueOut = false;
+                this.tongueTimer = 0;
+                this.alpha = 1;
             }
 
             updateMovement() {
@@ -530,6 +548,19 @@
                 this.legPhase += this.legSpeed;
                 this.eyePhase += this.eyeSpeed;
                 this.tailPhase += this.tailSpeed;
+                
+                // Random tongue animation
+                if (Math.random() < 0.005) {
+                    this.tongueOut = true;
+                    this.tongueTimer = 30;
+                }
+                
+                if (this.tongueOut) {
+                    this.tongueTimer--;
+                    if (this.tongueTimer <= 0) {
+                        this.tongueOut = false;
+                    }
+                }
                 
                 switch(cowTypes[this.type].movement) {
                     case 'zigzag':
@@ -557,6 +588,7 @@
                 this.fallSpeed = -5;
                 this.rotation = 0;
                 this.deathAnimationProgress = 0;
+                this.alpha = 1;
                 
                 // Play death sound
                 deathSound.currentTime = 0;
@@ -564,7 +596,7 @@
                 
                 // Создаем части тела для анимации смерти
                 this.limbs = [
-                    { // Голова
+                    { // Голова с рожками и ушами
                         x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2),
                         y: this.y,
                         vx: (Math.random() - 0.5) * 5,
@@ -574,20 +606,23 @@
                         width: this.headRadius * 2,
                         height: this.headRadius * 2,
                         deadEyes: false,
-                        color: this.color
-                    },
-                    { // Тело
-                        x: this.x,
-                        y: this.y,
-                        vx: (Math.random() - 0.5) * 3,
-                        vy: (Math.random() - 0.5) * 3,
-                        rotation: 0,
-                        rotationSpeed: (Math.random() - 0.5) * 0.05,
-                        width: this.width,
-                        height: this.height,
-                        color: this.color
-                    },
-                    { // Левое ухо
+                        color: this.color,
+                        tongueOut: true,
+                        tongueTimer: 120,
+                        horns: [
+                            { // Левый рог
+                                x: -6,
+                                y: -this.headRadius + 2,
+                                rotation: 0
+                            },
+                            { // Правый рог
+                                x: 6,
+                                y: -this.headRadius + 2,
+                                rotation: 0
+                            }
+                        ],
+                        ears: [
+                            { // Левое ухо
                         x: this.x + (this.direction === 1 ? this.width/2 - this.headRadius * 0.6 : -this.width/2 + this.headRadius * 0.6),
                         y: this.y - this.headRadius * 0.6,
                         vx: (Math.random() - 0.5) * 4,
@@ -609,23 +644,36 @@
                         height: this.headRadius * 0.75,
                         color: this.color
                     },
-                    { // Левый рог
-                        x: this.x + (this.direction === 1 ? this.width/2 - 6 : -this.width/2 + 6),
-                        y: this.y - this.headRadius + 2,
+                    { // Тело
+                        x: this.x,
+                        y: this.y,
                         vx: (Math.random() - 0.5) * 3,
                         vy: (Math.random() - 0.5) * 3,
                         rotation: 0,
                         rotationSpeed: (Math.random() - 0.5) * 0.05,
-                        color: '#f5d0b0'
+                        width: this.width,
+                        height: this.height,
+                        color: this.color
                     },
-                    { // Правый рог
-                        x: this.x + (this.direction === 1 ? this.width/2 + 6 : -this.width/2 - 6),
-                        y: this.y - this.headRadius + 2,
-                        vx: (Math.random() - 0.5) * 3,
-                        vy: (Math.random() - 0.5) * 3,
+                    { // Левое крыло
+                        x: this.x - 5,
+                        y: this.y - 5,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
                         rotation: 0,
-                        rotationSpeed: (Math.random() - 0.5) * 0.05,
-                        color: '#f5d0b0'
+                        rotationSpeed: (Math.random() - 0.5) * 0.08,
+                        color: cowTypes[this.type].wingColor,
+                        wingPhase: this.wingPhase
+                    },
+                    { // Правое крыло
+                        x: this.x + 5,
+                        y: this.y - 5,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.08,
+                        color: cowTypes[this.type].wingColor,
+                        wingPhase: this.wingPhase
                     },
                     { // Нос
                         x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2),
@@ -731,6 +779,7 @@
                 } else {
                     // Анимация смерти - разлетающиеся конечности в космосе
                     this.deathAnimationProgress += 0.02;
+                    this.alpha = Math.max(0, 1 - (Date.now() - this.deathTime) / 4000);
                     
                     // Обновляем части тела
                     this.limbs.forEach(limb => {
@@ -738,13 +787,26 @@
                         limb.y += limb.vy;
                         limb.rotation += limb.rotationSpeed;
                         
+                        // Обновляем таймер языка
+                        if (limb.tongueTimer !== undefined) {
+                            limb.tongueTimer--;
+                            if (limb.tongueTimer <= 0) {
+                                limb.tongueOut = false;
+                            }
+                        }
+                        
+                        // Обновляем фазу крыльев
+                        if (limb.wingPhase !== undefined) {
+                            limb.wingPhase += 0.05;
+                        }
+                        
                         // Через некоторое время показываем мертвые глаза
                         if (limb.deadEyes !== undefined && this.deathAnimationProgress > 0.3) {
                             limb.deadEyes = true;
                         }
                     });
                     
-                    // Удаляем мертвые коровы через 3 секунды
+                    // Удаляем мертвые коровы через 4 секунды
                     if (Date.now() - this.deathTime > 4000) {
                         const index = deadCows.indexOf(this);
                         if (index !== -1) {
@@ -997,20 +1059,22 @@
                     ctx.fill();
                     
                     // Язык (красный, под носом)
-                    ctx.fillStyle = '#ff0000';
-                    ctx.beginPath();
-                    ctx.ellipse(headX, eyeYOffset + 16, 5, 3, 0, 0, Math.PI);
-                    ctx.fill();
+                    if (this.tongueOut) {
+                        ctx.fillStyle = '#ff0000';
+                        ctx.beginPath();
+                        ctx.ellipse(headX, eyeYOffset + 16, 5, 3, 0, 0, Math.PI);
+                        ctx.fill();
+                    }
                     
                     // Horns (уменьшенные рожки, цвет как у носа)
                     ctx.strokeStyle = '#f5d0b0';
                     ctx.lineWidth = 3;
                     
-                    // Left horn
+                    // Left horn (короче)
                     ctx.beginPath();
                     ctx.moveTo(headX - 6, -this.headRadius + 2);
                     ctx.quadraticCurveTo(
-                        headX - 8, -this.headRadius - 6,
+                        headX - 8, -this.headRadius - 4,
                         headX - 4, -this.headRadius - 8
                     );
                     ctx.stroke();
@@ -1021,18 +1085,18 @@
                     ctx.beginPath();
                     ctx.moveTo(headX - 6, -this.headRadius + 2);
                     ctx.quadraticCurveTo(
-                        headX - 8, -this.headRadius - 6,
+                        headX - 8, -this.headRadius - 4,
                         headX - 4, -this.headRadius - 8
                     );
                     ctx.stroke();
                     
-                    // Right horn
+                    // Right horn (короче)
                     ctx.strokeStyle = '#f5d0b0';
                     ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.moveTo(headX + 6, -this.headRadius + 2);
                     ctx.quadraticCurveTo(
-                        headX + 8, -this.headRadius - 6,
+                        headX + 8, -this.headRadius - 4,
                         headX + 4, -this.headRadius - 8
                     );
                     ctx.stroke();
@@ -1043,12 +1107,12 @@
                     ctx.beginPath();
                     ctx.moveTo(headX + 6, -this.headRadius + 2);
                     ctx.quadraticCurveTo(
-                        headX + 8, -this.headRadius - 6,
+                        headX + 8, -this.headRadius - 4,
                         headX + 4, -this.headRadius - 8
                     );
                     ctx.stroke();
                     
-                                    // Wings (крылья Пегаса - большие и изящные)
+                    // Wings (крылья Пегаса - большие и изящные)
                     const wingYOffset = Math.sin(this.wingPhase) * 15;
                     const wingTipX = 50;
                     const wingTipY = -30 + wingYOffset;
@@ -1157,12 +1221,14 @@
                     ctx.fill();
                 } else {
                     // Анимация смерти - разлетающиеся конечности в космосе
+                    ctx.globalAlpha = this.alpha;
+                    
                     this.limbs.forEach(limb => {
                         ctx.save();
                         ctx.translate(limb.x, limb.y);
                         ctx.rotate(limb.rotation);
                         
-                        if (limb === this.limbs[0]) { // Голова
+                        if (limb === this.limbs[0]) { // Голова с рожками и ушами
                             ctx.fillStyle = limb.color;
                             ctx.beginPath();
                             ctx.arc(0, 0, limb.width/2, 0, Math.PI * 2);
@@ -1171,18 +1237,18 @@
                             ctx.lineWidth = 1;
                             ctx.stroke();
                             
-                            // Мертвые глаза "X_X" (увеличенные)
+                            // Мертвые глаза "X_X" (увеличенные и тонкие)
                             ctx.strokeStyle = '#333';
-                            ctx.lineWidth = 3;
+                            ctx.lineWidth = 1;
                             ctx.beginPath();
                             ctx.moveTo(-8, -3);
-                            ctx.lineTo(-3, -6);
+                            ctx.lineTo(-3, -8);
                             ctx.moveTo(-3, -3);
-                            ctx.lineTo(-8, -6);
+                            ctx.lineTo(-8, -8);
                             ctx.moveTo(3, -3);
-                            ctx.lineTo(8, -6);
+                            ctx.lineTo(8, -8);
                             ctx.moveTo(8, -3);
-                            ctx.lineTo(3, -6);
+                            ctx.lineTo(3, -8);
                             ctx.stroke();
                             
                             // Нос мертвой коровы
@@ -1203,68 +1269,147 @@
                             ctx.ellipse(4, 10, 1.5, 2.5, 0, 0, Math.PI * 2);
                             ctx.fill();
                             
-                            // Язык мертвой коровы
-                            ctx.fillStyle = '#ff0000';
-                            ctx.beginPath();
-                            ctx.ellipse(0, 18, 5, 3, 0, 0, Math.PI);
-                            ctx.fill();
-                        } else if (limb === this.limbs[2] || limb === this.limbs[3]) { // Уши
+                            // Язык мертвой коровы (высунутый)
+                            if (limb.tongueOut) {
+                                ctx.fillStyle = '#ff0000';
+                                ctx.beginPath();
+                                ctx.ellipse(0, 18, 5, 3, 0, 0, Math.PI);
+                                ctx.fill();
+                            }
+                            
+                            // Рожки
+                            if (limb.horns) {
+                                limb.horns.forEach(horn => {
+                                    ctx.save();
+                                    ctx.translate(horn.x, horn.y);
+                                    ctx.rotate(horn.rotation);
+                                    
+                                    ctx.strokeStyle = '#f5d0b0';
+                                    ctx.lineWidth = 3;
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, 0);
+                                    ctx.quadraticCurveTo(
+                                        horn.x < 0 ? -2 : 2, 
+                                        -4, 
+                                        horn.x < 0 ? 2 : -2, 
+                                        -8
+                                    );
+                                    ctx.stroke();
+                                    
+                                    ctx.strokeStyle = '#333';
+                                    ctx.lineWidth = 1;
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, 0);
+                                    ctx.quadraticCurveTo(
+                                        horn.x < 0 ? -2 : 2, 
+                                        -4, 
+                                        horn.x < 0 ? 2 : -2, 
+                                        -8
+                                    );
+                                    ctx.stroke();
+                                    
+                                    ctx.restore();
+                                });
+                            }
+                            
+                            // Уши (такие же как у живой коровы)
+                            if (limb.ears) {
+                                limb.ears.forEach(ear => {
+                                    ctx.save();
+                                    ctx.translate(ear.x, ear.y);
+                                    ctx.rotate(ear.rotation);
+                                    
+                                    ctx.fillStyle = limb.color;
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, 0);
+                                    ctx.quadraticCurveTo(
+                                        -limb.width/4, -limb.height/4,
+                                        0, -limb.height * 0.75
+                                    );
+                                    ctx.quadraticCurveTo(
+                                        limb.width/4, -limb.height/4,
+                                        0, 0
+                                    );
+                                    ctx.closePath();
+                                    ctx.fill();
+                                    ctx.strokeStyle = '#333';
+                                    ctx.lineWidth = 1;
+                                    ctx.stroke();
+                                    
+                                    // Внутренняя часть уха
+                                    ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, 0);
+                                    ctx.quadraticCurveTo(
+                                        -limb.width/6, -limb.height/6,
+                                        0, -limb.height * 0.6
+                                    );
+                                    ctx.quadraticCurveTo(
+                                        limb.width/6, -limb.height/6,
+                                        0, 0
+                                    );
+                                    ctx.closePath();
+                                    ctx.fill();
+                                    
+                                    ctx.restore();
+                                });
+                            }
+                        } else if (limb === this.limbs[2] || limb === this.limbs[3]) { // Крылья
+                            const wingYOffset = Math.sin(limb.wingPhase) * 15;
+                            const wingTipX = 50;
+                            const wingTipY = -30 + wingYOffset;
+                            
                             ctx.fillStyle = limb.color;
                             ctx.beginPath();
-                            ctx.moveTo(0, 0);
-                            ctx.quadraticCurveTo(
-                                -limb.width/2, -limb.height/2,
-                                0, -limb.height
-                            );
-                            ctx.quadraticCurveTo(
-                                limb.width/2, -limb.height/2,
-                                0, 0
-                            );
+                            if (limb === this.limbs[2]) { // Левое крыло
+                                ctx.moveTo(0, 0);
+                                ctx.bezierCurveTo(
+                                    -20, -10 + wingYOffset * 0.5,
+                                    -40, -20 + wingYOffset,
+                                    -wingTipX, wingTipY
+                                );
+                                ctx.bezierCurveTo(
+                                    -40, 0 + wingYOffset * 0.5,
+                                    -20, 5 + wingYOffset * 0.3,
+                                    0, 0
+                                );
+                            } else { // Правое крыло
+                                ctx.moveTo(0, 0);
+                                ctx.bezierCurveTo(
+                                    20, -10 + wingYOffset * 0.5,
+                                    40, -20 + wingYOffset,
+                                    wingTipX, wingTipY
+                                );
+                                ctx.bezierCurveTo(
+                                    40, 0 + wingYOffset * 0.5,
+                                    20, 5 + wingYOffset * 0.3,
+                                    0, 0
+                                );
+                            }
                             ctx.closePath();
                             ctx.fill();
-                            ctx.strokeStyle = '#333';
-                            ctx.lineWidth = 1;
+                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                            ctx.lineWidth = 2;
                             ctx.stroke();
                             
-                            // Внутренняя часть уха
-                            ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
-                            ctx.beginPath();
-                            ctx.moveTo(0, 0);
-                            ctx.quadraticCurveTo(
-                                -limb.width/3, -limb.height/3,
-                                0, -limb.height * 0.8
-                            );
-                            ctx.quadraticCurveTo(
-                                limb.width/3, -limb.height/3,
-                                0, 0
-                            );
-                            ctx.closePath();
-                            ctx.fill();
-                        } else if (limb === this.limbs[4] || limb === this.limbs[5]) { // Рога
-                            ctx.strokeStyle = limb.color;
-                            ctx.lineWidth = 3;
-                            ctx.beginPath();
-                            if (limb === this.limbs[4]) { // Левый рог
-                                ctx.moveTo(0, 0);
-                                ctx.quadraticCurveTo(-2, -8, 2, -12);
-                            } else { // Правый рог
-                                ctx.moveTo(0, 0);
-                                ctx.quadraticCurveTo(2, -8, -2, -12);
-                            }
-                            ctx.stroke();
-                            
-                            // Окантовка рожков
-                            ctx.strokeStyle = '#333';
+                            // Feather details
+                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
                             ctx.lineWidth = 1;
-                            ctx.beginPath();
-                            if (limb === this.limbs[4]) { // Левый рог
+                            for (let i = 1; i <= 3; i++) {
+                                const featherX = limb === this.limbs[2] ? 
+                                    0 - (wingTipX) * i / 4 : 
+                                    0 + (wingTipX) * i / 4;
+                                const featherY = 0 + (wingTipY) * i / 4;
+                                
+                                ctx.beginPath();
                                 ctx.moveTo(0, 0);
-                                ctx.quadraticCurveTo(-2, -8, 2, -12);
-                            } else { // Правый рог
-                                ctx.moveTo(0, 0);
-                                ctx.quadraticCurveTo(2, -8, -2, -12);
+                                ctx.quadraticCurveTo(
+                                    featherX * (limb === this.limbs[2] ? 1.2 : 0.8), 
+                                    featherY * 0.8,
+                                    featherX, featherY
+                                );
+                                ctx.stroke();
                             }
-                            ctx.stroke();
                         } else if (limb === this.limbs[1]) { // Тело
                             ctx.fillStyle = limb.color;
                             ctx.beginPath();
@@ -1273,7 +1418,7 @@
                             ctx.strokeStyle = '#333';
                             ctx.lineWidth = 1;
                             ctx.stroke();
-                        } else if (limb === this.limbs[13]) { // Вымя
+                        } else if (limb === this.limbs[11]) { // Вымя
                             ctx.fillStyle = '#FFC0CB';
                             ctx.beginPath();
                             ctx.ellipse(0, 0, limb.width/2, limb.height/2, 0, 0, Math.PI * 2);
@@ -1290,7 +1435,7 @@
                                 ctx.ellipse(nippleX, nippleY, 2, 3, 0, 0, Math.PI * 2);
                                 ctx.fill();
                             }
-                        } else if (limb === this.limbs[12]) { // Хвост
+                        } else if (limb === this.limbs[10]) { // Хвост
                             ctx.fillStyle = '#8B4513';
                             ctx.beginPath();
                             ctx.moveTo(0, 0);
@@ -1321,6 +1466,8 @@
                         
                         ctx.restore();
                     });
+                    
+                    ctx.globalAlpha = 1;
                 }
                 
                 ctx.restore();
@@ -1380,7 +1527,7 @@
             draw() {
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
+                ctx.fillStyle = `rgba(100, 200, 255, ${this.alpha})`;
                 ctx.fill();
             }
 
@@ -1395,19 +1542,19 @@
             ctx.translate(planet.x, planet.y);
             ctx.rotate(planet.rotation);
             
-            // Градиент для планеты
-            const gradient = ctx.createRadialGradient(
-                0, 0, planet.radius * 0.3,
-                0, 0, planet.radius
+            // Градиент для планеты (от верхнего угла)
+            const gradient = ctx.createLinearGradient(
+                -planet.radius, -planet.radius,
+                planet.radius, planet.radius
             );
             
             // Добавляем цветовые остановки в зависимости от основного цвета
             if (planet.color === '#40E0D0' || planet.color === '#00CED1') {
-                gradient.addColorStop(0, '#20B2AA');
+                gradient.addColorStop(0, '#00FFFF');
                 gradient.addColorStop(0.5, planet.color);
                 gradient.addColorStop(1, '#008B8B');
             } else {
-                gradient.addColorStop(0, '#FFD700');
+                gradient.addColorStop(0, '#FFFF99');
                 gradient.addColorStop(0.5, planet.color);
                 gradient.addColorStop(1, '#CD853F');
             }
@@ -1435,6 +1582,7 @@
 
         function startGame() {
             gameActive = true;
+            isGameOver = false;
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('gameOverMenu').style.display = 'none';
             document.getElementById('reloading').style.display = 'none';
@@ -1488,6 +1636,7 @@
 
         function returnToMainMenu() {
             gameActive = false;
+            isGameOver = false;
             clearInterval(gameTimer);
             clearInterval(levelTimer);
             clearTimeout(reloadTimeout);
@@ -1533,6 +1682,7 @@
 
         function endGame() {
             gameActive = false;
+            isGameOver = true;
             clearInterval(gameTimer);
             clearInterval(levelTimer);
             clearTimeout(reloadTimeout);
@@ -1572,7 +1722,7 @@
         }
 
         function spawnCow() {
-            if (!gameActive || timeLeft <= 0) return;
+            if (!gameActive || timeLeft <= 0 || isGameOver) return;
             
             const aliveCows = cows.filter(cow => cow.alive);
             
@@ -1585,6 +1735,8 @@
         }
 
         function checkHit(x, y) {
+            if (isGameOver) return;
+            
             let hit = false;
             
             for (let i = 0; i < cows.length; i++) {
@@ -1746,7 +1898,7 @@
         }
 
         function gameLoop(timestamp) {
-            if (!gameActive) return;
+            if (!gameActive || isGameOver) return;
             
             const deltaTime = timestamp - lastTime;
             lastTime = timestamp;
@@ -1789,7 +1941,7 @@
         }
 
         canvas.addEventListener('pointerdown', (e) => {
-            if (!gameActive || isReloading) return;
+            if (!gameActive || isReloading || isGameOver) return;
             
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
