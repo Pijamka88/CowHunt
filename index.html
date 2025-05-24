@@ -249,7 +249,7 @@
     <div id="reloading" class="reloading" style="display: none;">ПЕРЕЗАРЯДКА...</div>
     <div id="levelUp" class="reloading" style="display: none; top: 140px; background: rgba(255, 215, 0, 0.7);">УРОВЕНЬ <span id="levelNumber">1</span>!</div>
 
-    <div id="topHUD">
+    <div id="topHUD" style="display: none;">
         <div class="hud-item">
             <div class="hud-label">СЧЕТ</div>
             <div class="hud-value" id="scoreDisplay">0</div>
@@ -264,7 +264,7 @@
         </div>
     </div>
 
-    <div id="bottomHUD">
+    <div id="bottomHUD" style="display: none;">
         <div class="hud-item">
             <div class="hud-label">ПАТРОНЫ</div>
             <div class="ammo-container" id="ammoContainer">
@@ -374,7 +374,6 @@
         }
 
         function updateLeaderboard(newScore) {
-            isGameOver = true;
             const leaderboard = getLeaderboard();
             const playerName = prompt('Введите ваше имя для таблицы лидеров:', 'Игрок') || 'Игрок';
             
@@ -396,7 +395,7 @@
                 localStorage.setItem('cosmicCowLeaderboard', JSON.stringify(leaderboard));
             }
             displayLeaderboard();
-            isGameOver = false;
+            endGame(); // Добавлено для завершения игры после ввода имени
         }
 
         function displayLeaderboard() {
@@ -816,25 +815,6 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
-                    // Вымя (теперь рисуется перед ногами)
-                    ctx.fillStyle = '#FFC0CB';
-                    ctx.beginPath();
-                    ctx.ellipse(-this.width/8, this.height/2.5, 12, 8, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = '#FF69B4';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                    
-                    // Соски (3 штуки)
-                    ctx.fillStyle = '#D88';
-                    for (let i = 0; i < 3; i++) {
-                        const nippleX = -this.width/8 - 6 + i * 6;
-                        const nippleY = this.height/2.5 + 6;
-                        ctx.beginPath();
-                        ctx.ellipse(nippleX, nippleY, 2, 3, 0, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                    
                     // Legs (серые, опущены ниже)
                     ctx.strokeStyle = '#888';
                     ctx.lineWidth = 6;
@@ -1047,6 +1027,7 @@
                     // Horns (маленькие черные рожки)
                     ctx.strokeStyle = '#f5d0b0';
                     ctx.lineWidth = 3;
+                    ctx.fillStyle = '#f5d0b0'; // Добавлено: заливка рожек
                     
                     // Left horn (короткий)
                     ctx.beginPath();
@@ -1167,11 +1148,33 @@
                     );
                     ctx.closePath();
                     ctx.fill();
+                    
+                    // Вымя (теперь рисуется последним, чтобы быть на переднем плане)
+                    ctx.fillStyle = '#FFC0CB';
+                    ctx.beginPath();
+                    ctx.ellipse(-this.width/8, this.height/2.5, 12, 8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#FF69B4';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Соски (3 штуки)
+                    ctx.fillStyle = '#D88';
+                    for (let i = 0; i < 3; i++) {
+                        const nippleX = -this.width/8 - 6 + i * 6;
+                        const nippleY = this.height/2.5 + 6;
+                        ctx.beginPath();
+                        ctx.ellipse(nippleX, nippleY, 2, 3, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 } else {
                     // Анимация смерти - разлетающиеся конечности в космосе
                     ctx.globalAlpha = this.alpha;
                     
+                    // Сначала рисуем все части тела, кроме вымени
                     this.limbs.forEach(limb => {
+                        if (limb === this.limbs[11]) return; // Пропускаем вымя
+                        
                         ctx.save();
                         ctx.translate(limb.x, limb.y);
                         ctx.rotate(limb.rotation);
@@ -1234,6 +1237,7 @@
                                     
                                     ctx.strokeStyle = '#f5d0b0';
                                     ctx.lineWidth = 3;
+                                    ctx.fillStyle = '#f5d0b0'; // Добавлено: заливка рожек
                                     ctx.beginPath();
                                     ctx.moveTo(0, 0);
                                     ctx.lineTo(horn.x < 0 ? -2 : 2, -8);
@@ -1349,23 +1353,6 @@
                             ctx.strokeStyle = '#333';
                             ctx.lineWidth = 1;
                             ctx.stroke();
-                        } else if (limb === this.limbs[11]) { // Вымя
-                            ctx.fillStyle = '#FFC0CB';
-                            ctx.beginPath();
-                            ctx.ellipse(0, 0, limb.width/2, limb.height/2, 0, 0, Math.PI * 2);
-                            ctx.fill();
-                            ctx.strokeStyle = '#FF69B4';
-                            ctx.lineWidth = 1;
-                            ctx.stroke();
-                            
-                            ctx.fillStyle = '#D88';
-                            for (let i = 0; i < 3; i++) {
-                                const nippleX = -6 + i * 6;
-                                const nippleY = 6;
-                                ctx.beginPath();
-                                ctx.ellipse(nippleX, nippleY, 2, 3, 0, 0, Math.PI * 2);
-                                ctx.fill();
-                            }
                         } else if (limb === this.limbs[10]) { // Хвост
                             ctx.fillStyle = '#8B4513';
                             ctx.beginPath();
@@ -1397,6 +1384,33 @@
                         
                         ctx.restore();
                     });
+                    
+                    // Затем рисуем вымя поверх всех частей
+                    const udder = this.limbs[11];
+                    if (udder) {
+                        ctx.save();
+                        ctx.translate(udder.x, udder.y);
+                        ctx.rotate(udder.rotation);
+                        
+                        ctx.fillStyle = '#FFC0CB';
+                        ctx.beginPath();
+                        ctx.ellipse(0, 0, udder.width/2, udder.height/2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = '#FF69B4';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        
+                        ctx.fillStyle = '#D88';
+                        for (let i = 0; i < 3; i++) {
+                            const nippleX = -6 + i * 6;
+                            const nippleY = 6;
+                            ctx.beginPath();
+                            ctx.ellipse(nippleX, nippleY, 2, 3, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        
+                        ctx.restore();
+                    }
                     
                     ctx.globalAlpha = 1;
                 }
@@ -1519,6 +1533,10 @@
             document.getElementById('reloading').style.display = 'none';
             document.getElementById('levelUp').style.display = 'none';
             
+            // Показать HUD
+            document.getElementById('topHUD').style.display = 'flex';
+            document.getElementById('bottomHUD').style.display = 'flex';
+            
             cows = [];
             deadCows = [];
             shots = [];
@@ -1578,6 +1596,10 @@
             
             document.getElementById('mainMenu').style.display = 'block';
             document.getElementById('gameOverMenu').style.display = 'none';
+            
+            // Скрыть HUD
+            document.getElementById('topHUD').style.display = 'none';
+            document.getElementById('bottomHUD').style.display = 'none';
         }
 
         function updateAmmoDisplay() {
@@ -1628,8 +1650,9 @@
             document.getElementById('finalMisses').textContent = misses;
             document.getElementById('finalLevel').textContent = level;
             
-            // Обновляем таблицу лидеров
-            updateLeaderboard(score);
+            // Скрыть HUD
+            document.getElementById('topHUD').style.display = 'none';
+            document.getElementById('bottomHUD').style.display = 'none';
         }
 
         function updateHUD() {
