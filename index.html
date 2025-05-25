@@ -9,17 +9,11 @@
             margin: 0;
             overflow: hidden;
             touch-action: none;
+            background: linear-gradient(to bottom, #001a33, #30397A);
+            background-attachment: fixed;
             font-family: 'Arial', sans-serif;
             color: white;
             height: 100vh;
-            background: linear-gradient(135deg, #1a0033, #330033, #660066, #993366);
-            background-size: 400% 400%;
-            animation: aurora 15s ease infinite;
-        }
-        @keyframes aurora {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
         }
         #gameCanvas {
             display: block;
@@ -110,7 +104,6 @@
             border-bottom: 1px solid #3399ff;
             z-index: 100;
             height: 100px;
-            display: none;
         }
         #bottomHUD {
             position: fixed;
@@ -124,7 +117,6 @@
             border-top: 1px solid #3399ff;
             z-index: 100;
             height: 100px;
-            display: none;
         }
         .hud-item {
             display: flex;
@@ -173,16 +165,15 @@
             transform: translateX(-50%);
             background: rgba(255, 215, 0, 0.7);
             color: white;
-            padding: 15px 40px;
+            padding: 10px 20px;
             border-radius: 10px;
-            font-size: 24px;
+            font-size: 20px;
             z-index: 100;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
             display: none;
             font-weight: bold;
-            min-width: 200px;
-            text-align: center;
+            min-width: 250px;
         }
         .life-bonus {
             position: absolute;
@@ -236,7 +227,6 @@
     <audio id="deathSound" src="Death-Cow.mp3" preload="metadata"></audio>
     <audio id="backgroundMusic" src="Last-Call.mp3" loop preload="auto"></audio>
     <audio id="clickSound" src="Click.mp3" preload="metadata"></audio>
-    <audio id="lifeBonusSound" src="Life-Bonus.mp3" preload="metadata"></audio>
 
     <div id="mainMenu" class="menu">
         <h1>COSMIC COW HUNT</h1>
@@ -258,9 +248,9 @@
     </div>
 
     <div id="reloading" class="reloading" style="display: none;">ПЕРЕЗАРЯДКА...</div>
-    <div id="levelUp" class="level-up" style="display: none;">УРОВЕНЬ <span id="levelNumber">1</span>!</div>
+    <div id="levelUp" class="reloading" style="display: none; top: 140px; background: rgba(255, 215, 0, 0.7);">УРОВЕНЬ <span id="levelNumber">1</span>!</div>
 
-    <div id="topHUD">
+    <div id="topHUD" style="display: none;">
         <div class="hud-item">
             <div class="hud-label">СЧЕТ</div>
             <div class="hud-value" id="scoreDisplay">0</div>
@@ -275,7 +265,7 @@
         </div>
     </div>
 
-    <div id="bottomHUD">
+    <div id="bottomHUD" style="display: none;">
         <div class="hud-item">
             <div class="hud-label">ПАТРОНЫ</div>
             <div class="ammo-container" id="ammoContainer">
@@ -304,7 +294,6 @@
         const deathSound = document.getElementById('deathSound');
         const backgroundMusic = document.getElementById('backgroundMusic');
         const clickSound = document.getElementById('clickSound');
-        const lifeBonusSound = document.getElementById('lifeBonusSound');
         
         // Game state
         let gameActive = false;
@@ -379,11 +368,6 @@
             clickSound.play();
         }
 
-        function playLifeBonusSound() {
-            lifeBonusSound.currentTime = 0;
-            lifeBonusSound.play();
-        }
-
         // Leaderboard functions
         function getLeaderboard() {
             const leaderboard = localStorage.getItem('cosmicCowLeaderboard');
@@ -412,7 +396,7 @@
                 localStorage.setItem('cosmicCowLeaderboard', JSON.stringify(leaderboard));
             }
             displayLeaderboard();
-            endGame();
+            endGame(); // Добавлено для завершения игры после ввода имени
         }
 
         function displayLeaderboard() {
@@ -475,21 +459,8 @@
                         radius: Math.random() * (maxRadius - minRadius) + minRadius,
                         color: planetColors[Math.floor(Math.random() * planetColors.length)],
                         rotation: Math.random() * Math.PI * 2,
-                        rotationSpeed: Math.random() * 0.002 - 0.001,
-                        craters: []
+                        rotationSpeed: Math.random() * 0.002 - 0.001
                     };
-                    
-                    // Add craters for volume effect
-                    const craterCount = Math.floor(Math.random() * 5) + 3;
-                    for (let j = 0; j < craterCount; j++) {
-                        const angle = Math.random() * Math.PI * 2;
-                        const distance = Math.random() * newPlanet.radius * 0.7;
-                        newPlanet.craters.push({
-                            x: Math.cos(angle) * distance,
-                            y: Math.sin(angle) * distance,
-                            size: Math.random() * newPlanet.radius * 0.2 + newPlanet.radius * 0.1
-                        });
-                    }
                     
                     // Check for overlap with existing planets
                     for (const planet of planets) {
@@ -617,8 +588,6 @@
                 this.fallSpeed = -5;
                 this.rotation = 0;
                 this.deathAnimationProgress = 0;
-                this.tongueOut = false;
-                this.tongueTimer = 0;
                 this.alpha = 1;
                 
                 // Play death sound
@@ -997,18 +966,6 @@
                         ctx.beginPath();
                         ctx.arc(headX - 8, -eyeYOffset - 1, 1.5, 0, Math.PI * 2);
                         ctx.fill();
-                    } else {
-                        // Рисуем закрытые глаза в виде скобок
-                        ctx.strokeStyle = '#333';
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        // Левый глаз - перевернутая скобка
-                        ctx.arc(headX - 6, -eyeYOffset, 3, Math.PI/4, Math.PI*3/4);
-                        ctx.stroke();
-                        // Правый глаз - перевернутая скобка
-                        ctx.beginPath();
-                        ctx.arc(headX + 6, -eyeYOffset, 3, Math.PI/4, Math.PI*3/4);
-                        ctx.stroke();
                     }
                     
                     // Right eye
@@ -1071,7 +1028,7 @@
                     // Horns (маленькие черные рожки)
                     ctx.strokeStyle = '#f5d0b0';
                     ctx.lineWidth = 3;
-                    ctx.fillStyle = '#f5d0b0';
+                    ctx.fillStyle = '#f5d0b0'; // Добавлено: заливка рожек
                     
                     // Left horn (короткий)
                     ctx.beginPath();
@@ -1281,7 +1238,7 @@
                                     
                                     ctx.strokeStyle = '#f5d0b0';
                                     ctx.lineWidth = 3;
-                                    ctx.fillStyle = '#f5d0b0';
+                                    ctx.fillStyle = '#f5d0b0'; // Добавлено: заливка рожек
                                     ctx.beginPath();
                                     ctx.moveTo(0, 0);
                                     ctx.lineTo(horn.x < 0 ? -2 : 2, -8);
@@ -1526,69 +1483,56 @@
             }
         }
 
-        function drawPlanet(planet) {
-            ctx.save();
-            ctx.translate(planet.x, planet.y);
-            ctx.rotate(planet.rotation);
-            
-            // Градиент для планеты (от верхнего угла)
-            const gradient = ctx.createLinearGradient(
-                -planet.radius, -planet.radius,
-                planet.radius, planet.radius
-            );
-            
-            // Добавляем цветовые остановки в зависимости от основного цвета
-            if (planet.color === '#40E0D0' || planet.color === '#00CED1') {
-                gradient.addColorStop(0, '#00FFFF');
-                gradient.addColorStop(0.5, planet.color);
-                gradient.addColorStop(1, '#008B8B');
-            } else {
-                gradient.addColorStop(0, '#FFFF99');
-                gradient.addColorStop(0.5, planet.color);
-                gradient.addColorStop(1, '#CD853F');
-            }
-            
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Добавляем кратеры для эффекта объема
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-            planet.craters.forEach(crater => {
-                ctx.beginPath();
-                ctx.arc(crater.x, crater.y, crater.size, 0, Math.PI * 2);
-                ctx.fill();
-            });
-            
-            // Добавляем освещение для эффекта объема
-            const lightGradient = ctx.createRadialGradient(
-                -planet.radius * 0.3, -planet.radius * 0.3, 0,
-                -planet.radius * 0.3, -planet.radius * 0.3, planet.radius * 1.5
-            );
-            lightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
-            lightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-            
-            ctx.fillStyle = lightGradient;
-            ctx.beginPath();
-            ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Добавляем атмосферу
-            const atmosphereGradient = ctx.createRadialGradient(
-                0, 0, planet.radius * 0.9,
-                0, 0, planet.radius * 1.1
-            );
-            atmosphereGradient.addColorStop(0, 'rgba(100, 200, 255, 0.1)');
-            atmosphereGradient.addColorStop(1, 'rgba(100, 200, 255, 0)');
-            
-            ctx.fillStyle = atmosphereGradient;
-            ctx.beginPath();
-            ctx.arc(0, 0, planet.radius * 1.1, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.restore();
-        }
+function drawPlanet(planet) {
+    ctx.save();
+    ctx.translate(planet.x, planet.y);
+    ctx.rotate(planet.rotation);
+
+    // Создаем линейный градиент под углом 120 градусов (в радианах это ~2.094)
+    const gradient = ctx.createLinearGradient(
+        -planet.radius * Math.cos(2.094), // начальная точка по оси X
+        -planet.radius * Math.sin(2.094), // начальная точка по оси Y
+        planet.radius * Math.cos(2.094),  // конечная точка по оси X
+        planet.radius * Math.sin(2.094)   // конечная точка по оси Y
+    );
+
+    // Устанавливаем цвета градиента в зависимости от типа планеты
+    if (planet.color === '#40E0D0' || planet.color === '#00CED1') {
+        gradient.addColorStop(0, '#00FFFF');       // Светлый акцент в начале
+        gradient.addColorStop(0.5, planet.color);  // Основной цвет в центре
+        gradient.addColorStop(1, '#008B8B');       // Темный акцент в конце
+    } else if (planet.color === '#FFD700') {
+        gradient.addColorStop(0, '#FFFFCC');       // Желто-золотистый светлый
+        gradient.addColorStop(0.5, planet.color);  // Основной цвет
+        gradient.addColorStop(1, '#DAA520');       // Темно-золотой
+    } else if (planet.color === '#FFA500') {
+        gradient.addColorStop(0, '#FFD700');       // Золото в начале
+        gradient.addColorStop(0.5, planet.color);  // Основной оранжевый
+        gradient.addColorStop(1, '#B8860B');       // Темно-оранжевый
+    }
+
+    // Рисуем основное тело планеты с градиентом
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Добавляем тень для объема
+    ctx.beginPath();
+    ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Легкая полупрозрачная атмосфера вокруг
+    ctx.beginPath();
+    ctx.arc(0, 0, planet.radius * 1.05, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.fill();
+
+    ctx.restore();
+}
+
 
         function showLevelUp() {
             const levelUp = document.getElementById('levelUp');
@@ -1818,7 +1762,6 @@
                     updateHUD();
                     
                     explosions.push(new Explosion(bonus.x, bonus.y, '255, 51, 102'));
-                    playLifeBonusSound();
                     hit = true;
                     break;
                 }
