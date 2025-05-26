@@ -233,7 +233,40 @@ body {
         .leaderboard-item:last-child {
             border-bottom: none;
         }
-    </style>
+        
+    #helpModal {
+    max-height: 90vh;
+}
+
+#helpModal h2 {
+    color: #fff;
+    margin-bottom: 15px;
+    text-shadow: 2px 2px 0 #3399ff;
+}
+
+#helpModal h3 {
+    color: #a3d1ff;
+    margin: 20px 0 10px 0;
+}
+
+#helpModal ul {
+    padding-left: 20px;
+    margin: 10px 0;
+}
+
+#helpModal li {
+    margin-bottom: 8px;
+}
+
+#helpModal code {
+    background: rgba(0,0,0,0.5);
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    word-break: break-all;
+    display: inline-block;
+}
+</style>
 </head>
 <body>
 <div class="aurora-bg" id="auroraBackground"></div>
@@ -241,8 +274,61 @@ body {
     <audio id="backgroundMusic" src="Last-Call.mp3" loop preload="auto"></audio>
     <audio id="clickSound" src="Click.mp3" preload="metadata"></audio>
     <audio id="lifeBonusSound" src="Life-Bonus.mp3" preload="auto"></audio>
+    
+<div id="helpModal" class="menu" style="display: none; width: 90%; max-width: 600px;">
+    <h2>Как играть в Cosmic Cow Hunt</h2>
+    <div style="text-align: left; max-height: 60vh; overflow-y: auto; padding: 10px;">
+        <p>🚀 <strong>Цель игры:</strong> Остановите нашествие инопланетных коров, стреляя в них!</p>
+        
+        <p>🎯 <strong>Управление:</strong></p>
+        <ul>
+            <li>Нажимайте/кликайте по экрану, чтобы стрелять</li>
+            <li>У вас 5 патронов, после чего требуется перезарядка</li>
+            <li>Попадание в корову приносит очки</li>
+            <li>Промахи уменьшают количество жизней</li>
+        </ul>
+
+        <p>💖 <strong>Бонусы:</strong></p>
+        <ul>
+            <li>Иногда при убийстве коровы выпадает бонус жизни (розовое сердце)</li>
+            <li>Соберите его, чтобы восстановить одну жизнь</li>
+        </ul>
+
+        <p>📈 <strong>Уровни:</strong></p>
+        <ul>
+            <li>Каждые 60 секунд уровень повышается</li>
+            <li>С каждым уровнем коровы становятся быстрее</li>
+        </ul>
+
+        <hr style="border-color: rgba(255,255,255,0.2); margin: 20px 0;">
+
+        <h3>Поддержать автора</h3>
+        <p>Если вам нравится игра, вы можете поддержать разработчика:</p>
+        
+        <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px;">
+            <p><strong>Bitcoin (BTC):</strong> <code>bc1q5xjk0kw3m6f5z9h4v2r7p3n8s2c4v5b6n7m8k9</code></p>
+            <p><strong>TON:</strong> <code>EQABvJXaXJ7f5z9h4v2r7p3n8s2c4v5b6n7m8k9j0k1l2m3n4o5p6q7r8s9t0</code></p>
+            <p><strong>USDT (TRC20):</strong> <code>TAvJXaXJ7f5z9h4v2r7p3n8s2c4v5b6n7m8k9j0k</code></p>
+        </div>
+
+        <p style="margin-top: 20px; font-size: 0.9em; color: #a3d1ff;">Спасибо за игру! Ваша поддержка помогает развивать проект.</p>
+    </div>
+    <button onclick="closeHelp()" style="margin-top: 20px;">Закрыть</button>
+</div>
 
     <div id="mainMenu" class="menu">
+       
+    <div style="position: absolute; top: 15px; right: 15px;">
+        <button onclick="showHelp()" style="
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            padding: 0;
+            line-height: 40px;
+        ">?</button>
+    </div>
+        
         <h1>COSMIC COW HUNT</h1>
         <p>Остановите нашествие инопланетных коров!</p>
         <button onclick="playClickSound(); startGame()">НАЧАТЬ ИГРУ</button>
@@ -1744,82 +1830,74 @@ function drawPlanet(planet) {
             setTimeout(spawnCow, config.spawnInterval / (1 + level * 0.1));
         }
 
-        function checkHit(x, y) {
-            if (isGameOver) return;
+function checkHit(x, y) {
+    if (isGameOver) return;
+    
+    // Сначала проверяем попадание в бонус жизни
+    for (let i = 0; i < lifeBonuses.length; i++) {
+        const bonus = lifeBonuses[i];
+        if (bonus.collected) continue;
+        
+        const dist = Math.sqrt((x - bonus.x) ** 2 + (y - bonus.y) ** 2);
+        
+        if (dist <= bonus.radius) {
+            bonus.collected = true;
+            lives = Math.min(3, lives + 1);
+            updateHUD();
             
-            let hit = false;
+            // Воспроизвести звук бонуса жизни
+            const lifeBonusSound = document.getElementById('lifeBonusSound');
+            lifeBonusSound.currentTime = 0;
+            lifeBonusSound.play();
             
-            for (let i = 0; i < cows.length; i++) {
-                const cow = cows[i];
-                
-                if (!cow.alive) continue;
-                
-                const bodyX = cow.x;
-                const bodyY = cow.y;
-                const bodyRadiusX = cow.width/2;
-                const bodyRadiusY = cow.height/2;
-                
-                const headX = cow.direction === 1 ? cow.x + cow.width/2 : cow.x - cow.width/2;
-                const headY = cow.y;
-                const headRadius = cow.headRadius;
-                
-                const normalizedX = (x - bodyX) / bodyRadiusX;
-                const normalizedY = (y - bodyY) / bodyRadiusY;
-                const inBody = normalizedX * normalizedX + normalizedY * normalizedY <= 1;
-                
-                const headDist = Math.sqrt((x - headX) ** 2 + (y - headY) ** 2);
-                const inHead = headDist <= headRadius;
-                
-                if (inBody || inHead) {
-                    explosions.push(new Explosion(x, y, '255, 100, 100'));
-                    
-                    cow.die();
-                    deadCows.push(cow);
-                    
-                    score += cowTypes[cow.type].score;
-                    hits++;
-                    updateHUD();
-                    shots.push(new Shot(x, y));
-                    hit = true;
-                    break;
-                }
-            }
-            
-            for (let i = 0; i < lifeBonuses.length; i++) {
-                const bonus = lifeBonuses[i];
-                if (bonus.collected) continue;
-                
-                const dist = Math.sqrt((x - bonus.x) ** 2 + (y - bonus.y) ** 2);
-            if (dist <= bonus.radius) {
-    bonus.collected = true;
-    lives = Math.min(3, lives + 1);
+            explosions.push(new Explosion(bonus.x, bonus.y, '255, 51, 102'));
+            return; // Выходим из функции, так как произошло попадание в бонус
+        }
+    }
+
+    // Теперь проверяем попадание в корову
+    for (let i = 0; i < cows.length; i++) {
+        const cow = cows[i];
+        if (!cow.alive) continue;
+        
+        const bodyX = cow.x;
+        const bodyY = cow.y;
+        const bodyRadiusX = cow.width/2;
+        const bodyRadiusY = cow.height/2;
+        const headX = cow.direction === 1 ? cow.x + cow.width/2 : cow.x - cow.width/2;
+        const headY = cow.y;
+        const headRadius = cow.headRadius;
+        const normalizedX = (x - bodyX) / bodyRadiusX;
+        const normalizedY = (y - bodyY) / bodyRadiusY;
+        const inBody = normalizedX * normalizedX + normalizedY * normalizedY <= 1;
+        const headDist = Math.sqrt((x - headX) ** 2 + (y - headY) ** 2);
+        const inHead = headDist <= headRadius;
+        
+        if (inBody || inHead) {
+            explosions.push(new Explosion(x, y, '255, 100, 100'));
+            cow.die();
+            deadCows.push(cow);
+            score += cowTypes[cow.type].score;
+            hits++;
+            updateHUD();
+            shots.push(new Shot(x, y));
+            return; // Выходим из функции, так как произошло попадание в корову
+        }
+    }
+
+    // Если ни в одну цель не попали
+    misses++;
+    lives = Math.max(0, lives - 1);
     updateHUD();
     
-    // Воспроизвести звук бонуса жизни
-    const lifeBonusSound = document.getElementById('lifeBonusSound');
-    lifeBonusSound.currentTime = 0;
-    lifeBonusSound.play();
+    if (lives <= 0) {
+        endGame();
+    }
     
-    explosions.push(new Explosion(bonus.x, bonus.y, '255, 51, 102'));
-    hit = true;
-    break;
+    if (ammo <= 0 && !isReloading) {
+        startReloading();
+    }
 }
-            }
-            
-            if (!hit) {
-                misses++;
-                lives = Math.max(0, lives - 1);
-                updateHUD();
-                
-                if (lives <= 0) {
-                    endGame();
-                }
-            }
-            
-            if (ammo <= 0 && !isReloading) {
-                startReloading();
-            }
-        }
 
         function startReloading() {
             isReloading = true;
@@ -2072,6 +2150,19 @@ function initAurora() {
 
 // Инициализируем анимацию при загрузке
 window.addEventListener('load', initAurora);
+
+function showHelp() {
+    playClickSound();
+    document.getElementById('helpModal').style.display = 'block';
+    document.getElementById('mainMenu').style.display = 'none';
+}
+
+function closeHelp() {
+    playClickSound();
+    document.getElementById('helpModal').style.display = 'none';
+    document.getElementById('mainMenu').style.display = 'block';
+}
+    
     </script>
 </body>
 </html>
