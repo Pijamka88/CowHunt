@@ -274,6 +274,7 @@ body {
     <audio id="backgroundMusic" src="Last-Call.mp3" loop preload="auto"></audio>
     <audio id="clickSound" src="Click.mp3" preload="metadata"></audio>
     <audio id="lifeBonusSound" src="Life-Bonus.mp3" preload="auto"></audio>
+    <audio id="reloadSound" src="Reloading.mp3" preload="auto"></audio>
     
 <div id="helpModal" class="menu" style="display: none; width: 90%; max-width: 600px;">
     <h2>Как играть в Cosmic Cow Hunt</h2>
@@ -1725,25 +1726,26 @@ function drawPlanet(planet) {
             gameLoop();
         }
 
-        function returnToMainMenu() {
-            gameActive = false;
-            isGameOver = false;
-            clearInterval(gameTimer);
-            clearInterval(levelTimer);
-            clearTimeout(reloadTimeout);
-            clearTimeout(levelUpDisplayTimeout);
-            
-            // Stop background music
-            backgroundMusic.pause();
-            
-            document.getElementById('mainMenu').style.display = 'block';
-            document.getElementById('gameOverMenu').style.display = 'none';
-            
-            // Скрыть HUD
-            document.getElementById('topHUD').style.display = 'none';
-            document.getElementById('bottomHUD').style.display = 'none';
-        }
-
+function returnToMainMenu() {
+    gameActive = false;
+    isGameOver = false;
+    clearInterval(gameTimer);
+    clearInterval(levelTimer);
+    clearTimeout(reloadTimeout);
+    clearTimeout(levelUpDisplayTimeout);
+    
+    // Останавливаем все звуки
+    backgroundMusic.pause();
+    document.getElementById('reloadSound').pause();
+    
+    document.getElementById('mainMenu').style.display = 'block';
+    document.getElementById('gameOverMenu').style.display = 'none';
+    
+    // Скрыть HUD и сообщение о перезарядке
+    document.getElementById('topHUD').style.display = 'none';
+    document.getElementById('bottomHUD').style.display = 'none';
+    document.getElementById('reloading').style.display = 'none';
+}
         function updateAmmoDisplay() {
             const ammoContainer = document.getElementById('ammoContainer');
             const ammoBoxes = ammoContainer.querySelectorAll('.ammo-box');
@@ -1775,28 +1777,29 @@ function drawPlanet(planet) {
             }, 1000);
         }
 
-        function endGame() {
-            gameActive = false;
-            isGameOver = true;
-            clearInterval(gameTimer);
-            clearInterval(levelTimer);
-            clearTimeout(reloadTimeout);
-            clearTimeout(levelUpDisplayTimeout);
-            
-            // Stop background music
-            backgroundMusic.pause();
-            
-            document.getElementById('gameOverMenu').style.display = 'block';
-            document.getElementById('finalScore').textContent = score;
-            document.getElementById('finalHits').textContent = hits;
-            document.getElementById('finalMisses').textContent = misses;
-            document.getElementById('finalLevel').textContent = level;
-            
-            // Скрыть HUD
-            document.getElementById('topHUD').style.display = 'none';
-            document.getElementById('bottomHUD').style.display = 'none';
-        }
-
+function endGame() {
+    gameActive = false;
+    isGameOver = true;
+    clearInterval(gameTimer);
+    clearInterval(levelTimer);
+    clearTimeout(reloadTimeout);
+    clearTimeout(levelUpDisplayTimeout);
+    
+    // Останавливаем все звуки
+    backgroundMusic.pause();
+    document.getElementById('reloadSound').pause();
+    
+    document.getElementById('gameOverMenu').style.display = 'block';
+    document.getElementById('finalScore').textContent = score;
+    document.getElementById('finalHits').textContent = hits;
+    document.getElementById('finalMisses').textContent = misses;
+    document.getElementById('finalLevel').textContent = level;
+    
+    // Скрыть HUD и сообщение о перезарядке
+    document.getElementById('topHUD').style.display = 'none';
+    document.getElementById('bottomHUD').style.display = 'none';
+    document.getElementById('reloading').style.display = 'none';
+}
         function updateHUD() {
             document.getElementById('scoreDisplay').textContent = score;
             document.getElementById('timer').textContent = `${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2, '0')}`;
@@ -1899,16 +1902,22 @@ function checkHit(x, y) {
     }
 }
 
-        function startReloading() {
-            isReloading = true;
-            document.getElementById('reloading').style.display = 'block';
-            reloadTimeout = setTimeout(() => {
-                ammo = 5;
-                isReloading = false;
-                document.getElementById('reloading').style.display = 'none';
-                updateHUD();
-            }, config.reloadTime);
-        }
+function startReloading() {
+    isReloading = true;
+    document.getElementById('reloading').style.display = 'block';
+    
+    // Воспроизводим звук перезарядки
+    const reloadSound = document.getElementById('reloadSound');
+    reloadSound.currentTime = 0;
+    reloadSound.play();
+    
+    reloadTimeout = setTimeout(() => {
+        ammo = 5;
+        isReloading = false;
+        document.getElementById('reloading').style.display = 'none';
+        updateHUD();
+    }, config.reloadTime);
+}
 
         function draw4PointStar(x, y, size, color, rotation) {
             ctx.save();
