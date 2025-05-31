@@ -1796,39 +1796,70 @@ function endGame() {
     clearInterval(levelTimer);
     clearTimeout(reloadTimeout);
     clearTimeout(levelUpDisplayTimeout);
-    // Останавливаем все звуки
     backgroundMusic.pause();
     document.getElementById('reloadSound').pause();
-
-    // Вызываем prompt сразу при завершении игры
-    const playerName = prompt('Введите ваше имя для таблицы лидеров:', 'Игрок') || 'Игрок';
-
-    if (playerName) {
-        const leaderboard = getLeaderboard();
-        leaderboard.push({
-            name: playerName,
-            score: score,
-            date: new Date().toLocaleDateString()
-        });
-        leaderboard.sort((a, b) => b.score - a.score);
-        if (leaderboard.length > 10) {
-            leaderboard.length = 10;
-        }
-        localStorage.setItem('cosmicCowLeaderboard', JSON.stringify(leaderboard));
-        displayLeaderboard(); // Обновляем таблицу лидеров
-    }
-
-    // Отображаем экран окончания игры
+    
+    // Показываем экран окончания
     document.getElementById('gameOverMenu').style.display = 'block';
     document.getElementById('finalScore').textContent = score;
     document.getElementById('finalHits').textContent = hits;
     document.getElementById('finalMisses').textContent = misses;
     document.getElementById('finalLevel').textContent = level;
 
-    // Скрыть HUD и сообщение о перезарядке
+    // Скрываем HUD
     document.getElementById('topHUD').style.display = 'none';
     document.getElementById('bottomHUD').style.display = 'none';
     document.getElementById('reloading').style.display = 'none';
+
+    // Вызываем новую функцию после завершения игры
+    handlePostGame();
+}
+        function handlePostGame() {
+    // Задержка нужна, чтобы браузер успел отобразить интерфейс
+    setTimeout(() => {
+        const playerName = prompt('Введите ваше имя для таблицы лидеров:', 'Игрок') || 'Игрок';
+
+        if (playerName) {
+            const leaderboard = getLeaderboard();
+            leaderboard.push({
+                name: playerName,
+                score: score,
+                date: new Date().toLocaleDateString()
+            });
+            leaderboard.sort((a, b) => b.score - a.score);
+            if (leaderboard.length > 10) {
+                leaderboard.length = 10;
+            }
+            localStorage.setItem('cosmicCowLeaderboard', JSON.stringify(leaderboard));
+            displayLeaderboard();
+        }
+
+        // Сбрасываем все состояния игры перед следующим запуском
+        resetGameState();
+    }, 100); // Небольшая задержка перед prompt()
+}
+        function resetGameState() {
+    cows = [];
+    deadCows = [];
+    shots = [];
+    explosions = [];
+    lifeBonuses = [];
+    planets = [];
+
+    score = 0;
+    lives = 3;
+    timeLeft = config.levelDuration;
+    hits = 0;
+    misses = 0;
+    ammo = 5;
+    isReloading = false;
+    level = 1;
+
+    const heartElements = document.querySelectorAll('.heart');
+    heartElements.forEach(heart => heart.classList.remove('burned'));
+
+    updateAmmoDisplay();
+    updateHUD();
 }
         function updateHUD() {
             document.getElementById('scoreDisplay').textContent = score;
