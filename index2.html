@@ -1,0 +1,1786 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sky Pig Hunt</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+body {
+    margin: 0;
+    overflow: hidden;
+    touch-action: none;
+    font-family: 'Arial', sans-serif;
+    color: white;
+    height: 100vh;
+    position: relative;
+}
+
+.sky-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background: linear-gradient(to bottom, #87CEEB 70%, #4CAF50 70%);
+    overflow: hidden;
+}
+
+        #gameCanvas {
+            display: block;
+        }
+        .menu {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 68, 136, 0.9);
+            padding: 40px;
+            color: white;
+            text-align: center;
+            border-radius: 20px;
+            border: 3px solid #3399ff;
+            z-index: 1000;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 0 30px rgba(51, 153, 255, 0.8);
+        }
+        .menu h1 {
+            color: #fff;
+            margin-bottom: 25px;
+            text-shadow: 3px 3px 0 #ff66b2, 6px 6px 10px rgba(0, 0, 0, 0.3);
+            font-size: 2.5em;
+        }
+        .menu p {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        .menu button {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            margin-top: 20px;
+            cursor: pointer;
+            background: linear-gradient(to bottom, #0077ff, #00aaff);
+            border: 2px solid #66b3ff;
+            color: white;
+            border-radius: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2), 
+                        0 0 10px rgba(0, 191, 255, 0.7),
+                        inset 0 0 5px rgba(255, 255, 255, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        .menu button:hover {
+            background: linear-gradient(to bottom, #00aaff, #0077ff);
+            transform: scale(1.05);
+            box-shadow: 0 7px 20px rgba(51, 153, 255, 0.6), 
+                         0 0 15px rgba(0, 191, 255, 0.9),
+                         inset 0 0 8px rgba(255, 255, 255, 0.7);
+            border-color: #99ccff;
+        }
+        .menu button::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to bottom right,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0) 45%,
+                rgba(255, 255, 255, 0.5) 50%,
+                rgba(255, 255, 255, 0) 55%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            transform: rotate(30deg);
+            animation: shine 3s infinite;
+        }
+        @keyframes shine {
+            0% { transform: translateX(-100%) rotate(30deg); }
+            20% { transform: translateX(100%) rotate(30deg); }
+            100% { transform: translateX(100%) rotate(30deg); }
+        }
+        #topHUD {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+            background: rgba(0, 51, 102, 0.7);
+            padding: 12px;
+            border-bottom: 1px solid #3399ff;
+            z-index: 100;
+            height: 100px;
+        }
+#topHUD .heart {
+    position: relative;
+    top: -5px;
+}
+        #bottomHUD {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+            background: rgba(0, 51, 102, 0.7);
+            padding: 12px;
+            border-top: 1px solid #3399ff;
+            z-index: 100;
+            height: 100px;
+        }
+        .hud-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .hud-label {
+            font-size: 14px;
+            color: #a3d1ff;
+            margin-bottom: 5px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        .hud-value {
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        .heart {
+            color: #ff3366;
+            text-shadow: 0 0 10px #ff3366;
+            font-size: 28px;
+            margin: 0 5px;
+            transition: all 0.3s;
+        }
+        .heart.burned {
+            color: #666;
+            text-shadow: none;
+        }
+        .reloading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.5);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 24px;
+            z-index: 100;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+.level-up {
+    position: fixed;
+    top: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 215, 0, 0.7);
+    color: white;
+    padding: 15px 40px;
+    border-radius: 10px;
+    font-size: 20px;
+    z-index: 100;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+    display: none;
+    font-weight: bold;
+    min-width: 330px;
+    text-align: center;
+}
+        .life-bonus {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: radial-gradient(circle, #ff3366, #cc0066);
+            border-radius: 50%;
+            box-shadow: 0 0 15px #ff3366;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 20px;
+        }
+        .ammo-container {
+            display: flex;
+            gap: 3px;
+            margin-top: 5px;
+        }
+        .ammo-box {
+            width: 12px;
+            height: 20px;
+            background: linear-gradient(to bottom, #ffcc00, #ff9900);
+            border: 1px solid #cc9900;
+            border-radius: 2px;
+        }
+        .ammo-box.empty {
+            background: rgba(255, 255, 0, 0.3);
+            border: 1px solid rgba(204, 153, 0, 0.3);
+        }
+        #leaderboard {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 51, 102, 0.5);
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(51, 153, 255, 0.3);
+        }
+        .leaderboard-item:last-child {
+            border-bottom: none;
+        }
+        
+    #helpModal {
+    max-height: 90vh;
+}
+
+#helpModal h2 {
+    color: #fff;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 0 #3399ff;
+}
+
+#helpModal h3 {
+    color: #a3d1ff;
+    margin: 15px 0 3px 0;
+}
+
+#helpModal ul {
+    padding-left: 20px;
+    margin: 8px 0;
+}
+
+#helpModal p {
+margin-bottom: 3px;
+}
+
+#helpModal li {
+    margin-bottom: 3px;
+}
+
+#helpModal code {
+    background: rgba(0,0,0,0.5);
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    word-break: break-all;
+    display: inline-block;
+}
+    </style>
+</head>
+<body>
+<div class="sky-bg" id="skyBackground"></div>
+    <audio id="deathSound" src="Death-Cow.mp3" preload="metadata"></audio>
+    <audio id="backgroundMusic" src="Last-Call.mp3" loop preload="auto"></audio>
+    <audio id="clickSound" src="Click.mp3" preload="metadata"></audio>
+    <audio id="lifeBonusSound" src="Life-Bonus.mp3" preload="auto"></audio>
+    <audio id="reloadSound" src="Reloading.mp3" preload="auto"></audio>
+    
+<div id="helpModal" class="menu" style="display: none; width: 90%; max-width: 600px;">
+    <h2>Как играть в Sky Pig Hunt</h2>
+    <div style="text-align: left; max-height: 60vh; overflow-y: auto; padding: 10px;">
+        <p>🚀 <strong>Цель игры:</strong> Остановите нашествие летающих свиней, стреляя в них!</p>
+        
+        <p>🎯 <strong>Управление:</strong></p>
+        <ul>
+            <li>Нажимайте/кликайте по экрану, чтобы стрелять</li>
+            <li>У вас 5 патронов, после чего требуется перезарядка</li>
+            <li>Попадание в свинью приносит очки</li>
+            <li>Промахи уменьшают количество жизней</li>
+        </ul>
+
+        <p>💖 <strong>Бонусы:</strong></p>
+        <ul>
+            <li>Иногда при убийстве свиньи выпадает бонус жизни (розовое сердце)</li>
+            <li>Соберите его, чтобы восстановить одну жизнь</li>
+        </ul>
+
+        <p>📈 <strong>Уровни:</strong></p>
+        <ul>
+            <li>Каждые 60 секунд уровень повышается</li>
+            <li>С каждым уровнем свиньи становятся быстрее</li>
+        </ul>
+
+        <hr style="border-color: rgba(255,255,255,0.2); margin: 20px 0;">
+
+        <h3>Поддержать автора</h3>
+        <p>Если вам нравится игра, вы можете поддержать разработчика:</p>
+        
+        <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px;">
+            <p><strong>Bitcoin (BTC):</strong> <code>1Fam9rXb7H8hW2PWhCGpZBEoNBNWuejvjH</code></p>
+            <p><strong>TON:</strong> <code>UQCW5sLIZCgwjAaiwXYfk0TGVFTQVR18CZwpl9hyCXk7bUIx</code></p>
+            <p><strong>USDT (TRC20):</strong> <code>TWrkUWv5HWF1dGwj874MAnRChQK2MyTvdt</code></p>
+        </div>
+
+        <p style="margin-top:15px; font-size: 1em; color: #a3d1ff;">Спасибо за игру! Ваша поддержка помогает развивать проект.</p>
+    </div>
+    <button onclick="closeHelp()">ЗАКРЫТЬ</button>
+</div>
+
+    <div id="mainMenu" class="menu">
+       
+    <div style="position: absolute; top: 3px; right: 10px;">
+        <button onclick="showHelp()" style="
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            padding: 0;
+            line-height: 30px;
+        ">?</button>
+    </div>
+        
+        <h1>SKY PIG HUNT</h1>
+        <p>Остановите нашествие летающих свиней!</p>
+        <button onclick="playClickSound(); startGame()">НАЧАТЬ ИГРУ</button>
+        <div id="leaderboard">
+            <h3>ТОП 10 ИГРОКОВ</h3>
+            <div id="leaderboardList"></div>
+        </div>
+    </div>
+
+<div id="gameOverMenu" class="menu" style="display: none;">
+    <h1>МИССИЯ ЗАВЕРШЕНА!</h1>
+    <p>Счет: <span id="finalScore">0</span></p>
+    <p>Попаданий: <span id="finalHits">0</span>/<span id="finalMisses">0</span></p>
+    <p>Уровень: <span id="finalLevel">1</span></p>
+    <button onclick="playClickSound(); startGame()">ИГРАТЬ СНОВА</button>
+    <button onclick="playClickSound(); returnToMainMenu()">ГЛАВНОЕ МЕНЮ</button>
+</div>
+
+    <div id="reloading" class="reloading" style="display: none;">ПЕРЕЗАРЯДКА...</div>
+    <div id="levelUp" class="reloading" style="display: none; top: 140px; background: rgba(255, 215, 0, 0.7);">УРОВЕНЬ <span id="levelNumber">1</span>!</div>
+
+    <div id="topHUD" style="display: none;">
+        <div class="hud-item">
+            <div class="hud-label">СЧЕТ</div>
+            <div class="hud-value" id="scoreDisplay">0</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">ВРЕМЯ</div>
+            <div class="hud-value" id="timer">1:00</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">ЖИЗНИ</div>
+            <div class="hud-value" id="lives"><span class="heart">♥</span><span class="heart">♥</span><span class="heart">♥</span></div>
+        </div>
+    </div>
+
+    <div id="bottomHUD" style="display: none;">
+        <div class="hud-item">
+            <div class="hud-label">ПАТРОНЫ</div>
+            <div class="ammo-container" id="ammoContainer">
+                <div class="ammo-box"></div>
+                <div class="ammo-box"></div>
+                <div class="ammo-box"></div>
+                <div class="ammo-box"></div>
+                <div class="ammo-box"></div>
+            </div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">УРОВЕНЬ</div>
+            <div class="hud-value" id="currentLevel">1</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">ПОПАДАНИЙ</div>
+            <div class="hud-value" id="hitsMisses">0/0</div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const deathSound = document.getElementById('deathSound');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const clickSound = document.getElementById('clickSound');
+        const lifeBonusSound = document.getElementById('lifeBonusSound');
+        
+        // Game state
+        let gameActive = false;
+        let pigs = [];
+        let deadPigs = [];
+        let shots = [];
+        let explosions = [];
+        let clouds = [];
+        let lifeBonuses = [];
+        let trees = [];
+        let score = 0;
+        let lives = 3;
+        let timeLeft = 60;
+        let hits = 0;
+        let misses = 0;
+        let ammo = 5;
+        let isReloading = false;
+        let gameTimer;
+        let lastTime = 0;
+        let reloadTimeout;
+        let level = 1;
+        let levelTimer;
+        let levelUpDisplayTimeout;
+        let isGameOver = false;
+
+        // Configuration
+        const config = {
+            basePigSpeed: 2.5,
+            spawnInterval: 1500,
+            maxPigs: 4,
+            pigWidth: 80,
+            pigHeight: 50,
+            headRadius: 20,
+            reloadTime: 2500,
+            cloudCount: 15,
+            lifeBonusChance: 0.15,
+            levelDuration: 60,
+            levelIncreaseInterval: 30,
+            playAreaTop: 130,
+            playAreaBottom: 130,
+            treeCount: 8,
+            treeMinHeight: 100,
+            treeMaxHeight: 200
+        };
+
+        // Pig types and colors
+        const pigColors = ['#FFB6C1', '#FF99AA', '#FF7788'];
+        const pigTypes = [
+            { // Type 0 - Zigzag
+                speed: 3.5,
+                score: 10,
+                movement: 'zigzag',
+                wingColor: 'rgba(200, 150, 255, 0.7)'
+            },
+            { // Type 1 - Bounce
+                speed: 3.2,
+                score: 25,
+                movement: 'bounce',
+                wingColor: 'rgba(255, 192, 203, 0.7)'
+            },
+            { // Type 2 - Fast
+                speed: 4.0,
+                score: 30,
+                movement: 'linear',
+                wingColor: 'rgba(160, 180, 255, 0.7)'
+            }
+        ];
+
+        function playClickSound() {
+            clickSound.currentTime = 0;
+            clickSound.play();
+        }
+
+        // Leaderboard functions
+        function getLeaderboard() {
+            const leaderboard = localStorage.getItem('skyPigLeaderboard');
+            return leaderboard ? JSON.parse(leaderboard) : [];
+        }
+
+        function updateLeaderboard(newScore) {
+            const leaderboard = getLeaderboard();
+            const playerName = prompt('Введите ваше имя для таблицы лидеров:', 'Игрок') || 'Игрок';
+            
+            if (playerName) {
+                leaderboard.push({
+                    name: playerName,
+                    score: newScore,
+                    date: new Date().toLocaleDateString()
+                });
+                
+                // Sort by score descending
+                leaderboard.sort((a, b) => b.score - a.score);
+                
+                // Keep only top 10
+                if (leaderboard.length > 10) {
+                    leaderboard.length = 10;
+                }
+                
+                localStorage.setItem('skyPigLeaderboard', JSON.stringify(leaderboard));
+            }
+            displayLeaderboard();
+            endGame();
+        }
+
+        function displayLeaderboard() {
+            const leaderboard = getLeaderboard();
+            const leaderboardList = document.getElementById('leaderboardList');
+            
+            leaderboardList.innerHTML = '';
+            
+            if (leaderboard.length === 0) {
+                leaderboardList.innerHTML = '<p>Пока нет рекордов</p>';
+                return;
+            }
+            
+            leaderboard.forEach((item, index) => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'leaderboard-item';
+                itemElement.innerHTML = `
+                    <span>${index + 1}. ${item.name}</span>
+                    <span>${item.score}</span>
+                `;
+                leaderboardList.appendChild(itemElement);
+            });
+        }
+
+        // Initialize clouds and trees
+        function initEnvironment() {
+            clouds = [];
+            for (let i = 0; i < config.cloudCount; i++) {
+                clouds.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * (canvas.height * 0.4),
+                    size: Math.random() * 40 + 30,
+                    speed: Math.random() * 0.2 + 0.05,
+                    alpha: Math.random() * 0.4 + 0.6
+                });
+            }
+
+            trees = [];
+            for (let i = 0; i < config.treeCount; i++) {
+                trees.push({
+                    x: Math.random() * canvas.width,
+                    height: Math.random() * (config.treeMaxHeight - config.treeMinHeight) + config.treeMinHeight,
+                    width: Math.random() * 40 + 20,
+                    color: `hsl(${100 + Math.random() * 20}, 60%, 20%)`,
+                    leavesColor: `hsl(${100 + Math.random() * 20}, 60%, 30%)`
+                });
+            }
+        }
+
+        class Pig {
+            constructor() {
+                this.type = Math.floor(Math.random() * pigTypes.length);
+                this.color = pigColors[Math.floor(Math.random() * pigColors.length)];
+                this.width = config.pigWidth;
+                this.height = config.pigHeight;
+                this.headRadius = config.headRadius;
+                this.reset();
+                this.alive = true;
+                this.wingPhase = Math.random() * Math.PI * 2;
+                this.wingSpeed = Math.random() * 0.05 + 0.05;
+                this.deathAnimation = 0;
+                this.movementPhase = 0;
+                this.originalY = 0;
+                this.legPhase = 0;
+                this.legSpeed = Math.random() * 0.1 + 0.1;
+                this.eyePhase = 0;
+                this.eyeSpeed = 0.02;
+                this.limbs = [];
+                this.tailPhase = Math.random() * Math.PI * 2;
+                this.tailSpeed = Math.random() * 0.05 + 0.05;
+                this.deathTime = 0;
+                this.fallSpeed = 0;
+                this.rotation = 0;
+                this.deathAnimationProgress = 0;
+                this.tongueOut = false;
+                this.tongueTimer = 0;
+                this.alpha = 1;
+            }
+
+            reset() {
+                this.direction = Math.random() > 0.5 ? 1 : -1;
+                
+                if (this.direction === 1) {
+                    this.x = -this.width;
+                    this.y = Math.random() * (canvas.height - config.playAreaTop - config.playAreaBottom - 100) + config.playAreaTop + 50;
+                    this.vx = pigTypes[this.type].speed * (1 + level * 0.2);
+                    this.vy = (Math.random() - 0.5) * pigTypes[this.type].speed * 0.5;
+                } else {
+                    this.x = canvas.width + this.width;
+                    this.y = Math.random() * (canvas.height - config.playAreaTop - config.playAreaBottom - 100) + config.playAreaTop + 50;
+                    this.vx = -pigTypes[this.type].speed * (1 + level * 0.1);
+                    this.vy = (Math.random() - 0.5) * pigTypes[this.type].speed * 0.5;
+                }
+                
+                this.originalY = this.y;
+                this.alive = true;
+                this.deathAnimation = 1;
+                this.movementPhase = 0;
+                this.legPhase = 0;
+                this.limbs = [];
+                this.tailPhase = Math.random() * Math.PI * 2;
+                this.deathTime = 0;
+                this.fallSpeed = 0;
+                this.rotation = 0;
+                this.deathAnimationProgress = 0;
+                this.tongueOut = false;
+                this.tongueTimer = 0;
+                this.alpha = 1;
+            }
+
+            updateMovement() {
+                this.movementPhase += 0.02;
+                this.legPhase += this.legSpeed;
+                this.eyePhase += this.eyeSpeed;
+                this.tailPhase += this.tailSpeed;
+                
+                // Random tongue animation
+                if (Math.random() < 0.005) {
+                    this.tongueOut = true;
+                    this.tongueTimer = 30;
+                }
+                
+                if (this.tongueOut) {
+                    this.tongueTimer--;
+                    if (this.tongueTimer <= 0) {
+                        this.tongueOut = false;
+                    }
+                }
+                
+                switch(pigTypes[this.type].movement) {
+                    case 'zigzag':
+                        this.y = this.originalY + Math.sin(this.movementPhase * 2) * 50;
+                        break;
+                    case 'bounce':
+                        this.y += this.vy;
+                        if (this.y <= config.playAreaTop + this.height/2 || 
+                            this.y >= canvas.height - config.playAreaBottom - this.height/2) {
+                            this.vy *= -1;
+                        }
+                        break;
+                }
+                
+                // Ограничение движения в пределах игровой зоны
+                if (this.y < config.playAreaTop + this.height/2) {
+                    this.y = config.playAreaTop + this.height/2;
+                }
+                if (this.y > canvas.height - config.playAreaBottom - this.height/2) {
+                    this.y = canvas.height - config.playAreaBottom - this.height/2;
+                }
+            }
+
+            die() {
+                this.alive = false;
+                this.deathAnimation = 1;
+                this.deathTime = Date.now();
+                this.fallSpeed = -5;
+                this.rotation = 0;
+                this.deathAnimationProgress = 0;
+                this.alpha = 1;
+                
+                // Play death sound
+                deathSound.currentTime = 0;
+                deathSound.play();
+                
+                // Создаем части тела для анимации смерти
+                this.limbs = [
+                    { // Голова с ушами и пятачком
+                        x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2),
+                        y: this.y,
+                        vx: (Math.random() - 0.5) * 5,
+                        vy: (Math.random() - 0.5) * 5,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: this.headRadius * 2,
+                        height: this.headRadius * 2,
+                        deadEyes: false,
+                        color: this.color,
+                        tongueOut: true,
+                        tongueTimer: 120,
+                        ears: [
+                            { // Левое ухо
+                                x: -this.headRadius * 0.7,
+                                y: -this.headRadius * 0.4,
+                                rotation: -Math.PI/4
+                            },
+                            { // Правое ухо
+                                x: this.headRadius * 0.7,
+                                y: -this.headRadius * 0.4,
+                                rotation: Math.PI/4
+                            }
+                        ]
+                    },
+                    { // Тело
+                        x: this.x,
+                        y: this.y,
+                        vx: (Math.random() - 0.5) * 3,
+                        vy: (Math.random() - 0.5) * 3,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.05,
+                        width: this.width,
+                        height: this.height,
+                        color: this.color
+                    },
+                    { // Левое крыло
+                        x: this.x - 5,
+                        y: this.y - 5,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.08,
+                        color: pigTypes[this.type].wingColor,
+                        wingPhase: this.wingPhase
+                    },
+                    { // Правое крыло
+                        x: this.x + 5,
+                        y: this.y - 5,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.08,
+                        color: pigTypes[this.type].wingColor,
+                        wingPhase: this.wingPhase
+                    },
+                    { // Пятачок
+                        x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2),
+                        y: this.y + 8,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.03,
+                        color: '#f5d0b0'
+                    },
+                    { // Язык
+                        x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2),
+                        y: this.y + 16,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.03,
+                        color: '#ff0000'
+                    },
+                    { // Передняя нога 1
+                        x: this.x + (this.direction === 1 ? this.width/4 : -this.width/4),
+                        y: this.y + this.height/2.5,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 10,
+                        height: 20
+                    },
+                    { // Передняя нога 2
+                        x: this.x + (this.direction === 1 ? this.width/4 + 15 : -this.width/4 - 15),
+                        y: this.y + this.height/2.5,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 10,
+                        height: 20
+                    },
+                    { // Задняя нога 1
+                        x: this.x - (this.direction === 1 ? this.width/4 : -this.width/4),
+                        y: this.y + this.height/2.5,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 10,
+                        height: 20
+                    },
+                    { // Задняя нога 2
+                        x: this.x - (this.direction === 1 ? this.width/4 + 15 : -this.width/4 - 15),
+                        y: this.y + this.height/2.5,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 10,
+                        height: 20
+                    },
+                    { // Хвост
+                        x: this.x - (this.direction === 1 ? this.width/2 : -this.width/2),
+                        y: this.y,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 15,
+                        height: 15
+                    }
+                ];
+                
+                if (Math.random() < config.lifeBonusChance) {
+                    lifeBonuses.push({
+                        x: this.x,
+                        y: this.y,
+                        radius: 15,
+                        collected: false,
+                        alpha: 1
+                    });
+                }
+            }
+
+            update() {
+                if (this.alive) {
+                    this.updateMovement();
+                    this.x += this.vx;
+                    this.wingPhase += this.wingSpeed;
+                    
+                    if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
+                        (this.direction === -1 && this.x < -this.width*2)) {
+                        this.reset();
+                    }
+                } else {
+                    // Анимация смерти - разлетающиеся конечности
+                    this.deathAnimationProgress += 0.02;
+                    
+                    // Обновляем части тела
+                    this.limbs.forEach(limb => {
+                        limb.x += limb.vx;
+                        limb.y += limb.vy;
+                        limb.rotation += limb.rotationSpeed;
+                        
+                        // Обновляем таймер языка
+                        if (limb.tongueTimer !== undefined) {
+                            limb.tongueTimer--;
+                            if (limb.tongueTimer <= 0) {
+                                limb.tongueOut = false;
+                            }
+                        }
+                        
+                        // Обновляем фазу крыльев
+                        if (limb.wingPhase !== undefined) {
+                            limb.wingPhase += 0.05;
+                        }
+                        
+                        // Через некоторое время показываем мертвые глаза
+                        if (limb.deadEyes !== undefined && this.deathAnimationProgress > 0.3) {
+                            limb.deadEyes = true;
+                        }
+                    });
+                }
+            }
+
+            draw() {
+                ctx.save();
+                
+                if (this.alive) {
+                    ctx.translate(this.x, this.y);
+                    
+                    if (this.direction === -1) {
+                        ctx.scale(-1, 1);
+                    }
+                    
+                    // Тело (овал)
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Ноги
+                    ctx.strokeStyle = '#888';
+                    ctx.lineWidth = 6;
+                    
+                    const legPairs = [
+                        { x: -this.width/4, offset: 0 },
+                        { x: -this.width/4 + 15, offset: Math.PI },
+                        { x: -this.width/4 + 30, offset: 0 },
+                        { x: -this.width/4 + 45, offset: Math.PI }
+                    ];
+                    
+                    legPairs.forEach((leg, i) => {
+                        const legSwing = Math.sin(this.legPhase + leg.offset) * 0.3;
+                        const upperLegLength = 10;
+                        const lowerLegLength = 8;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(leg.x, this.height/2.5);
+                        ctx.lineTo(
+                            leg.x + Math.sin(legSwing) * 5,
+                            this.height/2.5 + upperLegLength
+                        );
+                        ctx.lineTo(
+                            leg.x + Math.sin(legSwing) * 8,
+                            this.height/2.5 + upperLegLength + lowerLegLength
+                        );
+                        ctx.stroke();
+                        
+                        // Копыта
+                        ctx.fillStyle = '#3E3D5C';
+                        ctx.fillRect(
+                            leg.x + Math.sin(legSwing) * 8 - 3,
+                            this.height/2.5 + upperLegLength + lowerLegLength - 3,
+                            6, 6
+                        );
+                    });
+                    
+                    // Голова
+                    const headX = this.width/2;
+                    
+                    // Голова
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(headX, 0, this.headRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Уши
+                    // Левое ухо
+                    ctx.save();
+                    ctx.translate(headX - this.headRadius * 0.7, -this.headRadius * 0.4);
+                    ctx.rotate(-Math.PI/4);
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.headRadius * 0.5, this.headRadius * 0.3, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.restore();
+                    
+                    // Правое ухо
+                    ctx.save();
+                    ctx.translate(headX + this.headRadius * 0.7, -this.headRadius * 0.4);
+                    ctx.rotate(Math.PI/4);
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.headRadius * 0.5, this.headRadius * 0.3, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.restore();
+             
+                    // Глаза
+                    const eyeYOffset = 2;
+                    const eyeClosed = Math.abs(Math.sin(this.eyePhase)) < 0.1;
+
+                    // Левый глаз
+                    if (!eyeClosed) {
+                        ctx.fillStyle = '#333';
+                        ctx.beginPath();
+                        ctx.ellipse(headX - 6, -eyeYOffset, 3, 3, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        ctx.strokeStyle = '#333';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(headX - 10, -eyeYOffset);
+                        ctx.quadraticCurveTo(
+                            headX - 6, -eyeYOffset + 3,
+                            headX - 2, -eyeYOffset
+                        );
+                        ctx.stroke();
+                    }
+
+                    // Правый глаз
+                    if (!eyeClosed) {
+                        ctx.fillStyle = '#333';
+                        ctx.beginPath();
+                        ctx.ellipse(headX + 6, -eyeYOffset, 3, 3, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        ctx.strokeStyle = '#333';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(headX + 2, -eyeYOffset);
+                        ctx.quadraticCurveTo(
+                            headX + 6, -eyeYOffset + 3,
+                            headX + 10, -eyeYOffset
+                        );
+                        ctx.stroke();
+                    }      
+                    
+                    // Пятачок
+                    ctx.fillStyle = '#f5d0b0';
+                    ctx.beginPath();
+                    ctx.ellipse(headX, eyeYOffset + 8, 8, 6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    
+                    // Ноздри
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.ellipse(headX - 3, eyeYOffset + 8, 1.5, 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(headX + 3, eyeYOffset + 8, 1.5, 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Язык
+                    if (this.tongueOut) {
+                        ctx.fillStyle = '#ff0000';
+                        ctx.beginPath();
+                        ctx.ellipse(headX, eyeYOffset + 16, 5, 3, 0, 0, Math.PI);
+                        ctx.fill();
+                    }
+                    
+                    // Крылья
+                    const wingYOffset = Math.sin(this.wingPhase) * 15;
+                    const wingTipX = 40;
+                    const wingTipY = -25 + wingYOffset;
+                    
+                    // Левое крыло
+                    ctx.fillStyle = pigTypes[this.type].wingColor;
+                    ctx.beginPath();
+                    ctx.moveTo(-5, -5);
+                    ctx.bezierCurveTo(
+                        -15, -8 + wingYOffset * 0.5,
+                        -30, -15 + wingYOffset,
+                        -wingTipX, wingTipY
+                    );
+                    ctx.bezierCurveTo(
+                        -30, 0 + wingYOffset * 0.5,
+                        -15, 4 + wingYOffset * 0.3,
+                        -5, -5
+                    );
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Правое крыло
+                    ctx.globalCompositeOperation = 'destination-over';
+                    ctx.beginPath();
+                    ctx.moveTo(5, -5);
+                    ctx.bezierCurveTo(
+                        15, -8 + wingYOffset * 0.5,
+                        30, -15 + wingYOffset,
+                        wingTipX, wingTipY
+                    );
+                    ctx.bezierCurveTo(
+                        30, 0 + wingYOffset * 0.5,
+                        15, 4 + wingYOffset * 0.3,
+                        5, -5
+                    );
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.globalCompositeOperation = 'source-over';
+                    
+                    // Хвост
+                    const tailX = -this.width/2;
+                    const tailY = 0;
+                    const tailSwing = Math.sin(this.tailPhase) * 0.3;
+                    
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(tailX, tailY);
+                    ctx.quadraticCurveTo(
+                        tailX - 15, 
+                        tailY + 10 + tailSwing * 5, 
+                        tailX - 20, 
+                        tailY + 15 + tailSwing * 10
+                    );
+                    ctx.stroke();
+                    
+                    // Кисточка на хвосте
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(tailX - 20, tailY + 15 + tailSwing * 10, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Анимация смерти - разлетающиеся конечности
+                    ctx.globalAlpha = this.alpha;
+                    
+                    // Сначала рисуем все части тела
+                    this.limbs.forEach(limb => {
+                        ctx.save();
+                        ctx.translate(limb.x, limb.y);
+                        ctx.rotate(limb.rotation);
+                        
+                        if (limb === this.limbs[0]) { // Голова с ушами
+                            ctx.fillStyle = limb.color;
+                            ctx.beginPath();
+                            ctx.arc(0, 0, limb.width/2, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                            
+                            // Мертвые глаза "X_X"
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(-8, -3);
+                            ctx.lineTo(-3, -8);
+                            ctx.moveTo(-3, -3);
+                            ctx.lineTo(-8, -8);
+                            ctx.moveTo(3, -3);
+                            ctx.lineTo(8, -8);
+                            ctx.moveTo(8, -3);
+                            ctx.lineTo(3, -8);
+                            ctx.stroke();
+                            
+                            // Пятачок мертвой свиньи
+                            ctx.fillStyle = '#f5d0b0';
+                            ctx.beginPath();
+                            ctx.ellipse(0, 10, 8, 6, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                            
+                            // Ноздри мертвой свиньи
+                            ctx.fillStyle = '#333';
+                            ctx.beginPath();
+                            ctx.ellipse(-3, 10, 1.5, 2, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.beginPath();
+                            ctx.ellipse(3, 10, 1.5, 2, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            
+                            // Язык мертвой свиньи (высунутый)
+                            if (limb.tongueOut) {
+                                ctx.fillStyle = '#ff0000';
+                                ctx.beginPath();
+                                ctx.ellipse(0, 18, 5, 3, 0, 0, Math.PI);
+                                ctx.fill();
+                            }
+                            
+                            // Уши (измененная форма)
+                            if (limb.ears) {
+                                limb.ears.forEach(ear => {
+                                    ctx.save();
+                                    ctx.translate(ear.x, ear.y);
+                                    ctx.rotate(ear.rotation);
+                                    
+                                    ctx.fillStyle = limb.color;
+                                    ctx.beginPath();
+                                    ctx.ellipse(0, 0, limb.width/3, limb.height/4, 0, 0, Math.PI * 2);
+                                    ctx.fill();
+                                    ctx.strokeStyle = '#333';
+                                    ctx.lineWidth = 1;
+                                    ctx.stroke();
+                                    
+                                    ctx.restore();
+                                });
+                            }
+                        } else if (limb === this.limbs[2] || limb === this.limbs[3]) { // Крылья
+                            const wingYOffset = Math.sin(limb.wingPhase) * 15;
+                            const wingTipX = 40;
+                            const wingTipY = -25 + wingYOffset;
+                            
+                            ctx.fillStyle = limb.color;
+                            ctx.beginPath();
+                            if (limb === this.limbs[2]) { // Левое крыло
+                                ctx.moveTo(0, 0);
+                                ctx.bezierCurveTo(
+                                    -15, -8 + wingYOffset * 0.5,
+                                    -30, -15 + wingYOffset,
+                                    -wingTipX, wingTipY
+                                );
+                                ctx.bezierCurveTo(
+                                    -30, 0 + wingYOffset * 0.5,
+                                    -15, 4 + wingYOffset * 0.3,
+                                    0, 0
+                                );
+                            } else { // Правое крыло
+                                ctx.moveTo(0, 0);
+                                ctx.bezierCurveTo(
+                                    15, -8 + wingYOffset * 0.5,
+                                    30, -15 + wingYOffset,
+                                    wingTipX, wingTipY
+                                );
+                                ctx.bezierCurveTo(
+                                    30, 0 + wingYOffset * 0.5,
+                                    15, 4 + wingYOffset * 0.3,
+                                    0, 0
+                                );
+                            }
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                        } else if (limb === this.limbs[1]) { // Тело
+                            ctx.fillStyle = limb.color;
+                            ctx.beginPath();
+                            ctx.ellipse(0, 0, limb.width/2, limb.height/2, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                        } else if (limb === this.limbs[10]) { // Хвост
+                            ctx.strokeStyle = limb.color;
+                            ctx.lineWidth = 3;
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.quadraticCurveTo(-5, 5, -10, 10);
+                            ctx.stroke();
+                            
+                            ctx.fillStyle = limb.color;
+                            ctx.beginPath();
+                            ctx.arc(-10, 10, 5, 0, Math.PI * 2);
+                            ctx.fill();
+                        } else if (limb.width && limb.height) { // Ноги
+                            ctx.strokeStyle = '#888';
+                            ctx.lineWidth = 6;
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.lineTo(0, limb.height);
+                            ctx.stroke();
+                            
+                            // Копыта
+                            ctx.fillStyle = '#3E3D5C';
+                            ctx.fillRect(-3, limb.height - 3, 6, 6);
+                        }
+                        
+                        ctx.restore();
+                    });
+                    
+                    ctx.globalAlpha = 1;
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        class Explosion {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.particles = [];
+                this.color = color;
+                
+                for (let i = 0; i < 20; i++) {
+                    this.particles.push({
+                        x: 0,
+                        y: 0,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        size: Math.random() * 6 + 3,
+                        alpha: 1,
+                        life: Math.random() * 0.5 + 0.5
+                    });
+                }
+            }
+            
+            update() {
+                this.particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.alpha -= 0.02;
+                    p.size *= 0.97;
+                    p.life -= 0.02;
+                });
+                
+                return this.particles[0].life > 0;
+            }
+            
+            draw() {
+                this.particles.forEach(p => {
+                    ctx.fillStyle = `rgba(${this.color}, ${p.alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(this.x + p.x, this.y + p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+        }
+
+        class Shot {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 5;
+                this.alpha = 1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(100, 200, 255, ${this.alpha})`;
+                ctx.fill();
+            }
+
+            update() {
+                this.radius += 1;
+                this.alpha -= 0.1;
+            }
+        }
+
+        function showLevelUp() {
+            const levelUp = document.getElementById('levelUp');
+            const levelNumber = document.getElementById('levelNumber');
+            
+            levelNumber.textContent = level;
+            levelUp.style.display = 'block';
+            
+            clearTimeout(levelUpDisplayTimeout);
+            levelUpDisplayTimeout = setTimeout(() => {
+                levelUp.style.display = 'none';
+            }, 2000);
+        }
+
+        function startGame() {
+            gameActive = true;
+            isGameOver = false;
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('gameOverMenu').style.display = 'none';
+            document.getElementById('reloading').style.display = 'none';
+            document.getElementById('levelUp').style.display = 'none';
+            
+            // Показать HUD
+            document.getElementById('topHUD').style.display = 'flex';
+            document.getElementById('bottomHUD').style.display = 'flex';
+            
+            pigs = [];
+            deadPigs = [];
+            shots = [];
+            explosions = [];
+            lifeBonuses = [];
+            score = 0;
+            lives = 3;
+            timeLeft = config.levelDuration;
+            hits = 0;
+            misses = 0;
+            ammo = 5;
+            isReloading = false;
+            level = 1;
+            
+            // Start background music
+            backgroundMusic.currentTime = 0;
+            backgroundMusic.volume = 0.5;
+            backgroundMusic.play();
+            
+            const heartElements = document.querySelectorAll('.heart');
+            heartElements.forEach(heart => {
+                heart.classList.remove('burned');
+            });
+            
+            updateAmmoDisplay();
+            
+            initEnvironment();
+            updateHUD();
+            updateLevelDisplay();
+            resizeCanvas();
+            
+            clearInterval(gameTimer);
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                updateHUD();
+                
+                if (timeLeft <= 0) {
+                    levelUp();
+                }
+            }, 1000);
+            
+            spawnPig();
+            lastTime = performance.now();
+            gameLoop();
+        }
+
+        function returnToMainMenu() {
+            gameActive = false;
+            isGameOver = false;
+            clearInterval(gameTimer);
+            clearInterval(levelTimer);
+            clearTimeout(reloadTimeout);
+            clearTimeout(levelUpDisplayTimeout);
+            
+            // Останавливаем все звуки
+            backgroundMusic.pause();
+            document.getElementById('reloadSound').pause();
+            
+            document.getElementById('mainMenu').style.display = 'block';
+            document.getElementById('gameOverMenu').style.display = 'none';
+            
+            // Скрыть HUD и сообщение о перезарядке
+            document.getElementById('topHUD').style.display = 'none';
+            document.getElementById('bottomHUD').style.display = 'none';
+            document.getElementById('reloading').style.display = 'none';
+        }
+
+        function updateAmmoDisplay() {
+            const ammoContainer = document.getElementById('ammoContainer');
+            const ammoBoxes = ammoContainer.querySelectorAll('.ammo-box');
+            
+            ammoBoxes.forEach((box, index) => {
+                if (index < ammo) {
+                    box.classList.remove('empty');
+                } else {
+                    box.classList.add('empty');
+                }
+            });
+        }
+
+        function levelUp() {
+            level++;
+            timeLeft = config.levelDuration;
+            updateLevelDisplay();
+            showLevelUp();
+            
+            const levelDisplay = document.getElementById('currentLevel');
+            levelDisplay.style.color = '#ffcc00';
+            levelDisplay.style.textShadow = '0 0 10px #ffcc00';
+            setTimeout(() => {
+                levelDisplay.style.color = 'white';
+                levelDisplay.style.textShadow = '1px 1px 2px rgba(0, 0, 0, 0.5)';
+            }, 1000);
+        }
+
+        function endGame() {
+            gameActive = false;
+            isGameOver = true;
+            clearInterval(gameTimer);
+            clearInterval(levelTimer);
+            clearTimeout(reloadTimeout);
+            clearTimeout(levelUpDisplayTimeout);
+            backgroundMusic.pause();
+            document.getElementById('reloadSound').pause();
+            
+            // Показываем экран окончания
+            document.getElementById('gameOverMenu').style.display = 'block';
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalHits').textContent = hits;
+            document.getElementById('finalMisses').textContent = misses;
+            document.getElementById('finalLevel').textContent = level;
+
+            // Скрываем HUD
+            document.getElementById('topHUD').style.display = 'none';
+            document.getElementById('bottomHUD').style.display = 'none';
+            document.getElementById('reloading').style.display = 'none';
+
+            // Вызываем новую функцию после завершения игры
+            handlePostGame();
+        }
+        
+        function handlePostGame() {
+            // Задержка нужна, чтобы браузер успел отобразить интерфейс
+            setTimeout(() => {
+                const playerName = prompt('Введите ваше имя для таблицы лидеров:', 'Игрок') || 'Игрок';
+
+                if (playerName) {
+                    const leaderboard = getLeaderboard();
+                    leaderboard.push({
+                        name: playerName,
+                        score: score,
+                        date: new Date().toLocaleDateString()
+                    });
+                    leaderboard.sort((a, b) => b.score - a.score);
+                    if (leaderboard.length > 10) {
+                        leaderboard.length = 10;
+                    }
+                    localStorage.setItem('skyPigLeaderboard', JSON.stringify(leaderboard));
+                    displayLeaderboard();
+                }
+
+                // Сбрасываем все состояния игры перед следующим запуском
+                resetGameState();
+            }, 100);
+        }
+        
+        function resetGameState() {
+            pigs = [];
+            deadPigs = [];
+            shots = [];
+            explosions = [];
+            lifeBonuses = [];
+            clouds = [];
+
+            score = 0;
+            lives = 3;
+            timeLeft = config.levelDuration;
+            hits = 0;
+            misses = 0;
+            ammo = 5;
+            isReloading = false;
+            level = 1;
+
+            const heartElements = document.querySelectorAll('.heart');
+            heartElements.forEach(heart => heart.classList.remove('burned'));
+
+            updateAmmoDisplay();
+            updateHUD();
+        }
+
+        function updateHUD() {
+            document.getElementById('scoreDisplay').textContent = score;
+            document.getElementById('timer').textContent = `${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2, '0')}`;
+            document.getElementById('hitsMisses').textContent = `${hits}/${misses}`;
+            updateAmmoDisplay();
+            
+            const heartElements = document.querySelectorAll('.heart');
+            heartElements.forEach((heart, index) => {
+                if (index >= lives) {
+                    heart.classList.add('burned');
+                } else {
+                    heart.classList.remove('burned');
+                }
+            });
+        }
+
+        function updateLevelDisplay() {
+            document.getElementById('currentLevel').textContent = level;
+        }
+
+        function spawnPig() {
+            if (!gameActive || timeLeft <= 0 || isGameOver) return;
+            
+            const alivePigs = pigs.filter(pig => pig.alive);
+            
+            if (alivePigs.length < config.maxPigs) {
+                const pig = new Pig();
+                pigs.push(pig);
+            }
+            
+            setTimeout(spawnPig, config.spawnInterval / (1 + level * 0.1));
+        }
+
+        function checkHit(x, y) {
+            if (isGameOver) return;
+            
+            // Сначала проверяем попадание в бонус жизни
+            for (let i = 0; i < lifeBonuses.length; i++) {
+                const bonus = lifeBonuses[i];
+                if (bonus.collected) continue;
+                
+                const dist = Math.sqrt((x - bonus.x) ** 2 + (y - bonus.y) ** 2);
+                
+                if (dist <= bonus.radius) {
+                    bonus.collected = true;
+                    lives = Math.min(3, lives + 1);
+                    updateHUD();
+                    
+                    // Воспроизвести звук бонуса жизни
+                    lifeBonusSound.currentTime = 0;
+                    lifeBonusSound.play();
+                    
+                    explosions.push(new Explosion(bonus.x, bonus.y, '255, 51, 102'));
+                    return;
+                }
+            }
+
+            // Теперь проверяем попадание в свинью
+            for (let i = 0; i < pigs.length; i++) {
+                const pig = pigs[i];
+                if (!pig.alive) continue;
+                
+                const bodyX = pig.x;
+                const bodyY = pig.y;
+                const bodyRadiusX = pig.width/2;
+                const bodyRadiusY = pig.height/2;
+                const headX = pig.direction === 1 ? pig.x + pig.width/2 : pig.x - pig.width/2;
+                const headY = pig.y;
+                const headRadius = pig.headRadius;
+                const normalizedX = (x - bodyX) / bodyRadiusX;
+                const normalizedY = (y - bodyY) / bodyRadiusY;
+                const inBody = normalizedX * normalizedX + normalizedY * normalizedY <= 1;
+                const headDist = Math.sqrt((x - headX) ** 2 + (y - headY) ** 2);
+                const inHead = headDist <= headRadius;
+                
+                if (inBody || inHead) {
+                    explosions.push(new Explosion(x, y, '255, 100, 100'));
+                    pig.die();
+                    deadPigs.push(pig);
+                    score += pigTypes[pig.type].score;
+                    hits++;
+                    updateHUD();
+                    shots.push(new Shot(x, y));
+                    return;
+                }
+            }
+
+            // Если ни в одну цель не попали
+            misses++;
+            lives = Math.max(0, lives - 1);
+            updateHUD();
+            
+            if (lives <= 0) {
+                endGame();
+            }
+            
+            if (ammo <= 0 && !isReloading) {
+                startReloading();
+            }
+        }
+
+        function startReloading() {
+            isReloading = true;
+            document.getElementById('reloading').style.display = 'block';
+            
+            // Воспроизводим звук перезарядки
+            const reloadSound = document.getElementById('reloadSound');
+            reloadSound.currentTime = 0;
+            reloadSound.play();
+            
+            reloadTimeout = setTimeout(() => {
+                ammo = 5;
+                isReloading = false;
+                document.getElementById('reloading').style.display = 'none';
+                updateHUD();
+            }, config.reloadTime);
+        }
+
+        function drawBackground() {
+            // Небо
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.7);
+            skyGradient.addColorStop(0, '#64b3f4');
+            skyGradient.addColorStop(1, '#87CEEB');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height * 0.7);
+            
+            // Солнце
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(canvas.width - 100, 100, 50, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Облака
+            clouds.forEach(cloud => {
+                ctx.fillStyle = `rgba(255, 255, 255, ${cloud.alpha})`;
+                ctx.beginPath();
+                ctx.arc(cloud.x, cloud.y, cloud.size, 0, Math.PI * 2);
+                ctx.arc(cloud.x + cloud.size * 0.8, cloud.y - cloud.size * 0.2, cloud.size * 0.7, 0, Math.PI * 2);
+                ctx.arc(cloud.x + cloud.size * 1.5, cloud.y, cloud.size * 0.9, 0, Math.PI * 2);
+                ctx.fill();
+                
+                cloud.x += cloud.speed;
+                if (cloud.x > canvas.width + cloud.size * 2) {
+                    cloud.x = -cloud.size * 2;
+                    cloud.y = Math.random() * (canvas.height * 0.4);
+                }
+            });
+            
+            // Трава
+            const grassGradient = ctx.createLinearGradient(0, canvas.height * 0.7, 0, canvas.height);
+            grassGradient.addColorStop(0, '#4CAF50');
+            grassGradient.addColorStop(1, '#388E3C');
+            ctx.fillStyle = grassGradient;
+            ctx.fillRect(0, canvas.height * 0.7, canvas.width, canvas.height * 0.3);
+            
+            // Деревья
+            trees.forEach(tree => {
+                const treeBaseY = canvas.height * 0.7 - tree.height;
+                
+                // Ствол
+                ctx.fillStyle = tree.color;
+                ctx.fillRect(tree.x - tree.width/4, treeBaseY + tree.height * 0.7, tree.width/2, tree.height * 0.3);
+                
+                // Листва
+                ctx.fillStyle = tree.leavesColor;
+                ctx.beginPath();
+                ctx.ellipse(tree.x, treeBaseY + tree.height * 0.4, tree.width * 0.7, tree.height * 0.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.ellipse(tree.x - tree.width * 0.3, treeBaseY + tree.height * 0.5, tree.width * 0.6, tree.height * 0.4, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.ellipse(tree.x + tree.width * 0.3, treeBaseY + tree.height * 0.5, tree.width * 0.6, tree.height * 0.4, 0, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawLifeBonuses() {
+            lifeBonuses.forEach((bonus, index) => {
+                if (bonus.collected) return;
+                
+                ctx.fillStyle = `rgba(255, 51, 102, ${bonus.alpha})`;
+                ctx.beginPath();
+                ctx.arc(bonus.x, bonus.y, bonus.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = 'white';
+                ctx.font = `${bonus.radius}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('♥', bonus.x, bonus.y);
+                
+                bonus.alpha = 0.7 + Math.sin(Date.now() / 200) * 0.3;
+                
+                bonus.y += 1;
+                
+                if (bonus.y > canvas.height + bonus.radius) {
+                    lifeBonuses.splice(index, 1);
+                }
+            });
+        }
+
+        function gameLoop(timestamp) {
+            if (!gameActive || isGameOver) return;
+            
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            drawBackground();
+            
+            pigs.forEach(pig => {
+                pig.update();
+                pig.draw();
+            });
+            
+            deadPigs.forEach(pig => {
+                pig.update();
+                pig.draw();
+            });
+            
+            shots.forEach((shot, index) => {
+                shot.update();
+                shot.draw();
+                if (shot.alpha <= 0) shots.splice(index, 1);
+            });
+            
+            explosions.forEach((explosion, index) => {
+                if (!explosion.update()) {
+                    explosions.splice(index, 1);
+                } else {
+                    explosion.draw();
+                }
+            });
+            
+            drawLifeBonuses();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initEnvironment();
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if (!gameActive || isReloading || isGameOver) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (ammo > 0) {
+                ammo--;
+                checkHit(x, y);
+                shots.push(new Shot(x, y));
+                updateHUD();
+                
+                if (ammo <= 0) {
+                    startReloading();
+                }
+            }
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+        
+        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        }
+
+        // Инициализация таблицы лидеров при загрузке
+        displayLeaderboard();
+
+        function showHelp() {
+            playClickSound();
+            document.getElementById('helpModal').style.display = 'block';
+            document.getElementById('mainMenu').style.display = 'none';
+        }
+
+        function closeHelp() {
+            playClickSound();
+            document.getElementById('helpModal').style.display = 'none';
+            document.getElementById('mainMenu').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
