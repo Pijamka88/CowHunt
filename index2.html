@@ -279,7 +279,7 @@ margin-bottom: 3px;
 </head>
 <body>
 <div class="sky-bg" id="skyBackground"></div>
-    <audio id="deathSound" src="Death-Cow.mp3" preload="metadata"></audio>
+    <audio id="deathSound" src="Death-Pig.mp3" preload="metadata"></audio>
     <audio id="backgroundMusic" src="Last-Call.mp3" loop preload="auto"></audio>
     <audio id="clickSound" src="Click.mp3" preload="metadata"></audio>
     <audio id="lifeBonusSound" src="Life-Bonus.mp3" preload="auto"></audio>
@@ -327,7 +327,16 @@ margin-bottom: 3px;
 </div>
 
     <div id="mainMenu" class="menu">
-       
+       <div style="position: absolute; top: 3px; left: 10px;">
+    <button onclick="playClickSound(); window.location.href='index.html'" class="alt-game-btn" style="
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        font-size: 20px;
+        padding: 0;
+        line-height: 30px;
+    ">🐮</button>
+</div>
     <div style="position: absolute; top: 3px; right: 10px;">
         <button onclick="showHelp()" style="
             width: 40px;
@@ -550,8 +559,9 @@ margin-bottom: 3px;
                     x: Math.random() * canvas.width,
                     height: Math.random() * (config.treeMaxHeight - config.treeMinHeight) + config.treeMinHeight,
                     width: Math.random() * 40 + 20,
-                    color: `hsl(${100 + Math.random() * 20}, 60%, 20%)`,
-                    leavesColor: `hsl(${100 + Math.random() * 20}, 60%, 30%)`
+                    trunkColor: '#8B4513', // Коричневый цвет ствола
+                    leavesColor: `hsl(${100 + Math.random() * 20}, 60%, 30%)`,
+                    leavesOutline: '#2E8B57' // Зеленая окантовка листьев
                 });
             }
         }
@@ -788,7 +798,7 @@ margin-bottom: 3px;
                         width: 10,
                         height: 20
                     },
-                    { // Хвост
+                    { // Хвост (закрученный)
                         x: this.x - (this.direction === 1 ? this.width/2 : -this.width/2),
                         y: this.y,
                         vx: (Math.random() - 0.5) * 4,
@@ -796,7 +806,8 @@ margin-bottom: 3px;
                         rotation: 0,
                         rotationSpeed: (Math.random() - 0.5) * 0.1,
                         width: 15,
-                        height: 15
+                        height: 15,
+                        curl: Math.random() * Math.PI * 2 // Начальный угол закручивания
                     }
                 ];
                 
@@ -844,6 +855,11 @@ margin-bottom: 3px;
                             limb.wingPhase += 0.05;
                         }
                         
+                        // Обновляем закручивание хвоста
+                        if (limb.curl !== undefined) {
+                            limb.curl += 0.1;
+                        }
+                        
                         // Через некоторое время показываем мертвые глаза
                         if (limb.deadEyes !== undefined && this.deathAnimationProgress > 0.3) {
                             limb.deadEyes = true;
@@ -871,8 +887,8 @@ margin-bottom: 3px;
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
-                    // Ноги
-                    ctx.strokeStyle = '#888';
+                    // Ноги (в цвете тела)
+                    ctx.strokeStyle = this.color;
                     ctx.lineWidth = 6;
                     
                     const legPairs = [
@@ -899,8 +915,8 @@ margin-bottom: 3px;
                         );
                         ctx.stroke();
                         
-                        // Копыта
-                        ctx.fillStyle = '#3E3D5C';
+                        // Копыта (темно-серые)
+                        ctx.fillStyle = '#555';
                         ctx.fillRect(
                             leg.x + Math.sin(legSwing) * 8 - 3,
                             this.height/2.5 + upperLegLength + lowerLegLength - 3,
@@ -920,18 +936,42 @@ margin-bottom: 3px;
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
-                    // Уши
+                    // Уши в форме листьев
                     // Левое ухо
                     ctx.save();
                     ctx.translate(headX - this.headRadius * 0.7, -this.headRadius * 0.4);
                     ctx.rotate(-Math.PI/4);
                     ctx.fillStyle = this.color;
                     ctx.beginPath();
-                    ctx.ellipse(0, 0, this.headRadius * 0.5, this.headRadius * 0.3, 0, 0, Math.PI * 2);
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(
+                        -this.headRadius * 0.5, -this.headRadius * 0.4,
+                        0, -this.headRadius * 0.75
+                    );
+                    ctx.quadraticCurveTo(
+                        this.headRadius * 0.5, -this.headRadius * 0.4,
+                        0, 0
+                    );
+                    ctx.closePath();
                     ctx.fill();
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 1;
                     ctx.stroke();
+                    
+                    // Внутренняя часть уха (розовая)
+                    ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(
+                        -this.headRadius * 0.3, -this.headRadius * 0.3,
+                        0, -this.headRadius * 0.6
+                    );
+                    ctx.quadraticCurveTo(
+                        this.headRadius * 0.3, -this.headRadius * 0.3,
+                        0, 0
+                    );
+                    ctx.closePath();
+                    ctx.fill();
                     ctx.restore();
                     
                     // Правое ухо
@@ -940,11 +980,35 @@ margin-bottom: 3px;
                     ctx.rotate(Math.PI/4);
                     ctx.fillStyle = this.color;
                     ctx.beginPath();
-                    ctx.ellipse(0, 0, this.headRadius * 0.5, this.headRadius * 0.3, 0, 0, Math.PI * 2);
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(
+                        -this.headRadius * 0.5, -this.headRadius * 0.4,
+                        0, -this.headRadius * 0.75
+                    );
+                    ctx.quadraticCurveTo(
+                        this.headRadius * 0.5, -this.headRadius * 0.4,
+                        0, 0
+                    );
+                    ctx.closePath();
                     ctx.fill();
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 1;
                     ctx.stroke();
+                    
+                    // Внутренняя часть уха (розовая)
+                    ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(
+                        -this.headRadius * 0.3, -this.headRadius * 0.3,
+                        0, -this.headRadius * 0.6
+                    );
+                    ctx.quadraticCurveTo(
+                        this.headRadius * 0.3, -this.headRadius * 0.3,
+                        0, 0
+                    );
+                    ctx.closePath();
+                    ctx.fill();
                     ctx.restore();
              
                     // Глаза
@@ -1057,27 +1121,33 @@ margin-bottom: 3px;
                     ctx.stroke();
                     ctx.globalCompositeOperation = 'source-over';
                     
-                    // Хвост
+                    // Хвост (закрученный)
                     const tailX = -this.width/2;
                     const tailY = 0;
                     const tailSwing = Math.sin(this.tailPhase) * 0.3;
+                    const tailCurl = Math.sin(this.tailPhase * 2) * 0.5;
                     
                     ctx.strokeStyle = this.color;
                     ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.moveTo(tailX, tailY);
-                    ctx.quadraticCurveTo(
-                        tailX - 15, 
-                        tailY + 10 + tailSwing * 5, 
-                        tailX - 20, 
-                        tailY + 15 + tailSwing * 10
-                    );
+                    
+                    // Рисуем закрученный хвост
+                    for (let i = 1; i <= 10; i++) {
+                        const t = i / 10;
+                        const curlAngle = t * Math.PI * 2 + tailCurl;
+                        const curlX = tailX - 15 * t * Math.cos(curlAngle);
+                        const curlY = tailY + 15 * t * Math.sin(curlAngle) + tailSwing * 10 * t;
+                        ctx.lineTo(curlX, curlY);
+                    }
                     ctx.stroke();
                     
                     // Кисточка на хвосте
                     ctx.fillStyle = this.color;
+                    const tailEndX = tailX - 15 * Math.cos(10/10 * Math.PI * 2 + tailCurl);
+                    const tailEndY = tailY + 15 * Math.sin(10/10 * Math.PI * 2 + tailCurl) + tailSwing * 10;
                     ctx.beginPath();
-                    ctx.arc(tailX - 20, tailY + 15 + tailSwing * 10, 5, 0, Math.PI * 2);
+                    ctx.arc(tailEndX, tailEndY, 5, 0, Math.PI * 2);
                     ctx.fill();
                 } else {
                     // Анимация смерти - разлетающиеся конечности
@@ -1138,7 +1208,7 @@ margin-bottom: 3px;
                                 ctx.fill();
                             }
                             
-                            // Уши (измененная форма)
+                            // Уши в форме листьев
                             if (limb.ears) {
                                 limb.ears.forEach(ear => {
                                     ctx.save();
@@ -1147,11 +1217,35 @@ margin-bottom: 3px;
                                     
                                     ctx.fillStyle = limb.color;
                                     ctx.beginPath();
-                                    ctx.ellipse(0, 0, limb.width/3, limb.height/4, 0, 0, Math.PI * 2);
+                                    ctx.moveTo(0, 0);
+                                    ctx.quadraticCurveTo(
+                                        -limb.width/4, -limb.height/4,
+                                        0, -limb.height * 0.5
+                                    );
+                                    ctx.quadraticCurveTo(
+                                        limb.width/4, -limb.height/4,
+                                        0, 0
+                                    );
+                                    ctx.closePath();
                                     ctx.fill();
                                     ctx.strokeStyle = '#333';
                                     ctx.lineWidth = 1;
                                     ctx.stroke();
+                                    
+                                    // Внутренняя часть уха
+                                    ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, 0);
+                                    ctx.quadraticCurveTo(
+                                        -limb.width/6, -limb.height/6,
+                                        0, -limb.height * 0.4
+                                    );
+                                    ctx.quadraticCurveTo(
+                                        limb.width/6, -limb.height/6,
+                                        0, 0
+                                    );
+                                    ctx.closePath();
+                                    ctx.fill();
                                     
                                     ctx.restore();
                                 });
@@ -1201,20 +1295,31 @@ margin-bottom: 3px;
                             ctx.strokeStyle = '#333';
                             ctx.lineWidth = 1;
                             ctx.stroke();
-                        } else if (limb === this.limbs[10]) { // Хвост
+                        } else if (limb === this.limbs[10]) { // Хвост (закрученный)
                             ctx.strokeStyle = limb.color;
                             ctx.lineWidth = 3;
                             ctx.beginPath();
                             ctx.moveTo(0, 0);
-                            ctx.quadraticCurveTo(-5, 5, -10, 10);
+                            
+                            // Рисуем закрученный хвост
+                            for (let i = 1; i <= 10; i++) {
+                                const t = i / 10;
+                                const curlAngle = t * Math.PI * 2 + limb.curl;
+                                const curlX = -15 * t * Math.cos(curlAngle);
+                                const curlY = 15 * t * Math.sin(curlAngle);
+                                ctx.lineTo(curlX, curlY);
+                            }
                             ctx.stroke();
                             
+                            // Кисточка на хвосте
                             ctx.fillStyle = limb.color;
+                            const tailEndX = -15 * Math.cos(10/10 * Math.PI * 2 + limb.curl);
+                            const tailEndY = 15 * Math.sin(10/10 * Math.PI * 2 + limb.curl);
                             ctx.beginPath();
-                            ctx.arc(-10, 10, 5, 0, Math.PI * 2);
+                            ctx.arc(tailEndX, tailEndY, 5, 0, Math.PI * 2);
                             ctx.fill();
                         } else if (limb.width && limb.height) { // Ноги
-                            ctx.strokeStyle = '#888';
+                            ctx.strokeStyle = limb.color;
                             ctx.lineWidth = 6;
                             ctx.beginPath();
                             ctx.moveTo(0, 0);
@@ -1222,7 +1327,7 @@ margin-bottom: 3px;
                             ctx.stroke();
                             
                             // Копыта
-                            ctx.fillStyle = '#3E3D5C';
+                            ctx.fillStyle = '#555';
                             ctx.fillRect(-3, limb.height - 3, 6, 6);
                         }
                         
@@ -1653,23 +1758,37 @@ margin-bottom: 3px;
             trees.forEach(tree => {
                 const treeBaseY = canvas.height * 0.7 - tree.height;
                 
-                // Ствол
-                ctx.fillStyle = tree.color;
+                // Ствол (коричневый с окантовкой)
+                ctx.fillStyle = tree.trunkColor;
                 ctx.fillRect(tree.x - tree.width/4, treeBaseY + tree.height * 0.7, tree.width/2, tree.height * 0.3);
+                ctx.strokeStyle = '#5D4037';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(tree.x - tree.width/4, treeBaseY + tree.height * 0.7, tree.width/2, tree.height * 0.3);
                 
-                // Листва
+                // Листва с зеленой окантовкой
                 ctx.fillStyle = tree.leavesColor;
                 ctx.beginPath();
                 ctx.ellipse(tree.x, treeBaseY + tree.height * 0.4, tree.width * 0.7, tree.height * 0.5, 0, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.strokeStyle = tree.leavesOutline;
+                ctx.lineWidth = 2;
+                ctx.stroke();
                 
+                ctx.fillStyle = tree.leavesColor;
                 ctx.beginPath();
                 ctx.ellipse(tree.x - tree.width * 0.3, treeBaseY + tree.height * 0.5, tree.width * 0.6, tree.height * 0.4, 0, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.strokeStyle = tree.leavesOutline;
+                ctx.lineWidth = 2;
+                ctx.stroke();
                 
+                ctx.fillStyle = tree.leavesColor;
                 ctx.beginPath();
                 ctx.ellipse(tree.x + tree.width * 0.3, treeBaseY + tree.height * 0.5, tree.width * 0.6, tree.height * 0.4, 0, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.strokeStyle = tree.leavesOutline;
+                ctx.lineWidth = 2;
+                ctx.stroke();
             });
         }
 
