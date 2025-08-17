@@ -1,631 +1,2439 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <title>Cosmic Cow Hunt</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>City Chase</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            touch-action: manipulation;
-        }
+        /* Блокировка выделения и взаимодействий */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: #121212;
-            color: #fff;
-            height: 100vh;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            margin: 0;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-        #menu, #game {
-            padding: 20px;
-            text-align: center;
-        }
-        #menu {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            height: 100%;
-        }
-        #game {
-            display: none;
-            flex: 1;
-            flex-direction: column;
-        }
-        button {
-            background: #0078ff;
+            touch-action: none;
+            font-family: 'Arial', sans-serif;
             color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 14px 24px;
-            font-size: 18px;
-            margin: 10px;
-            width: 80%;
-            max-width: 300px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        button:active {
-            background: #0060cc;
-        }
-        #ui {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            margin-top: auto;
-            padding: 15px 0;
-            background: #1e1e1e;
-            border-radius: 12px;
-            width: 100%;
-        }
-        #stats {
-            display: flex;
-            justify-content: space-around;
-            width: 100%;
-            font-size: 18px;
-        }
-        #diceResult {
-            font-weight: bold;
-            color: #0078ff;
-        }
-        #remainingSteps {
-            font-weight: bold;
-            color: #ff9800;
-        }
-        #directionControls {
-            display: flex;
-            justify-content: center;
-            gap: 25px;
-            margin-top: 10px;
-        }
-        #grid {
-            display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            grid-template-rows: repeat(10, 1fr);
-            gap: 1px;
-            flex: 1;
-            background: #333;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 15px;
-        }
-        .cell {
+            height: 100vh;
             position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #2e5d2e;
         }
-        .road {
-            position: absolute;
-            z-index: 1;
+
+        * {
+            -webkit-touch-callout: none;
+            -webkit-user-drag: none;
         }
-        .road-horizontal {
-            width: 90%;
-            height: 25%;
-            background: #555;
-            border: 1px solid #444;
-            border-radius: 3px;
-            top: 37.5%;
+
+        /* Разрешаем выделение текста только в helpModal */
+        #helpModal, #helpModal * {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
         }
-        .road-vertical {
-            height: 90%;
-            width: 25%;
-            background: #555;
-            border: 1px solid #444;
-            border-radius: 3px;
-            left: 37.5%;
-        }
-        .intersection {
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            background: #333;
-            border-radius: 50%;
-            z-index: 2;
-        }
-        .traffic-light {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            z-index: 3;
-        }
-        .car {
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            z-index: 4;
-            transform: translate(-50%, -50%);
-        }
-        .player-car {
-            background: #4CAF50;
-            box-shadow: 0 0 8px rgba(76, 175, 80, 0.7);
-        }
-        .police-car {
-            background: #F44336;
-            box-shadow: 0 0 8px rgba(244, 67, 54, 0.7);
-        }
-        .plant {
-            position: absolute;
-            font-size: 18px;
-            z-index: 0;
-        }
-        .player-controls {
-            display: flex;
-            justify-content: center;
-            gap: 25px;
-            width: 100%;
-        }
-        .direction-btn {
-            background: #2c2c2c;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            font-size: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-        }
-        .game-over {
-            position: absolute;
+
+        /* Эффект черно-белого размытия */
+        .game-over-effect {
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: grayscale(100%) blur(5px);
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            pointer-events: none;
+        }
+
+        .game-over-effect.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Исключаем меню из эффекта */
+        .menu, #gameOverMenu, #helpModal {
+            filter: none !important;
+        }
+
+        /* Остальные существующие стили */
+        .aurora-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            display: block;
+        }
+
+        .menu {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 68, 136, 0.9);
+            padding: 40px;
+            color: white;
+            text-align: center;
+            border-radius: 20px;
+            border: 3px solid #3399ff;
+            z-index: 1000;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 0 30px rgba(51, 153, 255, 0.8);
+        }
+
+        .menu h1 {
+            color: #fff;
+            margin-bottom: 25px;
+            text-shadow: 3px 3px 0 #ff66b2, 6px 6px 10px rgba(0, 0, 0, 0.3);
+            font-size: 2.5em;
+        }
+
+        .menu p {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .menu button {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            margin-top: 20px;
+            cursor: pointer;
+            background: linear-gradient(to bottom, #0077ff, #00aaff);
+            border: 2px solid #66b3ff;
+            color: white;
+            border-radius: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2), 
+                        0 0 10px rgba(0, 191, 255, 0.7),
+                        inset 0 0 5px rgba(255, 255, 255, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu button:hover {
+            background: linear-gradient(to bottom, #00aaff, #0077ff);
+            transform: scale(1.05);
+            box-shadow: 0 7px 20px rgba(51, 153, 255, 0.6), 
+                         0 0 15px rgba(0, 191, 255, 0.9),
+                         inset 0 0 8px rgba(255, 255, 255, 0.7);
+            border-color: #99ccff;
+        }
+
+        .menu button::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to bottom right,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0) 45%,
+                rgba(255, 255, 255, 0.5) 50%,
+                rgba(255, 255, 255, 0) 55%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            transform: rotate(30deg);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) rotate(30deg); }
+            20% { transform: translateX(100%) rotate(30deg); }
+            100% { transform: translateX(100%) rotate(30deg); }
+        }
+
+        #topHUD {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+            background: rgba(0, 51, 102, 0.7);
+            padding: 12px;
+            border-bottom: 1px solid #3399ff;
+            z-index: 100;
+            height: 100px;
+        }
+
+        #topHUD .heart {
+            position: relative;
+            top: -5px;
+        }
+
+        #bottomHUD {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+            background: rgba(0, 51, 102, 0.7);
+            padding: 12px;
+            border-top: 1px solid #3399ff;
+            z-index: 100;
+            height: 100px;
+        }
+
+        .hud-item {
             display: flex;
             flex-direction: column;
+            align-items: center;
+        }
+
+        .hud-label {
+            font-size: 14px;
+            color: #a3d1ff;
+            margin-bottom: 5px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .hud-value {
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .heart {
+            color: #ff3366;
+            text-shadow: 0 0 10px #ff3366;
+            font-size: 28px;
+            margin: 0 5px;
+            transition: all 0.3s;
+        }
+
+        .heart.burned {
+            color: #666;
+            text-shadow: none;
+        }
+
+        .reloading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.5);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 24px;
+            z-index: 100;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .level-up {
+            position: fixed;
+            top: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 215, 0, 0.7);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: 20px;
+            z-index: 100;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+            display: none;
+            font-weight: bold;
+            min-width: 330px;
+            text-align: center;
+        }
+
+        .life-bonus {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: radial-gradient(circle, #ff3366, #cc0066);
+            border-radius: 50%;
+            box-shadow: 0 0 15px #ff3366;
+            z-index: 100;
+            display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 10;
-            display: none;
+            color: white;
+            font-size: 20px;
+        }
+
+        .ammo-container {
+            display: flex;
+            gap: 3px;
+            margin-top: 5px;
+        }
+
+        .ammo-box {
+            width: 12px;
+            height: 20px;
+            background: linear-gradient(to bottom, #ffcc00, #ff9900);
+            border: 1px solid #cc9900;
+            border-radius: 2px;
+        }
+
+        .ammo-box.empty {
+            background: rgba(255, 255, 0, 0.3);
+            border: 1px solid rgba(204, 153, 0, 0.3);
+        }
+
+        #leaderboard {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 51, 102, 0.5);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(51, 153, 255, 0.3);
+        }
+
+        .leaderboard-item:last-child {
+            border-bottom: none;
+        }
+
+        #helpModal {
+            max-height: 90vh;
+        }
+
+        #helpModal h2 {
+            color: #fff;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 0 #3399ff;
+        }
+
+        #helpModal h3 {
+            color: #a3d1ff;
+            margin: 15px 0 3px 0;
+        }
+
+        #helpModal ul {
+            padding-left: 20px;
+            margin: 8px 0;
+        }
+
+        #helpModal p {
+            margin-bottom: 3px;
+        }
+
+        #helpModal li {
+            margin-bottom: 3px;
+        }
+
+        #helpModal code {
+            background: rgba(0,0,0,0.5);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+            display: inline-block;
+        }
+
+        .menu button.alt-game-btn {
+            background: linear-gradient(to bottom, #ff66b2, #ff3399);
+            border: 2px solid #ff99cc;
+            margin-top: 15px;
+            box-shadow: 0 0 10px rgba(255, 102, 178, 0.7);
+        }
+
+        .menu button.alt-game-btn:hover {
+            background: linear-gradient(to bottom, #ff3399, #ff66b2);
         }
     </style>
 </head>
 <body>
-    <div id="menu">
-        <h1>City Chase</h1>
-        <p>Убегайте от полиции в городе!</p>
-        <button id="startGame">Начать игру</button>
-    </div>
+  <div class="game-over-effect" id="gameOverEffect"></div>
+    <div class="aurora-bg" id="auroraBackground"></div>
     
-    <div id="game">
-        <div id="grid"></div>
-        
-        <div id="ui">
-            <div id="stats">
-                <div>Ходы: <span id="moveCount">0</span></div>
-                <div>Кубик: <span id="diceResult">-</span></div>
-                <div>Осталось: <span id="remainingSteps">0</span></div>
-            </div>
-            <button id="dice">Бросить кубик</button>
+    <!-- Обновленные аудио элементы с атрибутами muted и playsinline -->
+    <audio id="deathSound" src="Death-Cow.mp3" preload="auto" muted playsinline></audio>
+    <audio id="backgroundMusic" src="Last-Call.mp3" loop preload="auto" muted playsinline></audio>
+    <audio id="clickSound" src="Click.mp3" preload="auto" muted playsinline></audio>
+    <audio id="lifeBonusSound" src="Life-Bonus.mp3" preload="auto" muted playsinline></audio>
+    <audio id="reloadSound" src="Reloading.mp3" preload="auto" muted playsinline></audio>
+    
+    <div id="helpModal" class="menu" style="display: none; width: 90%; max-width: 600px;">
+        <h2>Как играть в Cosmic Cow Hunt</h2>
+        <div style="text-align: left; max-height: 60vh; overflow-y: auto; padding: 10px;">
+            <p>🚀 <strong>Цель игры:</strong> Остановите нашествие инопланетных коров, стреляя в них!</p>
             
-            <div id="directionControls" class="player-controls" style="display: none;">
-                <button class="direction-btn" data-dir="left">←</button>
-                <button class="direction-btn" data-dir="straight">↑</button>
-                <button class="direction-btn" data-dir="right">→</button>
+            <p>🎯 <strong>Управление:</strong></p>
+            <ul>
+                <li>Нажимайте/кликайте по экрану, чтобы стрелять</li>
+                <li>У вас 5 патронов, после чего требуется перезарядка</li>
+                <li>Попадание в корову приносит очки</li>
+                <li>Промахи уменьшают количество жизней</li>
+            </ul>
+
+            <p>💖 <strong>Бонусы:</strong></p>
+            <ul>
+                <li>Иногда при убийстве коровы выпадает бонус жизни (розовое сердце)</li>
+                <li>Соберите его, чтобы восстановить одну жизнь</li>
+            </ul>
+
+            <p>📈 <strong>Уровни:</strong></p>
+            <ul>
+                <li>Каждые 60 секунд уровень повышается</li>
+                <li>С каждым уровнем коровы становятся быстрее</li>
+            </ul>
+
+            <hr style="border-color: rgba(255,255,255,0.2); margin: 20px 0;">
+
+            <h3>Поддержать автора</h3>
+            <p>Если вам нравится игра, вы можете поддержать разработчика:</p>
+            
+            <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px;">
+                <p><strong>Bitcoin (BTC):</strong> <code>1Fam9rXb7H8hW2PWhCGpZBEoNBNWuejvjH</code></p>
+                <p><strong>TON:</strong> <code>UQCW5sLIZCgwjAaiwXYfk0TGVFTQVR18CZwpl9hyCXk7bUIx</code></p>
+                <p><strong>USDT (TRC20):</strong> <code>TWrkUWv5HWF1dGwj874MAnRChQK2MyTvdt</code></p>
             </div>
+
+            <p style="margin-top:15px; font-size: 1em; color: #a3d1ff;">Спасибо за игру! Ваша поддержка помогает развивать проект.</p>
         </div>
-        
-        <div class="game-over" id="gameOver">
-            <h2>Игра окончена!</h2>
-            <p id="gameOverMessage">Полиция поймала вас!</p>
-            <button id="restartGame">Начать заново</button>
+        <button onclick="closeHelp()">ЗАКРЫТЬ</button>
+    </div>
+
+    <div id="mainMenu" class="menu">
+        <div style="position: absolute; top: 3px; left: 10px;">
+            <button onclick="playClickSound(); switchToOtherGame()" class="alt-game-btn" style="
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                font-size: 20px;
+                padding: 0;
+                line-height: 30px;
+            ">🐷</button>
+        </div>
+        <div style="position: absolute; top: 3px; right: 10px;">
+            <button onclick="showHelp()" style="
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                font-size: 20px;
+                padding: 0;
+                line-height: 30px;
+            ">?</button>
+        </div>
+            
+        <h1>COSMIC COW HUNT</h1>
+        <p>Остановите нашествие инопланетных коров!</p>
+        <button onclick="playClickSound(); startGame()">НАЧАТЬ ИГРУ</button>
+        <div id="leaderboard">
+            <h3>ТОП 10 ИГРОКОВ</h3>
+            <div id="leaderboardList"></div>
         </div>
     </div>
 
+    <div id="gameOverMenu" class="menu" style="display: none;">
+        <h1>МИССИЯ ЗАВЕРШЕНА!</h1>
+        <p>Счет: <span id="finalScore">0</span></p>
+        <p>Попаданий: <span id="finalHits">0</span>/<span id="finalMisses">0</span></p>
+        <p>Уровень: <span id="finalLevel">1</span></p>
+        <button onclick="playClickSound(); startGame()">ИГРАТЬ СНОВА</button>
+        <button onclick="playClickSound(); returnToMainMenu()">ГЛАВНОЕ МЕНЮ</button>
+    </div>
+
+    <div id="reloading" class="reloading" style="display: none;">ПЕРЕЗАРЯДКА...</div>
+    <div id="levelUp" class="reloading" style="display: none; top: 140px; background: rgba(255, 215, 0, 0.7);">УРОВЕНЬ <span id="levelNumber">1</span>!</div>
+
+    <div id="topHUD" style="display: none;">
+        <div class="hud-item">
+            <div class="hud-label">СЧЕТ</div>
+            <div class="hud-value" id="scoreDisplay">0</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">ВРЕМЯ</div>
+            <div class="hud-value" id="timer">1:00</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">ЖИЗНИ</div>
+            <div class="hud-value" id="lives"><span class="heart">♥</span><span class="heart">♥</span><span class="heart">♥</span></div>
+        </div>
+    </div>
+
+    <div id="bottomHUD" style="display: none;">
+        <div class="hud-item">
+            <div class="hud-label">ПАТРОНЫ</div>
+            <div class="ammo-container" id="ammoContainer">
+                <div class="ammo-box"></div>
+                <div class="ammo-box"></div>
+                <div class="ammo-box"></div>
+                <div class="ammo-box"></div>
+                <div class="ammo-box"></div>
+            </div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">УРОВЕНЬ</div>
+            <div class="hud-value" id="currentLevel">1</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">ПОПАДАНИЙ</div>
+            <div class="hud-value" id="hitsMisses">0/0</div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
     <script>
-        Telegram.WebApp.expand();
-        Telegram.WebApp.ready();
-        
-        const GRID_SIZE = 10;
-        let gameState = {
-            player: { x: 5, y: 5, dir: 0, progress: 0, nextX: 5, nextY: 4, segmentLength: 3 },
-            police: [
-                { x: 0, y: 0, dir: 1, progress: 0, nextX: 1, nextY: 0, segmentLength: 3 },
-                { x: 9, y: 9, dir: 3, progress: 0, nextX: 8, nextY: 9, segmentLength: 3 }
-            ],
-            moves: 0,
-            diceValue: 0,
-            remainingSteps: 0,
-            gameActive: false,
-            waitingForDirection: false
-        };
-        
-        // Направления: 0=вверх, 1=вправо, 2=вниз, 3=влево
-        const DIRECTIONS = [
-            { dx: 0, dy: -1 }, // вверх
-            { dx: 1, dy: 0 },  // вправо
-            { dx: 0, dy: 1 },  // вниз
-            { dx: -1, dy: 0 }  // влево
-        ];
-        
-        // Светофоры (красный/зеленый)
-        const trafficLights = Array.from({ length: GRID_SIZE }, () => 
-            Array(GRID_SIZE).fill().map(() => Math.random() > 0.3 ? 'green' : 'red')
-        );
-        
-        // Инициализация игрового поля
-        function initGrid() {
-            const grid = document.getElementById('grid');
-            grid.innerHTML = '';
-            
-            for (let y = 0; y < GRID_SIZE; y++) {
-                for (let x = 0; x < GRID_SIZE; x++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'cell';
-                    cell.dataset.x = x;
-                    cell.dataset.y = y;
-                    
-                    // Определяем тип ячейки (дорога или земля)
-                    const isRoad = (x % 3 === 0 || y % 3 === 0) && !(x === 5 && y === 5);
-                    
-                    if (isRoad) {
-                        // Дороги по горизонтали
-                        if (x < GRID_SIZE - 1 && ((x + 1) % 3 === 0 || x % 3 === 0)) {
-                            const roadH = document.createElement('div');
-                            roadH.className = 'road road-horizontal';
-                            cell.appendChild(roadH);
-                        }
-                        
-                        // Дороги по вертикали
-                        if (y < GRID_SIZE - 1 && ((y + 1) % 3 === 0 || y % 3 === 0)) {
-                            const roadV = document.createElement('div');
-                            roadV.className = 'road road-vertical';
-                            cell.appendChild(roadV);
-                        }
-                        
-                        // Перекресток
-                        const intersection = document.createElement('div');
-                        intersection.className = 'intersection';
-                        cell.appendChild(intersection);
-                        
-                        // Светофор
-                        if (trafficLights[y][x] === 'red') {
-                            const light = document.createElement('div');
-                            light.className = 'traffic-light';
-                            light.style.backgroundColor = 'red';
-                            light.style.top = '5px';
-                            light.style.left = '5px';
-                            cell.appendChild(light);
-                        } else {
-                            const light = document.createElement('div');
-                            light.className = 'traffic-light';
-                            light.style.backgroundColor = 'green';
-                            light.style.top = '5px';
-                            light.style.right = '5px';
-                            cell.appendChild(light);
-                        }
-                    } else {
-                        // Растения на земле
-                        if (Math.random() > 0.3) {
-                            const plant = document.createElement('div');
-                            plant.className = 'plant';
-                            plant.textContent = Math.random() > 0.5 ? '🌳' : '🌿';
-                            cell.appendChild(plant);
-                        }
-                    }
-                    
-                    grid.appendChild(cell);
-                }
-            }
-        }
-        
-        // Обновление позиции игрока
-        function updatePlayerPosition() {
-            const grid = document.getElementById('grid');
-            const playerEl = document.querySelector('.car.player-car') || createPlayerElement();
-            
-            // Рассчитываем позицию с учетом прогресса
-            const cellSize = 100 / GRID_SIZE;
-            const progress = gameState.player.progress / gameState.player.segmentLength;
-            let left = gameState.player.x * cellSize;
-            let top = gameState.player.y * cellSize;
-            
-            if (gameState.player.x !== gameState.player.nextX || gameState.player.y !== gameState.player.nextY) {
-                left += (gameState.player.nextX - gameState.player.x) * cellSize * progress;
-                top += (gameState.player.nextY - gameState.player.y) * cellSize * progress;
-            }
-            
-            playerEl.style.left = `${left}%`;
-            playerEl.style.top = `${top}%`;
-        }
-        
-        // Создание элемента игрока
-        function createPlayerElement() {
-            const playerEl = document.createElement('div');
-            playerEl.className = 'car player-car';
-            playerEl.textContent = '🚗';
-            document.getElementById('grid').appendChild(playerEl);
-            return playerEl;
-        }
-        
-        // Обновление позиций полиции
-        function updatePolicePositions() {
-            const grid = document.getElementById('grid');
-            
-            // Удаляем существующие элементы полиции
-            document.querySelectorAll('.car.police-car').forEach(el => el.remove());
-            
-            // Создаем новые
-            gameState.police.forEach((p, i) => {
-                const cellSize = 100 / GRID_SIZE;
-                const progress = p.progress / p.segmentLength;
-                let left = p.x * cellSize;
-                let top = p.y * cellSize;
-                
-                if (p.x !== p.nextX || p.y !== p.nextY) {
-                    left += (p.nextX - p.x) * cellSize * progress;
-                    top += (p.nextY - p.y) * cellSize * progress;
-                }
-                
-                const policeEl = document.createElement('div');
-                policeEl.className = 'car police-car';
-                policeEl.textContent = '🚓';
-                policeEl.style.left = `${left}%`;
-                policeEl.style.top = `${top}%`;
-                grid.appendChild(policeEl);
-            });
-        }
-        
-        // Проверка возможности движения в любом направлении
-        function canMoveAnyDirection() {
-            for (let i = 0; i < 3; i++) {
-                const dir = i === 0 ? gameState.player.dir : 
-                            i === 1 ? (gameState.player.dir + 3) % 4 : 
-                            (gameState.player.dir + 1) % 4;
-                
-                const nextX = gameState.player.x + DIRECTIONS[dir].dx;
-                const nextY = gameState.player.y + DIRECTIONS[dir].dy;
-                
-                // Проверяем границы
-                if (nextX < 0 || nextX >= GRID_SIZE || nextY < 0 || nextY >= GRID_SIZE) {
-                    continue;
-                }
-                
-                // Проверяем светофор на следующем перекрестке
-                if (trafficLights[nextY][nextX] === 'green') {
-                    return true;
-                }
-            }
+        // Защитные обработчики событий
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
             return false;
-        }
-        
-        // Бросок кубика
-        function rollDice() {
-            if (!gameState.gameActive || gameState.waitingForDirection || gameState.remainingSteps > 0) return;
+        });
+
+        document.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        document.addEventListener('copy', function(e) {
+            e.clipboardData.setData('text/plain', 'Копирование запрещено');
+            e.preventDefault();
+        });
+
+        document.addEventListener('selectstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // Инициализация Telegram WebApp с защитными параметрами
+        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
             
-            gameState.diceValue = Math.floor(Math.random() * 6) + 1;
-            gameState.remainingSteps = gameState.diceValue;
-            gameState.moves++;
+            Telegram.WebApp.setHeaderColor('#0f0c29');
+            Telegram.WebApp.setBackgroundColor('#0f0c29');
+            Telegram.WebApp.enableClosingConfirmation();
+            Telegram.WebApp.isExpanded = true;
+            Telegram.WebApp.MainButton.showProgress();
+            Telegram.WebApp.disableZoom();
             
-            document.getElementById('diceResult').textContent = gameState.diceValue;
-            document.getElementById('remainingSteps').textContent = gameState.remainingSteps;
-            
-            // Двигаем игрока
-            movePlayer();
-            
-            // Обновляем позицию игрока
-            updatePlayerPosition();
-        }
-        
-        // Движение игрока
-        function movePlayer() {
-            while (gameState.remainingSteps > 0) {
-                // Если на перекрестке, ждем выбора направления
-                if (gameState.player.progress === 0) {
-                    // Проверяем возможность движения
-                    if (!canMoveAnyDirection()) {
-                        endGame("Нет возможных направлений для движения!");
-                        return;
-                    }
-                    
-                    // Генерируем случайную длину сегмента (2-4)
-                    gameState.player.segmentLength = Math.floor(Math.random() * 3) + 2;
-                    gameState.waitingForDirection = true;
-                    document.getElementById('directionControls').style.display = 'flex';
-                    return;
-                }
-                
-                // Двигаемся по текущему сегменту
-                const moveAmount = Math.min(gameState.remainingSteps, gameState.player.segmentLength - gameState.player.progress);
-                gameState.player.progress += moveAmount;
-                gameState.remainingSteps -= moveAmount;
-                
-                // Обновляем UI
-                document.getElementById('remainingSteps').textContent = gameState.remainingSteps;
-                
-                // Достигли перекрестка?
-                if (gameState.player.progress >= gameState.player.segmentLength) {
-                    // Проверяем светофор на целевом перекрестке
-                    if (trafficLights[gameState.player.nextY][gameState.player.nextX] === 'red') {
-                        // Останавливаемся перед перекрестком
-                        gameState.player.progress = gameState.player.segmentLength;
-                        return;
-                    }
-                    
-                    // Переходим на новый перекресток
-                    gameState.player.x = gameState.player.nextX;
-                    gameState.player.y = gameState.player.nextY;
-                    gameState.player.progress = 0;
-                }
-            }
-            
-            // Если шаги закончились и не ждем направления, двигаем полицию
-            if (gameState.remainingSteps === 0 && !gameState.waitingForDirection) {
-                movePoliceAutomatically();
-            }
-        }
-        
-        // Автоматическое движение полиции
-        function movePoliceAutomatically() {
-            gameState.police.forEach(police => {
-                const diceRoll = Math.floor(Math.random() * 6) + 1;
-                movePolice(police, diceRoll);
+            Telegram.WebApp.onEvent('viewportChanged', function() {
+                Telegram.WebApp.expand();
             });
-            updatePolicePositions();
             
-            // Проверка задержания
-            checkArrest();
+            Telegram.WebApp.onEvent('mainButtonClicked', initSounds);
         }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const deathSound = document.getElementById('deathSound');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const clickSound = document.getElementById('clickSound');
+        const lifeBonusSound = document.getElementById('lifeBonusSound');
+        const reloadSound = document.getElementById('reloadSound');
         
-        // Движение полиции
-        function movePolice(police, steps) {
-            let remaining = steps;
+        // Game state
+        let gameActive = false;
+        let cows = [];
+        let deadCows = [];
+        let shots = [];
+        let explosions = [];
+        let stars = [];
+        let lifeBonuses = [];
+        let planets = [];
+        let score = 0;
+        let lives = 3;
+        let timeLeft = 60;
+        let hits = 0;
+        let misses = 0;
+        let ammo = 5;
+        let isReloading = false;
+        let gameTimer;
+        let lastTime = 0;
+        let reloadTimeout;
+        let level = 1;
+        let levelTimer;
+        let eyeAnimationPhase = 0;
+        let levelUpDisplayTimeout;
+        let isGameOver = false;
+        let soundsInitialized = false;
+
+        // Configuration
+        const config = {
+            baseCowSpeed: 2.5,
+            spawnInterval: 1500,
+            maxCows: 4,
+            cowWidth: 80,
+            cowHeight: 40,
+            headRadius: 15,
+            reloadTime: 2500,
+            starCount: 70,
+            lifeBonusChance: 0.15,
+            levelDuration: 60,
+            levelIncreaseInterval: 30,
+            playAreaTop: 130,
+            playAreaBottom: 130,
+            planetCount: 3,
+            planetMinRadius: 150,
+            planetMaxRadius: 300
+        };
+
+        // Cow types and colors
+        const cowColors = ['#e6ddd6', '#dfbd97', '#9b3618'];
+        const cowTypes = [
+            { // Type 0 - Zigzag
+                speed: 3.5,
+                score: 10,
+                movement: 'zigzag',
+                wingColor: 'rgba(200, 150, 255, 0.7)'
+            },
+            { // Type 1 - Bounce
+                speed: 3.2,
+                score: 25,
+                movement: 'bounce',
+                wingColor: 'rgba(255, 192, 203, 0.7)'
+            },
+            { // Type 2 - Fast
+                speed: 4.0,
+                score: 30,
+                movement: 'linear',
+                wingColor: 'rgba(160, 180, 255, 0.7)'
+            }
+        ];
+
+        // Инициализация звуков
+        function initSounds() {
+            if (soundsInitialized) return;
             
-            while (remaining > 0) {
-                if (police.progress === 0) {
-                    // Генерируем случайную длину сегмента (2-4)
-                    police.segmentLength = Math.floor(Math.random() * 3) + 2;
-                    
-                    // Определяем направление к игроку
-                    const dx = gameState.player.x - police.x;
-                    const dy = gameState.player.y - police.y;
-                    
-                    if (Math.abs(dx) > Math.abs(dy)) {
-                        police.dir = dx > 0 ? 1 : 3; // вправо/влево
-                    } else {
-                        police.dir = dy > 0 ? 2 : 0; // вниз/вверх
-                    }
-                    
-                    // Устанавливаем следующую позицию
-                    police.nextX = police.x + DIRECTIONS[police.dir].dx;
-                    police.nextY = police.y + DIRECTIONS[police.dir].dy;
-                    
-                    // Проверка границ
-                    if (police.nextX < 0 || police.nextX >= GRID_SIZE || 
-                        police.nextY < 0 || police.nextY >= GRID_SIZE) {
-                        police.nextX = police.x;
-                        police.nextY = police.y;
-                    }
+            // Предварительно загружаем все звуки
+            const sounds = [deathSound, backgroundMusic, clickSound, lifeBonusSound, reloadSound];
+            
+            sounds.forEach(sound => {
+                sound.load();
+                sound.muted = false;
+            });
+            
+            soundsInitialized = true;
+        }
+
+        function playClickSound() {
+            initSounds();
+            clickSound.currentTime = 0;
+            clickSound.play().catch(e => console.log("Sound play error:", e));
+        }
+
+        // Leaderboard functions
+        function getLeaderboard() {
+            const leaderboard = localStorage.getItem('cosmicCowLeaderboard');
+            return leaderboard ? JSON.parse(leaderboard) : [];
+        }
+
+        function updateLeaderboard(newScore) {
+            const leaderboard = getLeaderboard();
+            const playerName = prompt('Введите ваше имя для таблицы лидеров:', 'Игрок') || 'Игрок';
+            
+            if (playerName) {
+                leaderboard.push({
+                    name: playerName,
+                    score: newScore,
+                    date: new Date().toLocaleDateString()
+                });
+                
+                // Sort by score descending
+                leaderboard.sort((a, b) => b.score - a.score);
+                
+                // Keep only top 10
+                if (leaderboard.length > 10) {
+                    leaderboard.length = 10;
                 }
                 
-                // Двигаемся по сегменту
-                const moveAmount = Math.min(remaining, police.segmentLength - police.progress);
-                police.progress += moveAmount;
-                remaining -= moveAmount;
-                
-                // Достигли перекрестка?
-                if (police.progress >= police.segmentLength) {
-                    police.x = police.nextX;
-                    police.y = police.nextY;
-                    police.progress = 0;
-                }
+                localStorage.setItem('cosmicCowLeaderboard', JSON.stringify(leaderboard));
             }
+            displayLeaderboard();
+            endGame();
         }
-        
-        // Проверка задержания
-        function checkArrest() {
-            const playerPos = { x: Math.round(gameState.player.x), y: Math.round(gameState.player.y) };
+
+        function displayLeaderboard() {
+            const leaderboard = getLeaderboard();
+            const leaderboardList = document.getElementById('leaderboardList');
             
-            for (const police of gameState.police) {
-                const policePos = { x: Math.round(police.x), y: Math.round(police.y) };
-                
-                // Если полиция и игрок на одной позиции
-                if (playerPos.x === policePos.x && playerPos.y === policePos.y) {
-                    endGame("Полиция поймала вас!");
-                    return;
-                }
-            }
-        }
-        
-        // Завершение игры
-        function endGame(message) {
-            gameState.gameActive = false;
-            document.getElementById('gameOverMessage').textContent = message;
-            document.getElementById('gameOver').style.display = 'flex';
-        }
-        
-        // Выбор направления игроком
-        function chooseDirection(direction) {
-            if (!gameState.waitingForDirection) return;
+            leaderboardList.innerHTML = '';
             
-            const currentDir = gameState.player.dir;
-            let newDir;
-            
-            // Определяем новое направление
-            switch (direction) {
-                case 'straight': newDir = currentDir; break;
-                case 'left': newDir = (currentDir + 3) % 4; break; // Поворот налево (90°)
-                case 'right': newDir = (currentDir + 1) % 4; break; // Поворот направо (90°)
-            }
-            
-            // Устанавливаем новое направление и следующую позицию
-            gameState.player.dir = newDir;
-            gameState.player.nextX = gameState.player.x + DIRECTIONS[newDir].dx;
-            gameState.player.nextY = gameState.player.y + DIRECTIONS[newDir].dy;
-            
-            // Проверка границ
-            if (gameState.player.nextX < 0 || gameState.player.nextX >= GRID_SIZE || 
-                gameState.player.nextY < 0 || gameState.player.nextY >= GRID_SIZE) {
-                // Если граница, не двигаемся
-                gameState.waitingForDirection = false;
-                document.getElementById('directionControls').style.display = 'none';
+            if (leaderboard.length === 0) {
+                leaderboardList.innerHTML = '<p>Пока нет рекордов</p>';
                 return;
             }
             
-            // Сбрасываем флаг ожидания
-            gameState.waitingForDirection = false;
-            document.getElementById('directionControls').style.display = 'none';
-            
-            // Продолжаем движение
-            movePlayer();
-            updatePlayerPosition();
-        }
-        
-        // Запуск игры
-        function startGame() {
-            document.getElementById('menu').style.display = 'none';
-            document.getElementById('game').style.display = 'flex';
-            document.getElementById('gameOver').style.display = 'none';
-            
-            initGrid();
-            createPlayerElement();
-            
-            gameState = {
-                player: { x: 5, y: 5, dir: 0, progress: 0, nextX: 5, nextY: 4, segmentLength: 3 },
-                police: [
-                    { x: 0, y: 0, dir: 1, progress: 0, nextX: 1, nextY: 0, segmentLength: 3 },
-                    { x: 9, y: 9, dir: 3, progress: 0, nextX: 8, nextY: 9, segmentLength: 3 }
-                ],
-                moves: 0,
-                diceValue: 0,
-                remainingSteps: 0,
-                gameActive: true,
-                waitingForDirection: false
-            };
-            
-            document.getElementById('moveCount').textContent = '0';
-            document.getElementById('diceResult').textContent = '-';
-            document.getElementById('remainingSteps').textContent = '0';
-            updatePlayerPosition();
-            updatePolicePositions();
-        }
-        
-        // Инициализация
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('startGame').addEventListener('click', startGame);
-            document.getElementById('dice').addEventListener('click', rollDice);
-            document.getElementById('restartGame').addEventListener('click', startGame);
-            
-            document.querySelectorAll('.direction-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    chooseDirection(btn.dataset.dir);
-                });
+            leaderboard.forEach((item, index) => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'leaderboard-item';
+                itemElement.innerHTML = `
+                    <span>${index + 1}. ${item.name}</span>
+                    <span>${item.score}</span>
+                `;
+                leaderboardList.appendChild(itemElement);
             });
+        }
+
+        // Initialize stars and planets
+        function initStars() {
+            stars = [];
+            const colors = ['#FFD700', '#00CED1', '#FFEC8B', '#40E0D0'];
+            for (let i = 0; i < config.starCount; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 8 + 6,
+                    alpha: Math.random() * 0.8 + 0.2,
+                    speed: Math.random() * 0.2 + 0.1,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    phase: Math.random() * Math.PI * 2,
+                    rotation: Math.random() * Math.PI * 2
+                });
+            }
+
+            // Initialize planets with no overlap
+            planets = [];
+            const planetColors = ['#40E0D0', '#00CED1', '#FFD700', '#FFA500'];
+            
+            // Adjust planet sizes for mobile
+            const isMobile = window.innerWidth < 768;
+            const minRadius = isMobile ? 75 : config.planetMinRadius;
+            const maxRadius = isMobile ? 200 : config.planetMaxRadius;
+            
+            for (let i = 0; i < config.planetCount; i++) {
+                let newPlanet, overlapping;
+                let attempts = 0;
+                
+                do {
+                    overlapping = false;
+                    newPlanet = {
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        radius: Math.random() * (maxRadius - minRadius) + minRadius,
+                        color: planetColors[Math.floor(Math.random() * planetColors.length)],
+                        rotation: Math.random() * Math.PI * 2,
+                        rotationSpeed: Math.random() * 0.002 - 0.001
+                    };
+                    
+                    // Check for overlap with existing planets
+                    for (const planet of planets) {
+                        const dx = newPlanet.x - planet.x;
+                        const dy = newPlanet.y - planet.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < (newPlanet.radius + planet.radius) * 1.2) {
+                            overlapping = true;
+                            break;
+                        }
+                    }
+                    
+                    attempts++;
+                    if (attempts > 100) break; // Prevent infinite loop
+                } while (overlapping);
+                
+                planets.push(newPlanet);
+            }
+        }
+
+        class Cow {
+            constructor() {
+                this.type = Math.floor(Math.random() * cowTypes.length);
+                this.color = cowColors[Math.floor(Math.random() * cowColors.length)];
+                this.width = config.cowWidth;
+                this.height = config.cowHeight;
+                this.headRadius = config.headRadius;
+                this.reset();
+                this.alive = true;
+                this.wingPhase = Math.random() * Math.PI * 2;
+                this.wingSpeed = Math.random() * 0.05 + 0.05;
+                this.deathAnimation = 0;
+                this.movementPhase = 0;
+                this.originalY = 0;
+                this.legPhase = 0;
+                this.legSpeed = Math.random() * 0.1 + 0.1;
+                this.eyePhase = 0;
+                this.eyeSpeed = 0.02;
+                this.limbs = [];
+                this.tailPhase = Math.random() * Math.PI * 2;
+                this.tailSpeed = Math.random() * 0.05 + 0.05;
+                this.deathTime = 0;
+                this.fallSpeed = 0;
+                this.rotation = 0;
+                this.deathAnimationProgress = 0;
+                this.tongueOut = false;
+                this.tongueTimer = 0;
+                this.alpha = 1;
+            }
+
+            reset() {
+                this.direction = Math.random() > 0.5 ? 1 : -1;
+                
+                if (this.direction === 1) {
+                    this.x = -this.width;
+                    this.y = Math.random() * (canvas.height - config.playAreaTop - config.playAreaBottom - 100) + config.playAreaTop + 50;
+                    this.vx = cowTypes[this.type].speed * (1 + level * 0.2);
+                    this.vy = (Math.random() - 0.5) * cowTypes[this.type].speed * 0.5;
+                } else {
+                    this.x = canvas.width + this.width;
+                    this.y = Math.random() * (canvas.height - config.playAreaTop - config.playAreaBottom - 100) + config.playAreaTop + 50;
+                    this.vx = -cowTypes[this.type].speed * (1 + level * 0.1);
+                    this.vy = (Math.random() - 0.5) * cowTypes[this.type].speed * 0.5;
+                }
+                
+                this.originalY = this.y;
+                this.alive = true;
+                this.deathAnimation = 1;
+                this.movementPhase = 0;
+                this.legPhase = 0;
+                this.limbs = [];
+                this.tailPhase = Math.random() * Math.PI * 2;
+                this.deathTime = 0;
+                this.fallSpeed = 0;
+                this.rotation = 0;
+                this.deathAnimationProgress = 0;
+                this.tongueOut = false;
+                this.tongueTimer = 0;
+                this.alpha = 1;
+            }
+
+            updateMovement() {
+                this.movementPhase += 0.02;
+                this.legPhase += this.legSpeed;
+                this.eyePhase += this.eyeSpeed;
+                this.tailPhase += this.tailSpeed;
+                
+                // Random tongue animation
+                if (Math.random() < 0.005) {
+                    this.tongueOut = true;
+                    this.tongueTimer = 30;
+                }
+                
+                if (this.tongueOut) {
+                    this.tongueTimer--;
+                    if (this.tongueTimer <= 0) {
+                        this.tongueOut = false;
+                    }
+                }
+                
+                switch(cowTypes[this.type].movement) {
+                    case 'zigzag':
+                        this.y = this.originalY + Math.sin(this.movementPhase * 2) * 50;
+                        break;
+                    case 'bounce':
+                        this.y += this.vy;
+                        if (this.y <= config.playAreaTop + this.height/2 || 
+                            this.y >= canvas.height - config.playAreaBottom - this.height/2) {
+                            this.vy *= -1;
+                        }
+                        break;
+                }
+                
+                // Ограничение движения в пределах игровой зоны
+                if (this.y < config.playAreaTop + this.height/2) {
+                    this.y = config.playAreaTop + this.height/2;
+                }
+                if (this.y > canvas.height - config.playAreaBottom - this.height/2) {
+                    this.y = canvas.height - config.playAreaBottom - this.height/2;
+                }
+            }
+
+            die() {
+                this.alive = false;
+                this.deathAnimation = 1;
+                this.deathTime = Date.now();
+                this.fallSpeed = -5;
+                this.rotation = 0;
+                this.deathAnimationProgress = 0;
+                this.alpha = 1;
+                
+                // Play death sound
+                initSounds();
+                deathSound.currentTime = 0;
+                deathSound.play().catch(e => console.log("Death sound error:", e));
+                
+                // Создаем части тела для анимации смерти
+                this.limbs = [
+                    { // Голова с рожками и ушами
+                        x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2),
+                        y: this.y,
+                        vx: (Math.random() - 0.5) * 5,
+                        vy: (Math.random() - 0.5) * 5,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: this.headRadius * 2,
+                        height: this.headRadius * 2,
+                        deadEyes: false,
+                        color: this.color,
+                        tongueOut: true,
+                        tongueTimer: 120,
+                        horns: [
+                            { // Левый рог
+                                x: -6,
+                                y: -this.headRadius + 2,
+                                rotation: 0
+                            },
+                            { // Правый рог
+                                x: 6,
+                                y: -this.headRadius + 2,
+                                rotation: 0
+                            }
+                        ],
+                        ears: [
+                            { // Левое ухо
+                                x: -this.headRadius * 0.6,
+                                y: -this.headRadius * 0.6,
+                                rotation: -Math.PI/4
+                            },
+                            { // Правое ухо
+                                x: this.headRadius * 0.6,
+                                y: -this.headRadius * 0.6,
+                                rotation: Math.PI/4
+                            }
+                        ]
+                    },
+                    { // Тело
+                        x: this.x,
+                        y: this.y,
+                        vx: (Math.random() - 0.5) * 3,
+                        vy: (Math.random() - 0.5) * 3,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.05,
+                        width: this.width,
+                        height: this.height,
+                        color: this.color
+                    },
+                    { // Левое крыло
+                        x: this.x - 5,
+                        y: this.y - 5,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.08,
+                        color: cowTypes[this.type].wingColor,
+                        wingPhase: this.wingPhase
+                    },
+                    { // Правое крыло
+                        x: this.x + 5,
+                        y: this.y - 5,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.08,
+                        color: cowTypes[this.type].wingColor,
+                        wingPhase: this.wingPhase
+                    },
+                    { // Нос
+                        x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2),
+                        y: this.y + 8,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.03,
+                        color: '#f5d0b0'
+                    },
+                    { // Язык
+                        x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2),
+                        y: this.y + 16,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.03,
+                        color: '#ff0000'
+                    },
+                    { // Передняя нога 1
+                        x: this.x + (this.direction === 1 ? this.width/4 : -this.width/4),
+                        y: this.y + this.height/2.5,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 10,
+                        height: 20
+                    },
+                    { // Передняя нога 2
+                        x: this.x + (this.direction === 1 ? this.width/4 + 15 : -this.width/4 - 15),
+                        y: this.y + this.height/2.5,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 10,
+                        height: 20
+                    },
+                    { // Задняя нога 1 (перенесена за вымя)
+                        x: this.x - (this.direction === 1 ? this.width/4 : -this.width/4),
+                        y: this.y + this.height/2.5,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 10,
+                        height: 20
+                    },
+                    { // Задняя нога 2 (перенесена за вымя)
+                        x: this.x - (this.direction === 1 ? this.width/4 + 15 : -this.width/4 - 15),
+                        y: this.y + this.height/2.5,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 10,
+                        height: 20
+                    },
+                    { // Хвост
+                        x: this.x - (this.direction === 1 ? this.width/2 : -this.width/2),
+                        y: this.y,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 15,
+                        height: 15
+                    },
+                    { // Вымя
+                        x: this.x - (this.direction === 1 ? this.width/8 : -this.width/8),
+                        y: this.y + this.height/2.5,
+                        vx: (Math.random() - 0.5) * 3,
+                        vy: (Math.random() - 0.5) * 3,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.05,
+                        width: 24,
+                        height: 16
+                    }
+                ];
+                
+                if (Math.random() < config.lifeBonusChance) {
+                    lifeBonuses.push({
+                        x: this.x,
+                        y: this.y,
+                        radius: 15,
+                        collected: false,
+                        alpha: 1
+                    });
+                }
+            }
+
+            update() {
+                if (this.alive) {
+                    this.updateMovement();
+                    this.x += this.vx;
+                    this.wingPhase += this.wingSpeed;
+                    
+                    if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
+                        (this.direction === -1 && this.x < -this.width*2)) {
+                        this.reset();
+                    }
+                } else {
+                    // Анимация смерти - разлетающиеся конечности в космосе
+                    this.deathAnimationProgress += 0.02;
+                    
+                    // Обновляем части тела
+                    this.limbs.forEach(limb => {
+                        limb.x += limb.vx;
+                        limb.y += limb.vy;
+                        limb.rotation += limb.rotationSpeed;
+                        
+                        // Обновляем таймер языка
+                        if (limb.tongueTimer !== undefined) {
+                            limb.tongueTimer--;
+                            if (limb.tongueTimer <= 0) {
+                                limb.tongueOut = false;
+                            }
+                        }
+                        
+                        // Обновляем фазу крыльев
+                        if (limb.wingPhase !== undefined) {
+                            limb.wingPhase += 0.05;
+                        }
+                        
+                        // Через некоторое время показываем мертвые глаза
+                        if (limb.deadEyes !== undefined && this.deathAnimationProgress > 0.3) {
+                            limb.deadEyes = true;
+                        }
+                    });
+                }
+            }
+
+            draw() {
+                ctx.save();
+                
+                if (this.alive) {
+                    ctx.translate(this.x, this.y);
+                    
+                    if (this.direction === -1) {
+                        ctx.scale(-1, 1);
+                    }
+                    
+                    // Body (oval) с окантовкой
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Legs (серые, опущены ниже)
+                    ctx.strokeStyle = '#888';
+                    ctx.lineWidth = 6;
+                    
+                    const legPairs = [
+                        { x: -this.width/4, offset: 0 },
+                        { x: -this.width/4 + 15, offset: Math.PI },
+                        { x: -this.width/4 + 30, offset: 0 },
+                        { x: -this.width/4 + 45, offset: Math.PI }
+                    ];
+                    
+                    legPairs.forEach((leg, i) => {
+                        const legSwing = Math.sin(this.legPhase + leg.offset) * 0.3;
+                        const upperLegLength = 10;
+                        const lowerLegLength = 8;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(leg.x, this.height/2.5);
+                        ctx.lineTo(
+                            leg.x + Math.sin(legSwing) * 5,
+                            this.height/2.5 + upperLegLength
+                        );
+                        ctx.lineTo(
+                            leg.x + Math.sin(legSwing) * 8,
+                            this.height/2.5 + upperLegLength + lowerLegLength
+                        );
+                        ctx.stroke();
+                        
+                        // Hooves (темно-синие)
+                        ctx.fillStyle = '#3E3D5C';
+                        ctx.fillRect(
+                            leg.x + Math.sin(legSwing) * 8 - 3,
+                            this.height/2.5 + upperLegLength + lowerLegLength - 3,
+                            6, 6
+                        );
+                    });
+                    
+                    // Head at the end of body
+                    const headX = this.width/2;
+                    
+                    // Head с окантовкой
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(headX, 0, this.headRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Ears в форме листа
+                    // Left ear (повернуто влево)
+                    ctx.save();
+                    ctx.translate(headX - this.headRadius * 0.6, -this.headRadius * 0.6);
+                    ctx.rotate(-Math.PI/4);
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(
+                        -this.headRadius * 0.5, -this.headRadius * 0.4,
+                        0, -this.headRadius * 0.75
+                    );
+                    ctx.quadraticCurveTo(
+                        this.headRadius * 0.5, -this.headRadius * 0.4,
+                        0, 0
+                    );
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    
+                    // Внутренняя часть уха (розовая)
+                    ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(
+                        -this.headRadius * 0.3, -this.headRadius * 0.3,
+                        0, -this.headRadius * 0.6
+                    );
+                    ctx.quadraticCurveTo(
+                        this.headRadius * 0.3, -this.headRadius * 0.3,
+                        0, 0
+                    );
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                    
+                    // Right ear (повернуто вправо)
+                    ctx.save();
+                    ctx.translate(headX + this.headRadius * 0.6, -this.headRadius * 0.6);
+                    ctx.rotate(Math.PI/4);
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(
+                        -this.headRadius * 0.5, -this.headRadius * 0.4,
+                        0, -this.headRadius * 0.75
+                    );
+                    ctx.quadraticCurveTo(
+                        this.headRadius * 0.5, -this.headRadius * 0.4,
+                        0, 0
+                    );
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    
+                    // Внутренняя часть уха (розовая)
+                    ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(
+                        -this.headRadius * 0.3, -this.headRadius * 0.3,
+                        0, -this.headRadius * 0.4
+                    );
+                    ctx.quadraticCurveTo(
+                        this.headRadius * 0.3, -this.headRadius * 0.3,
+                        0, 0
+                    );
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+             
+                    // Eyes (анимешные без склеры)
+                    const eyeYOffset = 2;
+                    const eyeClosed = Math.abs(Math.sin(this.eyePhase)) < 0.1;
+
+                    // Левый глаз
+                    if (!eyeClosed) {
+                        // Открытый глаз
+                        ctx.fillStyle = '#333';
+                        ctx.beginPath();
+                        ctx.ellipse(headX - 6, -eyeYOffset, 4, 5, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Блик в глазе
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                        ctx.beginPath();
+                        ctx.arc(headX - 8, -eyeYOffset - 1, 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        // Закрытый глаз в форме ")"
+                        ctx.strokeStyle = '#333';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(headX - 10, -eyeYOffset);
+                        ctx.quadraticCurveTo(
+                            headX - 6, -eyeYOffset + 3,
+                            headX - 2, -eyeYOffset
+                        );
+                        ctx.stroke();
+                    }
+
+                    // Правый глаз
+                    if (!eyeClosed) {
+                        // Открытый глаз
+                        ctx.fillStyle = '#333';
+                        ctx.beginPath();
+                        ctx.ellipse(headX + 6, -eyeYOffset, 4, 5, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Блик в глазе
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                        ctx.beginPath();
+                        ctx.arc(headX + 4, -eyeYOffset - 1, 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        // Закрытый глаз в форме ")"
+                        ctx.strokeStyle = '#333';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(headX + 2, -eyeYOffset);
+                        ctx.quadraticCurveTo(
+                            headX + 6, -eyeYOffset + 3,
+                            headX + 10, -eyeYOffset
+                        );
+                        ctx.stroke();
+                    }      
+                    
+                    // Eyebrows (немного тоньше)
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(headX - 8, -eyeYOffset - 6);
+                    ctx.quadraticCurveTo(
+                        headX - 6, -eyeYOffset - 9,
+                        headX - 2, -eyeYOffset - 6
+                    );
+                    ctx.moveTo(headX + 2, -eyeYOffset - 6);
+                    ctx.quadraticCurveTo(
+                        headX + 6, -eyeYOffset - 9,
+                        headX + 8, -eyeYOffset - 6
+                    );
+                    ctx.stroke();
+                    
+                    // Nose
+                    ctx.fillStyle = '#f5d0b0';
+                    ctx.beginPath();
+                    ctx.ellipse(headX, eyeYOffset + 8, 10, 8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    
+                    // Nostrils (вытянутые и чуть меньше)
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.ellipse(headX - 4, eyeYOffset + 8, 1.5, 2.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(headX + 4, eyeYOffset + 8, 1.5, 2.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Язык (красный, под носом)
+                    if (this.tongueOut) {
+                        ctx.fillStyle = '#ff0000';
+                        ctx.beginPath();
+                        ctx.ellipse(headX, eyeYOffset + 16, 5, 3, 0, 0, Math.PI);
+                        ctx.fill();
+                    }
+                    
+            // Horns (черные, как у реальных коров, уменьшенные в 2 раза)
+            ctx.fillStyle = '#000';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2; // Толщина линии тоже уменьшена
+
+            // Left horn (изогнутый)
+            ctx.save();
+            ctx.translate(headX - 4, -this.headRadius + 2); // Позиция сдвинута ближе
+            ctx.rotate(-0.3);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(-2, -4, 0, -7); // Уменьшены координаты кривой
+            ctx.stroke();
+            ctx.restore();
+
+            // Right horn (изогнутый)
+            ctx.save();
+            ctx.translate(headX + 4, -this.headRadius + 2); // Позиция сдвинута ближе
+            ctx.rotate(0.3);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(2, -4, 0, -7); // Уменьшены координаты кривой
+            ctx.stroke();
+            ctx.restore();
+                    
+                    // Helmet (большой и прозрачный с белой окантовкой)
+                    ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
+                    ctx.beginPath();
+                    ctx.arc(headX, 0, this.headRadius * 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Wings (крылья Пегаса - большие и изящные)
+                    const wingYOffset = Math.sin(this.wingPhase) * 15;
+                    const wingTipX = 50;
+                    const wingTipY = -30 + wingYOffset;
+                    
+                    // Back wing
+                    ctx.fillStyle = cowTypes[this.type].wingColor;
+                    ctx.beginPath();
+                    ctx.moveTo(-5, -5);
+                    ctx.bezierCurveTo(
+                        -20, -10 + wingYOffset * 0.5,
+                        -40, -20 + wingYOffset,
+                        -wingTipX, wingTipY
+                    );
+                    ctx.bezierCurveTo(
+                        -40, 0 + wingYOffset * 0.5,
+                        -20, 5 + wingYOffset * 0.3,
+                        -5, -5
+                    );
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Feather details
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.lineWidth = 1;
+                    for (let i = 1; i <= 3; i++) {
+                        const featherX = -5 - (wingTipX + 5) * i / 4;
+                        const featherY = -5 + (wingTipY + 5) * i / 4;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(-5, -5);
+                        ctx.quadraticCurveTo(
+                            featherX * 1.2, featherY * 0.8,
+                            featherX, featherY
+                        );
+                        ctx.stroke();
+                    }
+                    
+                    // Front wing
+                    ctx.globalCompositeOperation = 'destination-over';
+                    ctx.beginPath();
+                    ctx.moveTo(5, -5);
+                    ctx.bezierCurveTo(
+                        20, -10 + wingYOffset * 0.5,
+                        40, -20 + wingYOffset,
+                        wingTipX, wingTipY
+                    );
+                    ctx.bezierCurveTo(
+                        40, 0 + wingYOffset * 0.5,
+                        20, 5 + wingYOffset * 0.3,
+                        5, -5
+                    );
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Feather details
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.lineWidth = 1;
+                    for (let i = 1; i <= 3; i++) {
+                        const featherX = 5 + (wingTipX - 5) * i / 4;
+                        const featherY = -5 + (wingTipY + 5) * i / 4;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(5, -5);
+                        ctx.quadraticCurveTo(
+                            featherX * 0.8, featherY * 0.8,
+                            featherX, featherY
+                        );
+                        ctx.stroke();
+                    }
+                    ctx.globalCompositeOperation = 'source-over';
+                    
+                    // Tail (коричневый с кончиком светло-коричневым)
+                    const tailX = -this.width/2;
+                    const tailY = 0;
+                    const tailSwing = Math.sin(this.tailPhase) * 0.3;
+                    
+                    ctx.strokeStyle = '#8B4513';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(tailX, tailY);
+                    ctx.quadraticCurveTo(
+                        tailX - 10, 
+                        tailY + 10 + tailSwing * 5, 
+                        tailX - 15, 
+                        tailY + 15 + tailSwing * 10
+                    );
+                    ctx.stroke();
+                    
+                    // Tail brush (светло-коричневый)
+                    ctx.fillStyle = '#CD853F';
+                    ctx.beginPath();
+                    ctx.moveTo(tailX - 15, tailY + 15 + tailSwing * 10);
+                    ctx.quadraticCurveTo(
+                        tailX - 20, tailY + 25 + tailSwing * 10,
+                        tailX - 10, tailY + 25 + tailSwing * 10
+                    );
+                    ctx.quadraticCurveTo(
+                        tailX - 5, tailY + 20 + tailSwing * 10,
+                        tailX - 15, tailY + 15 + tailSwing * 10
+                    );
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Вымя (теперь рисуется последним, чтобы быть на переднем плане)
+                    ctx.fillStyle = '#FFC0CB';
+                    ctx.beginPath();
+                    ctx.ellipse(-this.width/8, this.height/2.5, 12, 8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#FF69B4';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Соски (3 штуки)
+                    ctx.fillStyle = '#D88';
+                    for (let i = 0; i < 3; i++) {
+                        const nippleX = -this.width/8 - 6 + i * 6;
+                        const nippleY = this.height/2.5 + 6;
+                        ctx.beginPath();
+                        ctx.ellipse(nippleX, nippleY, 2, 3, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                } else {
+                    // Анимация смерти - разлетающиеся конечности в космосе
+                    ctx.globalAlpha = this.alpha;
+                    
+                    // Сначала рисуем все части тела, кроме вымени
+                    this.limbs.forEach(limb => {
+                        if (limb === this.limbs[11]) return; // Пропускаем вымя
+                        
+                        ctx.save();
+                        ctx.translate(limb.x, limb.y);
+                        ctx.rotate(limb.rotation);
+                        
+                        if (limb === this.limbs[0]) { // Голова с рожками и ушами
+                            ctx.fillStyle = limb.color;
+                            ctx.beginPath();
+                            ctx.arc(0, 0, limb.width/2, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                            
+                            // Мертвые глаза "X_X" (увеличенные и тонкие)
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(-8, -3);
+                            ctx.lineTo(-3, -8);
+                            ctx.moveTo(-3, -3);
+                            ctx.lineTo(-8, -8);
+                            ctx.moveTo(3, -3);
+                            ctx.lineTo(8, -8);
+                            ctx.moveTo(8, -3);
+                            ctx.lineTo(3, -8);
+                            ctx.stroke();
+                            
+                            // Нос мертвой коровы
+                            ctx.fillStyle = '#f5d0b0';
+                            ctx.beginPath();
+                            ctx.ellipse(0, 10, 10, 8, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                            
+                            // Ноздри мертвой коровы
+                            ctx.fillStyle = '#333';
+                            ctx.beginPath();
+                            ctx.ellipse(-4, 10, 1.5, 2.5, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.beginPath();
+                            ctx.ellipse(4, 10, 1.5, 2.5, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            
+                            // Язык мертвой коровы (высунутый)
+                            if (limb.tongueOut) {
+                                ctx.fillStyle = '#ff0000';
+                                ctx.beginPath();
+                                ctx.ellipse(0, 18, 5, 3, 0, 0, Math.PI);
+                                ctx.fill();
+                            }
+                            
+                            // Рожки (маленькие черные)
+                    if (limb.horns) {
+                        limb.horns.forEach(horn => {
+                            ctx.save();
+                            ctx.translate(horn.x, horn.y);
+                            ctx.rotate(horn.rotation);
+                            
+                            ctx.strokeStyle = '#000';
+                            ctx.fillStyle = '#000';
+                            ctx.lineWidth = 1.5; // Уменьшил толщину с 2 до 1.5
+                            
+                            // Более изящные рожки
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            if (horn.x < 0) { // Левый рог
+                                ctx.quadraticCurveTo(-1.2, -3.5, 0, -6); // Еще уменьшил размер
+                            } else { // Правый рог
+                                ctx.quadraticCurveTo(1.2, -3.5, 0, -6); // Еще уменьшил размер
+                            }
+                            ctx.stroke();
+                            
+                            ctx.restore();
+                        });
+                    }
+                            // Уши (измененная форма)
+                            if (limb.ears) {
+                                limb.ears.forEach(ear => {
+                                    ctx.save();
+                                    ctx.translate(ear.x, ear.y);
+                                    ctx.rotate(ear.rotation);
+                                    
+                                    ctx.fillStyle = limb.color;
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, 0);
+                                    ctx.quadraticCurveTo(
+                                        -limb.width/4, -limb.height/4,
+                                        0, -limb.height * 0.5
+                                    );
+                                    ctx.quadraticCurveTo(
+                                        limb.width/4, -limb.height/4,
+                                        0, 0
+                                    );
+                                    ctx.closePath();
+                                    ctx.fill();
+                                    ctx.strokeStyle = '#333';
+                                    ctx.lineWidth = 1;
+                                    ctx.stroke();
+                                    
+                                    // Внутренняя часть уха
+                                    ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, 0);
+                                    ctx.quadraticCurveTo(
+                                        -limb.width/6, -limb.height/6,
+                                        0, -limb.height * 0.4
+                                    );
+                                    ctx.quadraticCurveTo(
+                                        limb.width/6, -limb.height/6,
+                                        0, 0
+                                    );
+                                    ctx.closePath();
+                                    ctx.fill();
+                                    
+                                    ctx.restore();
+                                });
+                            }
+                        } else if (limb === this.limbs[2] || limb === this.limbs[3]) { // Крылья
+                            const wingYOffset = Math.sin(limb.wingPhase) * 15;
+                            const wingTipX = 50;
+                            const wingTipY = -30 + wingYOffset;
+                            
+                            ctx.fillStyle = limb.color;
+                            ctx.beginPath();
+                            if (limb === this.limbs[2]) { // Левое крыло
+                                ctx.moveTo(0, 0);
+                                ctx.bezierCurveTo(
+                                    -20, -10 + wingYOffset * 0.5,
+                                    -40, -20 + wingYOffset,
+                                    -wingTipX, wingTipY
+                                );
+                                ctx.bezierCurveTo(
+                                    -40, 0 + wingYOffset * 0.5,
+                                    -20, 5 + wingYOffset * 0.3,
+                                    0, 0
+                                );
+                            } else { // Правое крыло
+                                ctx.moveTo(0, 0);
+                                ctx.bezierCurveTo(
+                                    20, -10 + wingYOffset * 0.5,
+                                    40, -20 + wingYOffset,
+                                    wingTipX, wingTipY
+                                );
+                                ctx.bezierCurveTo(
+                                    40, 0 + wingYOffset * 0.5,
+                                    20, 5 + wingYOffset * 0.3,
+                                    0, 0
+                                );
+                            }
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                            
+                            // Feather details
+                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                            ctx.lineWidth = 1;
+                            for (let i = 1; i <= 3; i++) {
+                                const featherX = limb === this.limbs[2] ? 
+                                    0 - (wingTipX) * i / 4 : 
+                                    0 + (wingTipX) * i / 4;
+                                const featherY = 0 + (wingTipY) * i / 4;
+                                
+                                ctx.beginPath();
+                                ctx.moveTo(0, 0);
+                                ctx.quadraticCurveTo(
+                                    featherX * (limb === this.limbs[2] ? 1.2 : 0.8), 
+                                    featherY * 0.8,
+                                    featherX, featherY
+                                );
+                                ctx.stroke();
+                            }
+                        } else if (limb === this.limbs[1]) { // Тело
+                            ctx.fillStyle = limb.color;
+                            ctx.beginPath();
+                            ctx.ellipse(0, 0, limb.width/2, limb.height/2, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                        } else if (limb === this.limbs[10]) { // Хвост
+                            ctx.fillStyle = '#8B4513';
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.quadraticCurveTo(-5, 5, -10, 10);
+                            ctx.strokeStyle = '#8B4513';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                            
+                            ctx.fillStyle = '#CD853F';
+                            ctx.beginPath();
+                            ctx.moveTo(-10, 10);
+                            ctx.quadraticCurveTo(-15, 15, -5, 15);
+                            ctx.quadraticCurveTo(0, 10, -10, 10);
+                            ctx.closePath();
+                            ctx.fill();
+                        } else if (limb.width && limb.height) { // Ноги
+                            ctx.strokeStyle = '#888';
+                            ctx.lineWidth = 6;
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.lineTo(0, limb.height);
+                            ctx.stroke();
+                            
+                            // Копыта
+                            ctx.fillStyle = '#3E3D5C';
+                            ctx.fillRect(-3, limb.height - 3, 6, 6);
+                        }
+                        
+                        ctx.restore();
+                    });
+                    
+                    // Затем рисуем вымя поверх всех частей
+                    const udder = this.limbs[11];
+                    if (udder) {
+                        ctx.save();
+                        ctx.translate(udder.x, udder.y);
+                        ctx.rotate(udder.rotation);
+                        
+                        ctx.fillStyle = '#FFC0CB';
+                        ctx.beginPath();
+                        ctx.ellipse(0, 0, udder.width/2, udder.height/2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = '#FF69B4';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        
+                        ctx.fillStyle = '#D88';
+                        for (let i = 0; i < 3; i++) {
+                            const nippleX = -6 + i * 6;
+                            const nippleY = 6;
+                            ctx.beginPath();
+                            ctx.ellipse(nippleX, nippleY, 2, 3, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        
+                        ctx.restore();
+                    }
+                    
+                    ctx.globalAlpha = 1;
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        class Explosion {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.particles = [];
+                this.color = color;
+                
+                for (let i = 0; i < 20; i++) {
+                    this.particles.push({
+                        x: 0,
+                        y: 0,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        size: Math.random() * 6 + 3,
+                        alpha: 1,
+                        life: Math.random() * 0.5 + 0.5
+                    });
+                }
+            }
+            
+            update() {
+                this.particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.alpha -= 0.02;
+                    p.size *= 0.97;
+                    p.life -= 0.02;
+                });
+                
+                return this.particles[0].life > 0;
+            }
+            
+            draw() {
+                this.particles.forEach(p => {
+                    ctx.fillStyle = `rgba(${this.color}, ${p.alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(this.x + p.x, this.y + p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+        }
+
+        class Shot {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 5;
+                this.alpha = 1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(100, 200, 255, ${this.alpha})`;
+                ctx.fill();
+            }
+
+            update() {
+                this.radius += 1;
+                this.alpha -= 0.1;
+            }
+        }
+
+        function drawPlanet(planet) {
+            ctx.save();
+            ctx.translate(planet.x, planet.y);
+            ctx.rotate(planet.rotation);
+
+            // Получаем текущее время для анимации
+            const time = Date.now() / 1000; // в секундах
+            const angle = (time * 0.5) % (2 * Math.PI); // меняющийся угол от времени (в радианах)
+
+            // Создаем линейный градиент под динамическим углом
+            const gradient = ctx.createLinearGradient(
+                -planet.radius * Math.cos(angle),
+                -planet.radius * Math.sin(angle),
+                planet.radius * Math.cos(angle),
+                planet.radius * Math.sin(angle)
+            );
+
+            // Устанавливаем цвета градиента в зависимости от типа планеты
+            if (planet.color === '#40E0D0' || planet.color === '#00CED1') {
+                gradient.addColorStop(0, '#00FFFF');
+                gradient.addColorStop(0.5, planet.color);
+                gradient.addColorStop(1, '#008B8B');
+            } else if (planet.color === '#FFD700') {
+                gradient.addColorStop(0, '#FFF538');
+                gradient.addColorStop(0.5, planet.color);
+                gradient.addColorStop(1, '#DAA520');
+            } else if (planet.color === '#FFA500') {
+                gradient.addColorStop(0, '#FFD700');
+                gradient.addColorStop(0.5, planet.color);
+                gradient.addColorStop(1, '#B8860B');
+            }
+
+            // Рисуем основное тело планеты с градиентом
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Добавляем тень для объема
+            ctx.beginPath();
+            ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Легкая полупрозрачная атмосфера вокруг
+            ctx.beginPath();
+            ctx.arc(0, 0, planet.radius * 1.05, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function showLevelUp() {
+            const levelUp = document.getElementById('levelUp');
+            const levelNumber = document.getElementById('levelNumber');
+            
+            levelNumber.textContent = level;
+            levelUp.style.display = 'block';
+            
+            clearTimeout(levelUpDisplayTimeout);
+            levelUpDisplayTimeout = setTimeout(() => {
+                levelUp.style.display = 'none';
+            }, 2000);
+        }
+
+      function startGame() {
+            // Убираем эффект завершения игры
+            const effect = document.getElementById('gameOverEffect');
+            effect.classList.remove('active');
+            
+            gameActive = true;
+            isGameOver = false;
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('gameOverMenu').style.display = 'none';
+            document.getElementById('reloading').style.display = 'none';
+            document.getElementById('levelUp').style.display = 'none';
+            
+            // Показать HUD
+            document.getElementById('topHUD').style.display = 'flex';
+            document.getElementById('bottomHUD').style.display = 'flex';
+            
+            // Инициализация звуков
+            initSounds();
+            
+            // Включение звука после пользовательского взаимодействия
+            const sounds = [deathSound, backgroundMusic, clickSound, lifeBonusSound, reloadSound];
+            
+            sounds.forEach(sound => {
+                sound.muted = false;
+            });
+            
+            cows = [];
+            deadCows = [];
+            shots = [];
+            explosions = [];
+            lifeBonuses = [];
+            score = 0;
+            lives = 3;
+            timeLeft = config.levelDuration;
+            hits = 0;
+            misses = 0;
+            ammo = 5;
+            isReloading = false;
+            level = 1;
+            
+            // Start background music
+            backgroundMusic.currentTime = 0;
+            backgroundMusic.volume = 0.5;
+            backgroundMusic.play().catch(e => console.log("Music play error:", e));
+            
+            const heartElements = document.querySelectorAll('.heart');
+            heartElements.forEach(heart => {
+                heart.classList.remove('burned');
+            });
+            
+            updateAmmoDisplay();
+            
+            initStars();
+            updateHUD();
+            updateLevelDisplay();
+            resizeCanvas();
+            
+            clearInterval(gameTimer);
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                updateHUD();
+                
+                if (timeLeft <= 0) {
+                    levelUp();
+                }
+            }, 1000);
+            
+            spawnCow();
+            lastTime = performance.now();
+            gameLoop();
+        }
+
+       function returnToMainMenu() {
+            // Убираем эффект завершения игры
+            const effect = document.getElementById('gameOverEffect');
+            effect.classList.remove('active');
+            
+            gameActive = false;
+            isGameOver = false;
+            clearInterval(gameTimer);
+            clearInterval(levelTimer);
+            clearTimeout(reloadTimeout);
+            clearTimeout(levelUpDisplayTimeout);
+            
+            // Останавливаем все звуки
+            backgroundMusic.pause();
+            reloadSound.pause();
+            
+            document.getElementById('mainMenu').style.display = 'block';
+            document.getElementById('gameOverMenu').style.display = 'none';
+            
+            // Скрыть HUD и сообщение о перезарядке
+            document.getElementById('topHUD').style.display = 'none';
+            document.getElementById('bottomHUD').style.display = 'none';
+            document.getElementById('reloading').style.display = 'none';
+        }
+
+        function updateAmmoDisplay() {
+            const ammoContainer = document.getElementById('ammoContainer');
+            const ammoBoxes = ammoContainer.querySelectorAll('.ammo-box');
+            
+            ammoBoxes.forEach((box, index) => {
+                if (index < ammo) {
+                    box.classList.remove('empty');
+                } else {
+                    box.classList.add('empty');
+                }
+            });
+        }
+
+        function levelUp() {
+            level++;
+            timeLeft = config.levelDuration;
+            updateLevelDisplay();
+            showLevelUp();
+            
+            const levelDisplay = document.getElementById('currentLevel');
+            levelDisplay.style.color = '#ffcc00';
+            levelDisplay.style.textShadow = '0 0 10px #ffcc00';
+            setTimeout(() => {
+                levelDisplay.style.color = 'white';
+                levelDisplay.style.textShadow = '1px 1px 2px rgba(0, 0, 0, 0.5)';
+            }, 1000);
+        }
+
+        function endGame() {
+            gameActive = false;
+            isGameOver = true;
+            clearInterval(gameTimer);
+            clearInterval(levelTimer);
+            clearTimeout(reloadTimeout);
+            clearTimeout(levelUpDisplayTimeout);
+            backgroundMusic.pause();
+            reloadSound.pause();
+            
+            // Активируем эффект завершения игры
+            const effect = document.getElementById('gameOverEffect');
+            effect.classList.add('active');
+            
+            // Показываем экран окончания
+            document.getElementById('gameOverMenu').style.display = 'block';
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalHits').textContent = hits;
+            document.getElementById('finalMisses').textContent = misses;
+            document.getElementById('finalLevel').textContent = level;
+
+            // Скрываем HUD
+            document.getElementById('topHUD').style.display = 'none';
+            document.getElementById('bottomHUD').style.display = 'none';
+            document.getElementById('reloading').style.display = 'none';
+
+            // Вызываем новую функцию после завершения игры
+            handlePostGame();
+        }
+
+        function handlePostGame() {
+            // Задержка нужна, чтобы браузер успел отобразить интерфейс
+            setTimeout(() => {
+                const playerName = prompt('Введите ваше имя для таблицы лидеров:', 'Игрок') || 'Игрок';
+
+                if (playerName) {
+                    const leaderboard = getLeaderboard();
+                    leaderboard.push({
+                        name: playerName,
+                        score: score,
+                        date: new Date().toLocaleDateString()
+                    });
+                    leaderboard.sort((a, b) => b.score - a.score);
+                    if (leaderboard.length > 10) {
+                        leaderboard.length = 10;
+                    }
+                    localStorage.setItem('cosmicCowLeaderboard', JSON.stringify(leaderboard));
+                    displayLeaderboard();
+                }
+
+                // Сбрасываем все состояния игры перед следующим запуском
+                resetGameState();
+            }, 100);
+        }
+
+        function resetGameState() {
+            cows = [];
+            deadCows = [];
+            shots = [];
+            explosions = [];
+            lifeBonuses = [];
+            planets = [];
+
+            score = 0;
+            lives = 3;
+            timeLeft = config.levelDuration;
+            hits = 0;
+            misses = 0;
+            ammo = 5;
+            isReloading = false;
+            level = 1;
+
+            const heartElements = document.querySelectorAll('.heart');
+            heartElements.forEach(heart => heart.classList.remove('burned'));
+
+            updateAmmoDisplay();
+            updateHUD();
+        }
+
+        function updateHUD() {
+            document.getElementById('scoreDisplay').textContent = score;
+            document.getElementById('timer').textContent = `${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2, '0')}`;
+            document.getElementById('hitsMisses').textContent = `${hits}/${misses}`;
+            updateAmmoDisplay();
+            
+            const heartElements = document.querySelectorAll('.heart');
+            heartElements.forEach((heart, index) => {
+                if (index >= lives) {
+                    heart.classList.add('burned');
+                } else {
+                    heart.classList.remove('burned');
+                }
+            });
+        }
+
+        function updateLevelDisplay() {
+            document.getElementById('currentLevel').textContent = level;
+        }
+
+        function spawnCow() {
+            if (!gameActive || timeLeft <= 0 || isGameOver) return;
+            
+            const aliveCows = cows.filter(cow => cow.alive);
+            
+            if (aliveCows.length < config.maxCows) {
+                const cow = new Cow();
+                cows.push(cow);
+            }
+            
+            setTimeout(spawnCow, config.spawnInterval / (1 + level * 0.1));
+        }
+
+        function checkHit(x, y) {
+            if (isGameOver) return;
+            
+            // Сначала проверяем попадание в бонус жизни
+            for (let i = 0; i < lifeBonuses.length; i++) {
+                const bonus = lifeBonuses[i];
+                if (bonus.collected) continue;
+                
+                const dist = Math.sqrt((x - bonus.x) ** 2 + (y - bonus.y) ** 2);
+                
+                if (dist <= bonus.radius) {
+                    bonus.collected = true;
+                    lives = Math.min(3, lives + 1);
+                    updateHUD();
+                    
+                    // Воспроизвести звук бонуса жизни
+                    initSounds();
+                    lifeBonusSound.currentTime = 0;
+                    lifeBonusSound.play().catch(e => console.log("Life bonus sound error:", e));
+                    
+                    explosions.push(new Explosion(bonus.x, bonus.y, '255, 51, 102'));
+                    return;
+                }
+            }
+
+            // Теперь проверяем попадание в корову
+            for (let i = 0; i < cows.length; i++) {
+                const cow = cows[i];
+                if (!cow.alive) continue;
+                
+                const bodyX = cow.x;
+                const bodyY = cow.y;
+                const bodyRadiusX = cow.width/2;
+                const bodyRadiusY = cow.height/2;
+                const headX = cow.direction === 1 ? cow.x + cow.width/2 : cow.x - cow.width/2;
+                const headY = cow.y;
+                const headRadius = cow.headRadius;
+                const normalizedX = (x - bodyX) / bodyRadiusX;
+                const normalizedY = (y - bodyY) / bodyRadiusY;
+                const inBody = normalizedX * normalizedX + normalizedY * normalizedY <= 1;
+                const headDist = Math.sqrt((x - headX) ** 2 + (y - headY) ** 2);
+                const inHead = headDist <= headRadius;
+                
+                if (inBody || inHead) {
+                    explosions.push(new Explosion(x, y, '255, 100, 100'));
+                    cow.die();
+                    deadCows.push(cow);
+                    score += cowTypes[cow.type].score;
+                    hits++;
+                    updateHUD();
+                    shots.push(new Shot(x, y));
+                    return;
+                }
+            }
+
+            // Если ни в одну цель не попали
+            misses++;
+            lives = Math.max(0, lives - 1);
+            updateHUD();
+            
+            if (lives <= 0) {
+                endGame();
+            }
+            
+            if (ammo <= 0 && !isReloading) {
+                startReloading();
+            }
+        }
+
+        function startReloading() {
+            isReloading = true;
+            document.getElementById('reloading').style.display = 'block';
+            
+            // Воспроизводим звук перезарядки
+            initSounds();
+            reloadSound.currentTime = 0;
+            reloadSound.play().catch(e => console.log("Reload sound error:", e));
+            
+            reloadTimeout = setTimeout(() => {
+                ammo = 5;
+                isReloading = false;
+                document.getElementById('reloading').style.display = 'none';
+                updateHUD();
+            }, config.reloadTime);
+        }
+
+        function draw4PointStar(x, y, size, color, rotation) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation);
+            
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            
+            for (let i = 0; i < 4; i++) {
+                const angle = Math.PI / 2 * i;
+                ctx.lineTo(Math.cos(angle) * size, Math.sin(angle) * size);
+                ctx.lineTo(Math.cos(angle + Math.PI/4) * size * 0.5, Math.sin(angle + Math.PI/4) * size * 0.5);
+            }
+            
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawBackground() {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#001a33');
+            gradient.addColorStop(1, '#30397A');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Рисуем планеты
+            planets.forEach(planet => {
+                planet.rotation += planet.rotationSpeed;
+                drawPlanet(planet);
+            });
+            
+            // Рисуем звезды
+            const time = Date.now() / 1000;
+            eyeAnimationPhase = time * 2;
+            stars.forEach(star => {
+                const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
+                star.rotation += 0.005;
+                
+                draw4PointStar(
+                    star.x, 
+                    star.y, 
+                    star.size * pulse, 
+                    star.color, 
+                    star.rotation
+                );
+                
+                star.x += star.speed;
+                if (star.x > canvas.width) {
+                    star.x = 0;
+                    star.y = Math.random() * canvas.height;
+                }
+            });
+        }
+
+        function drawLifeBonuses() {
+            lifeBonuses.forEach((bonus, index) => {
+                if (bonus.collected) return;
+                
+                ctx.fillStyle = `rgba(255, 51, 102, ${bonus.alpha})`;
+                ctx.beginPath();
+                ctx.arc(bonus.x, bonus.y, bonus.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = 'white';
+                ctx.font = `${bonus.radius}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('♥', bonus.x, bonus.y);
+                
+                bonus.alpha = 0.7 + Math.sin(Date.now() / 200) * 0.3;
+                
+                bonus.y += 1;
+                
+                if (bonus.y > canvas.height + bonus.radius) {
+                    lifeBonuses.splice(index, 1);
+                }
+            });
+        }
+
+        function gameLoop(timestamp) {
+            if (!gameActive || isGameOver) return;
+            
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            drawBackground();
+            
+            cows.forEach(cow => {
+                cow.update();
+                cow.draw();
+            });
+            
+            deadCows.forEach(cow => {
+                cow.update();
+                cow.draw();
+            });
+            
+            shots.forEach((shot, index) => {
+                shot.update();
+                shot.draw();
+                if (shot.alpha <= 0) shots.splice(index, 1);
+            });
+            
+            explosions.forEach((explosion, index) => {
+                if (!explosion.update()) {
+                    explosions.splice(index, 1);
+                } else {
+                    explosion.draw();
+                }
+            });
+            
+            drawLifeBonuses();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initStars();
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if (!gameActive || isReloading || isGameOver) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (ammo > 0) {
+                ammo--;
+                checkHit(x, y);
+                shots.push(new Shot(x, y));
+                updateHUD();
+                
+                if (ammo <= 0) {
+                    startReloading();
+                }
+            }
         });
+
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Анимация северного сияния
+        function initAurora() {
+            const aurora = document.getElementById('auroraBackground');
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            aurora.appendChild(canvas);
+            
+            let time = 0;
+            const layers = [];
+            
+            // Создаем 4 слоя северного сияния с разными параметрами
+            for (let i = 0; i < 4; i++) {
+                layers.push({
+                    speed: 0.002 + Math.random() * 0.002,
+                    offset: Math.random() * 1000,
+                    height: 80 + Math.random() * 100,
+                    color: `hsla(${320 + Math.random() * 40}, 80%, 60%, ${0.15 + Math.random() * 0.25})`,
+                    curve: Math.random()
+                });
+            }
+            
+            function animateAurora() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                time += 0.005;
+                
+                layers.forEach(layer => {
+                    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                    gradient.addColorStop(0, 'transparent');
+                    gradient.addColorStop(0.3, layer.color);
+                    gradient.addColorStop(0.7, layer.color);
+                    gradient.addColorStop(1, 'transparent');
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.globalCompositeOperation = 'screen';
+                    
+                    const points = [];
+                    const segments = 50;
+                    
+                    // Создаем плавные точки волны
+                    for (let i = 0; i <= segments; i++) {
+                        const x = i * (canvas.width / segments);
+                        const noise = Math.sin(time * layer.speed * 1000 + x * 0.01 + layer.offset) * 
+                                      Math.sin(x * 0.005 + time * 0.1) * layer.curve;
+                        
+                        const y = canvas.height * 0.6 + 
+                                  noise * layer.height;
+                        
+                        points.push({x, y});
+                    }
+                    
+                    // Рисуем плавную волну
+                    ctx.beginPath();
+                    ctx.moveTo(0, canvas.height);
+                    ctx.lineTo(points[0].x, points[0].y);
+                    
+                    for (let i = 1; i < points.length - 2; i++) {
+                        const xc = (points[i].x + points[i + 1].x) / 2;
+                        const yc = (points[i].y + points[i + 1].y) / 2;
+                        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+                    }
+                    
+                    ctx.quadraticCurveTo(
+                        points[points.length - 2].x, 
+                        points[points.length - 2].y, 
+                        points[points.length - 1].x, 
+                        points[points.length - 1].y
+                    );
+                    
+                    ctx.lineTo(points[points.length - 1].x, canvas.height);
+                    ctx.closePath();
+                    ctx.fill();
+                });
+                
+                requestAnimationFrame(animateAurora);
+            }
+            
+            window.addEventListener('resize', () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            });
+            
+            animateAurora();
+        }
+
+        // Инициализируем анимацию при загрузке
+        window.addEventListener('load', initAurora);
+
+        function showHelp() {
+            playClickSound();
+            document.getElementById('helpModal').style.display = 'block';
+            document.getElementById('mainMenu').style.display = 'none';
+        }
+
+        function closeHelp() {
+            playClickSound();
+            document.getElementById('helpModal').style.display = 'none';
+            document.getElementById('mainMenu').style.display = 'block';
+        }
+        
+        function switchToOtherGame() {
+            // Остановка текущей игры
+            if (gameActive) {
+                gameActive = false;
+                backgroundMusic.pause();
+                clearInterval(gameTimer);
+            }
+            
+            // Переход на другую игру
+            setTimeout(() => { window.location.href = "index2.html"; }, 500);
+        }
+
+        // Инициализация звуков при первом взаимодействии
+        document.addEventListener('click', initSounds);
+        document.addEventListener('touchstart', initSounds);
+
+        // Инициализация таблицы лидеров при загрузке
+        displayLeaderboard();
     </script>
 </body>
 </html>
