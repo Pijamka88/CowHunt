@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Блокировка выделения везде, кроме helpModal */
         body {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
             margin: 0;
             overflow: hidden;
             touch-action: none;
@@ -15,6 +20,35 @@
             position: relative;
         }
 
+        /* Разрешаем выделение только в helpModal */
+        #helpModal, #helpModal * {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+
+        * {
+            -webkit-touch-callout: none;
+            -webkit-user-drag: none;
+        }
+
+        /* Ускоренный и плавный эффект завершения */
+        .game-over-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 999;
+            pointer-events: none;
+            backdrop-filter: blur(3px) grayscale(80%);
+            opacity: 0;
+            transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: opacity, backdrop-filter;
+        }
+
+        /* Остальные стили без изменений */
         .aurora-bg {
             position: fixed;
             top: 0;
@@ -313,6 +347,7 @@
     </style>
 </head>
 <body>
+    <div id="gameOverEffect" class="game-over-effect"></div>
     <div class="aurora-bg" id="auroraBackground"></div>
     
     <!-- Обновленные аудио элементы с атрибутами muted и playsinline -->
@@ -445,6 +480,46 @@
     <canvas id="gameCanvas"></canvas>
 
     <script>
+        // Защитные обработчики событий
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        document.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        document.addEventListener('copy', function(e) {
+            e.clipboardData.setData('text/plain', 'Копирование запрещено');
+            e.preventDefault();
+        });
+
+        document.addEventListener('selectstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // Инициализация Telegram WebApp с защитными параметрами
+        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+            
+            Telegram.WebApp.setHeaderColor('#0f0c29');
+            Telegram.WebApp.setBackgroundColor('#0f0c29');
+            Telegram.WebApp.enableClosingConfirmation();
+            Telegram.WebApp.isExpanded = true;
+            Telegram.WebApp.MainButton.showProgress();
+            Telegram.WebApp.disableZoom();
+            
+            Telegram.WebApp.onEvent('viewportChanged', function() {
+                Telegram.WebApp.expand();
+            });
+            
+            Telegram.WebApp.onEvent('mainButtonClicked', initSounds);
+        }
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const deathSound = document.getElementById('deathSound');
@@ -1763,6 +1838,10 @@
         }
 
         function startGame() {
+            // Быстрый сброс эффекта
+            document.getElementById('gameOverEffect').style.opacity = '0';
+            
+            // Остальной код startGame без изменений
             gameActive = true;
             isGameOver = false;
             document.getElementById('mainMenu').style.display = 'none';
@@ -1831,6 +1910,10 @@
         }
 
         function returnToMainMenu() {
+            // Быстрый сброс эффекта
+            document.getElementById('gameOverEffect').style.opacity = '0';
+            
+            // Остальной код returnToMainMenu без изменений
             gameActive = false;
             isGameOver = false;
             clearInterval(gameTimer);
@@ -1838,14 +1921,12 @@
             clearTimeout(reloadTimeout);
             clearTimeout(levelUpDisplayTimeout);
             
-            // Останавливаем все звуки
             backgroundMusic.pause();
             reloadSound.pause();
             
             document.getElementById('mainMenu').style.display = 'block';
             document.getElementById('gameOverMenu').style.display = 'none';
             
-            // Скрыть HUD и сообщение о перезарядке
             document.getElementById('topHUD').style.display = 'none';
             document.getElementById('bottomHUD').style.display = 'none';
             document.getElementById('reloading').style.display = 'none';
@@ -1889,45 +1970,43 @@
             backgroundMusic.pause();
             reloadSound.pause();
             
-            // Показываем экран окончания
-            document.getElementById('gameOverMenu').style.display = 'block';
-            document.getElementById('finalScore').textContent = score;
-            document.getElementById('finalHits').textContent = hits;
-            document.getElementById('finalMisses').textContent = misses;
-            document.getElementById('finalLevel').textContent = level;
-
             // Скрываем HUD
             document.getElementById('topHUD').style.display = 'none';
             document.getElementById('bottomHUD').style.display = 'none';
             document.getElementById('reloading').style.display = 'none';
 
-            // Вызываем новую функцию после завершения игры
-            handlePostGame();
+            // Активируем эффект с ускоренной анимацией
+            const gameOverEffect = document.getElementById('gameOverEffect');
+            gameOverEffect.style.opacity = '1';
+
+            // Показываем меню сразу, но оно будет поверх эффекта
+            document.getElementById('gameOverMenu').style.display = 'block';
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalHits').textContent = hits;
+            document.getElementById('finalMisses').textContent = misses;
+            document.getElementById('finalLevel').textContent = level;
+            
+            // Запрос имени с небольшой задержкой для плавности
+            setTimeout(handlePostGame, 300);
         }
 
         function handlePostGame() {
-            // Задержка нужна, чтобы браузер успел отобразить интерфейс
-            setTimeout(() => {
-                const playerName = prompt('Введите ваше имя для таблицы лидеров:', 'Игрок') || 'Игрок';
+            const playerName = prompt('Введите ваше имя для таблицы лидеров:', 'Игрок') || 'Игрок';
 
-                if (playerName) {
-                    const leaderboard = getLeaderboard();
-                    leaderboard.push({
-                        name: playerName,
-                        score: score,
-                        date: new Date().toLocaleDateString()
-                    });
-                    leaderboard.sort((a, b) => b.score - a.score);
-                    if (leaderboard.length > 10) {
-                        leaderboard.length = 10;
-                    }
-                    localStorage.setItem('cosmicCowLeaderboard', JSON.stringify(leaderboard));
-                    displayLeaderboard();
+            if (playerName) {
+                const leaderboard = getLeaderboard();
+                leaderboard.push({
+                    name: playerName,
+                    score: score,
+                    date: new Date().toLocaleDateString()
+                });
+                leaderboard.sort((a, b) => b.score - a.score);
+                if (leaderboard.length > 10) {
+                    leaderboard.length = 10;
                 }
-
-                // Сбрасываем все состояния игры перед следующим запуском
-                resetGameState();
-            }, 100);
+                localStorage.setItem('cosmicCowLeaderboard', JSON.stringify(leaderboard));
+                displayLeaderboard();
+            }
         }
 
         function resetGameState() {
@@ -2217,19 +2296,6 @@
 
         window.addEventListener('resize', resizeCanvas);
         
-        // Инициализация Telegram WebApp
-        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
-            Telegram.WebApp.ready();
-            Telegram.WebApp.expand();
-            
-            // Инициализация звуков при открытии WebApp
-            Telegram.WebApp.onEvent('viewportChanged', initSounds);
-            Telegram.WebApp.onEvent('mainButtonClicked', initSounds);
-        }
-
-        // Инициализация таблицы лидеров при загрузке
-        displayLeaderboard();
-
         // Анимация северного сияния
         function initAurora() {
             const aurora = document.getElementById('auroraBackground');
@@ -2347,6 +2413,9 @@
         // Инициализация звуков при первом взаимодействии
         document.addEventListener('click', initSounds);
         document.addEventListener('touchstart', initSounds);
+
+        // Инициализация таблицы лидеров при загрузке
+        displayLeaderboard();
     </script>
 </body>
 </html>
