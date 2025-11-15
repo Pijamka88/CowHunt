@@ -770,6 +770,10 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
+                // Добавляем эффект радуги
+                this.rainbowTrails = [];
+                this.rainbowPhase = 0;
+                this.rainbowSpeed = 0.1;
             }
 
             reset() {
@@ -801,6 +805,9 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
+                // Сбрасываем эффект радуги
+                this.rainbowTrails = [];
+                this.rainbowPhase = 0;
             }
 
             updateMovement() {
@@ -808,6 +815,7 @@
                 this.legPhase += this.legSpeed;
                 this.eyePhase += this.eyeSpeed;
                 this.tailPhase += this.tailSpeed;
+                this.rainbowPhase += this.rainbowSpeed;
                 
                 // Random tongue animation
                 if (Math.random() < 0.005) {
@@ -842,6 +850,67 @@
                 if (this.y > canvas.height - config.playAreaBottom - this.height/2) {
                     this.y = canvas.height - config.playAreaBottom - this.height/2;
                 }
+            }
+
+            // Добавляем метод для обновления эффекта радуги
+            updateRainbowTrail() {
+                if (!this.alive) return;
+                
+                // Добавляем новый след радуги
+                const trailX = this.x + (this.direction === 1 ? -this.width/2 : this.width/2);
+                this.rainbowTrails.push({
+                    x: trailX,
+                    y: this.y,
+                    phase: this.rainbowPhase,
+                    alpha: 1,
+                    size: Math.random() * 20 + 30
+                });
+                
+                // Обновляем существующие следы
+                for (let i = this.rainbowTrails.length - 1; i >= 0; i--) {
+                    const trail = this.rainbowTrails[i];
+                    trail.alpha -= 0.05;
+                    trail.size *= 0.95;
+                    
+                    // Удаляем старые следы
+                    if (trail.alpha <= 0 || trail.size <= 5) {
+                        this.rainbowTrails.splice(i, 1);
+                    }
+                }
+            }
+
+            // Добавляем метод для рисования эффекта радуги
+            drawRainbowTrail() {
+                if (!this.alive) return;
+                
+                this.rainbowTrails.forEach(trail => {
+                    const segments = 8;
+                    const segmentAngle = (Math.PI * 2) / segments;
+                    
+                    for (let i = 0; i < segments; i++) {
+                        const angle = trail.phase + i * segmentAngle;
+                        const hue = (i * 45 + trail.phase * 50) % 360;
+                        
+                        ctx.save();
+                        ctx.translate(trail.x, trail.y);
+                        ctx.rotate(angle);
+                        
+                        const gradient = ctx.createLinearGradient(0, -trail.size, 0, trail.size);
+                        gradient.addColorStop(0, `hsla(${hue}, 100%, 60%, ${trail.alpha * 0.3})`);
+                        gradient.addColorStop(0.5, `hsla(${(hue + 30) % 360}, 100%, 70%, ${trail.alpha * 0.5})`);
+                        gradient.addColorStop(1, `hsla(${(hue + 60) % 360}, 100%, 50%, ${trail.alpha * 0.2})`);
+                        
+                        ctx.fillStyle = gradient;
+                        ctx.beginPath();
+                        ctx.moveTo(0, -trail.size * 0.3);
+                        ctx.lineTo(trail.size * 0.5, 0);
+                        ctx.lineTo(0, trail.size * 0.3);
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                        ctx.restore();
+                    }
+                });
             }
 
             die() {
@@ -1025,6 +1094,7 @@
                     this.updateMovement();
                     this.x += this.vx;
                     this.wingPhase += this.wingSpeed;
+                    this.updateRainbowTrail(); // Обновляем эффект радуги
                     
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
                         (this.direction === -1 && this.x < -this.width*2)) {
@@ -1062,6 +1132,11 @@
             }
 
             draw() {
+                // Сначала рисуем эффект радуги
+                if (this.alive) {
+                    this.drawRainbowTrail();
+                }
+                
                 ctx.save();
                 
                 if (this.alive) {
