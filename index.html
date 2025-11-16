@@ -234,7 +234,6 @@
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
         }
 
-        /* Исправленный стиль для окна повышения уровня */
         .level-up {
             position: fixed;
             top: 120px;
@@ -250,12 +249,10 @@
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
             display: none;
             font-weight: bold;
-            min-width: 200px;
+            width: auto;
             max-width: 90%;
             text-align: center;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
 
         .life-bonus {
@@ -408,7 +405,7 @@
                 <p><strong>USDT (TRC20):</strong> <code>TWrkUWv5HWF1dGwj874MAnRChQK2MyTvdt</code></p>
             </div>
 
-            <p style="margin-top:15px; font-size: 1em; color: #a3d1ff;">Спасибо за игру! Ваша поддержка помогает развивать проект.</p>
+            <p style="margin-top:15px; font-size: 1em; color: #a3d1ff;">Спасибо за игру! Ваша поддерровка помогает развивать проект.</p>
         </div>
         <button onclick="closeHelp()">ЗАКРЫТЬ</button>
     </div>
@@ -568,6 +565,8 @@
         let levelUpDisplayTimeout;
         let isGameOver = false;
         let soundsInitialized = false;
+        let lastShotTime = 0;
+        let reloadStartTime = 0;
 
         // Configuration
         const config = {
@@ -577,7 +576,7 @@
             cowWidth: 80,
             cowHeight: 40,
             headRadius: 15,
-            reloadTime: 2500,
+            reloadTime: 1500, // Уменьшено время перезарядки
             starCount: 70,
             lifeBonusChance: 0.15,
             levelDuration: 60,
@@ -586,7 +585,8 @@
             playAreaBottom: 130,
             planetCount: 3,
             planetMinRadius: 150,
-            planetMaxRadius: 300
+            planetMaxRadius: 300,
+            shotCooldown: 100 // Задержка между выстрелами в мс
         };
 
         // Cow types and colors
@@ -1966,6 +1966,8 @@
             ammo = 5;
             isReloading = false;
             level = 1;
+            lastShotTime = 0;
+            reloadStartTime = 0;
             
             // Start background music
             backgroundMusic.currentTime = 0;
@@ -2167,6 +2169,8 @@
         function checkHit(x, y) {
             if (isGameOver) return;
             
+            let hitDetected = false;
+
             // Сначала проверяем попадание в бонус жизни
             for (let i = 0; i < lifeBonuses.length; i++) {
                 const bonus = lifeBonuses[i];
@@ -2185,7 +2189,8 @@
                     lifeBonusSound.play().catch(e => console.log("Life bonus sound error:", e));
                     
                     explosions.push(new Explosion(bonus.x, bonus.y, '255, 51, 102'));
-                    return;
+                    hitDetected = true;
+                    break;
                 }
             }
 
@@ -2215,17 +2220,20 @@
                     hits++;
                     updateHUD();
                     shots.push(new Shot(x, y));
-                    return;
+                    hitDetected = true;
+                    break;
                 }
             }
 
             // Если ни в одну цель не попали
-            misses++;
-            lives = Math.max(0, lives - 1);
-            updateHUD();
-            
-            if (lives <= 0) {
-                endGame();
+            if (!hitDetected) {
+                misses++;
+                lives = Math.max(0, lives - 1);
+                updateHUD();
+                
+                if (lives <= 0) {
+                    endGame();
+                }
             }
             
             if (ammo <= 0 && !isReloading) {
@@ -2235,6 +2243,7 @@
 
         function startReloading() {
             isReloading = true;
+            reloadStartTime = Date.now();
             document.getElementById('reloading').style.display = 'block';
             
             // Воспроизводим звук перезарядки
@@ -2373,19 +2382,19 @@
             initStars();
         }
 
-        // Исправленный обработчик событий для мобильных устройств
-        function handleTap(e) {
+        canvas.addEventListener('pointerdown', (e) => {
             if (!gameActive || isReloading || isGameOver) return;
             
-            // Предотвращаем стандартное поведение для мобильных устройств
-            e.preventDefault();
+            const currentTime = Date.now();
+            if (currentTime - lastShotTime < config.shotCooldown) return;
             
             const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || e.touches[0].clientX) - rect.left;
-            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
             
             if (ammo > 0) {
                 ammo--;
+                lastShotTime = currentTime;
                 checkHit(x, y);
                 shots.push(new Shot(x, y));
                 updateHUD();
@@ -2394,11 +2403,7 @@
                     startReloading();
                 }
             }
-        }
-
-        // Добавляем обработчики для мобильных устройств
-        canvas.addEventListener('pointerdown', handleTap);
-        canvas.addEventListener('touchstart', handleTap, { passive: false });
+        });
 
         window.addEventListener('resize', resizeCanvas);
         
