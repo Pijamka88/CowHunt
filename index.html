@@ -7,6 +7,9 @@
     <style>
         /* Блокировка выделения и взаимодействий */
         body {
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
@@ -20,20 +23,12 @@
             position: relative;
         }
 
-/* Блокировка поворота на iOS */
-@media screen and (max-width: 768px) {
-    body {
-        -webkit-touch-callout: none;
-        -webkit-user-select: none;
-        -webkit-tap-highlight-color: transparent;
-        -webkit-text-size-adjust: none;
-        -webkit-transform: rotate(0deg);
-    }
-    
-    #gameCanvas, .menu, #topHUD, #bottomHUD {
-        -webkit-transform: rotate(0deg);
-        transform: rotate(0deg);
-    }
+/* Предотвращение масштабирования на iOS */
+@viewport {
+    width: device-width;
+    initial-scale: 1.0;
+    maximum-scale: 1.0;
+    user-zoom: fixed;
 }
 
         * {
@@ -215,9 +210,9 @@
     min-width: 0;
 }
 
-.hud-item:nth-child(1) { align-items: flex-start; }
-.hud-item:nth-child(2) { align-items: center; }
-.hud-item:nth-child(3) { align-items: flex-end; }
+.hud-item:nth-child(2) {
+    align-items: center;
+}
 
         .hud-label {
             font-size: 14px;
@@ -538,6 +533,54 @@
             return false;
         });
 
+function lockOrientation() {
+    // Блокировка ориентации для мобильных устройств
+    if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('portrait').catch(function(error) {
+            console.log('Orientation lock failed: ', error);
+        });
+    }
+    
+    // Для iOS
+    if (window.orientation !== undefined) {
+        document.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+    }
+}
+
+// Вызов при загрузке и изменении размера
+window.addEventListener('load', function() {
+    lockOrientation();
+    // Предотвращение масштабирования на iOS
+    document.addEventListener('touchstart', function(e) {
+        if (e.touches.length > 1) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function(e) {
+        const now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) {
+            e.preventDefault();
+        }
+        lastTouchEnd = now;
+    }, { passive: false });
+});
+
+// Блокировка контекстного меню на iOS
+document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    return false;
+});
+
+// Предотвращение выделения текста на iOS
+document.addEventListener('selectstart', function(e) {
+    e.preventDefault();
+    return false;
+});
+
         // Инициализация Telegram WebApp с защитными параметрами
         if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
             Telegram.WebApp.ready();
@@ -592,77 +635,6 @@
         let soundsInitialized = false;
         let lastShotTime = 0;
         let reloadStartTime = 0;
-
-        // === БЛОКИРОВКА ПОВОРОТА ЭКРАНА ===
-        function lockOrientation() {
-            // Для современных браузеров
-            if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock('portrait').catch(function(error) {
-                    console.log('Orientation lock failed: ', error);
-                });
-            }
-            // Для iOS
-            else if (screen.lockOrientation) {
-                screen.lockOrientation('portrait');
-            }
-            // Для старых iOS
-            else if (screen.mozLockOrientation) {
-                screen.mozLockOrientation('portrait');
-            }
-            else if (screen.msLockOrientation) {
-                screen.msLockOrientation('portrait');
-            }
-        }
-
-        function preventZoomAndRotation(e) {
-            // Предотвращаем масштабирование жестом
-            if (e.touches.length > 1) {
-                e.preventDefault();
-            }
-        }
-
-        // Блокируем контекстное меню
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            return false;
-        });
-
-        // Блокируем масштабирование жестом
-        document.addEventListener('touchstart', preventZoomAndRotation, { passive: false });
-        document.addEventListener('touchmove', preventZoomAndRotation, { passive: false });
-
-        // Блокируем жесты масштабирования
-        document.addEventListener('gesturestart', function(e) {
-            e.preventDefault();
-        });
-        document.addEventListener('gesturechange', function(e) {
-            e.preventDefault();
-        });
-        document.addEventListener('gestureend', function(e) {
-            e.preventDefault();
-        });
-
-        // При загрузке страницы блокируем ориентацию
-        window.addEventListener('load', function() {
-            lockOrientation();
-            // Дублируем вызов resizeCanvas который уже есть
-            setTimeout(resizeCanvas, 100);
-        });
-
-        // При изменении размера окна снова блокируем ориентацию
-        window.addEventListener('resize', function() {
-            lockOrientation();
-            setTimeout(resizeCanvas, 100);
-        });
-
-        // При изменении ориентации
-        window.addEventListener('orientationchange', function() {
-            setTimeout(function() {
-                lockOrientation();
-                resizeCanvas();
-            }, 100);
-        });
-        // === КОНЕЦ БЛОКИРОВКИ ПОВОРОТА ЭКРАНА ===
 
         // Configuration
         const config = {
