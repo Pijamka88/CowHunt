@@ -161,10 +161,10 @@
             left: 0;
             right: 0;
             display: flex;
-            justify-content: space-between;
+            justify-content: space-around;
             align-items: flex-start;
             background: rgba(0, 51, 102, 0.7);
-            padding: 12px 20px;
+            padding: 12px;
             border-bottom: 1px solid #3399ff;
             z-index: 100;
             height: 100px;
@@ -181,24 +181,16 @@
             left: 0;
             right: 0;
             display: flex;
-            justify-content: space-between;
+            justify-content: space-around;
             align-items: flex-start;
             background: rgba(0, 51, 102, 0.7);
-            padding: 12px 20px;
+            padding: 12px;
             border-top: 1px solid #3399ff;
             z-index: 100;
             height: 100px;
         }
 
         .hud-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            flex: 1;
-        }
-
-        .hud-item-center {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -265,34 +257,6 @@
             max-width: 90%;
             text-align: center;
             white-space: nowrap;
-        }
-
-        .orientation-warning {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 2000;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            color: white;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .orientation-warning h2 {
-            font-size: 24px;
-            margin-bottom: 20px;
-            color: #ffcc00;
-        }
-
-        .orientation-warning p {
-            font-size: 18px;
-            margin-bottom: 30px;
         }
 
         .life-bonus {
@@ -397,22 +361,32 @@
             background: linear-gradient(to bottom, #ff3399, #ff66b2);
         }
 
-        @media (max-width: 768px) {
-            #topHUD, #bottomHUD {
-                padding: 12px 15px;
-            }
-            
-            .hud-label {
-                font-size: 12px;
-            }
-            
-            .hud-value {
-                font-size: 18px;
-            }
-            
-            .heart {
-                font-size: 24px;
-            }
+        .orientation-warning {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .orientation-warning h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #ffcc00;
+        }
+
+        .orientation-warning p {
+            font-size: 18px;
+            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -508,18 +482,10 @@
         <button onclick="playClickSound(); returnToMainMenu()">ГЛАВНОЕ МЕНЮ</button>
     </div>
 
-    <div id="orientationWarning" class="orientation-warning">
+    <div id="orientationWarning" class="orientation-warning" style="display: none;">
         <h2>ПОВЕРНИТЕ УСТРОЙСТВО</h2>
-        <p>Для лучшего игрового опыта поверните устройство в вертикальное положение</p>
-        <button onclick="playClickSound(); checkOrientation()" style="
-            padding: 12px 24px;
-            font-size: 16px;
-            background: linear-gradient(to bottom, #0077ff, #00aaff);
-            border: 2px solid #66b3ff;
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
-        ">ПОНЯТНО</button>
+        <p>Для игры требуется портретный режим</p>
+        <p>Пожалуйста, поверните устройство вертикально</p>
     </div>
 
     <div id="reloading" class="reloading" style="display: none;">ПЕРЕЗАРЯДКА...</div>
@@ -530,7 +496,7 @@
             <div class="hud-label">СЧЕТ</div>
             <div class="hud-value" id="scoreDisplay">0</div>
         </div>
-        <div class="hud-item-center">
+        <div class="hud-item">
             <div class="hud-label">ВРЕМЯ</div>
             <div class="hud-value" id="timer">1:00</div>
         </div>
@@ -551,7 +517,7 @@
                 <div class="ammo-box"></div>
             </div>
         </div>
-        <div class="hud-item-center">
+        <div class="hud-item">
             <div class="hud-label">УРОВЕНЬ</div>
             <div class="hud-value" id="currentLevel">1</div>
         </div>
@@ -639,8 +605,8 @@
         let soundsInitialized = false;
         let lastShotTime = 0;
         let reloadStartTime = 0;
+        let isLandscapeMode = false;
         let isPausedByOrientation = false;
-        let animationFrameId = null;
 
         // Configuration
         const config = {
@@ -660,7 +626,7 @@
             planetCount: 3,
             planetMinRadius: 150,
             planetMaxRadius: 300,
-            shotCooldown: 100
+            shotCooldown: 50 // Уменьшена задержка между выстрелами для устранения лагов
         };
 
         // Cow types and colors
@@ -685,6 +651,67 @@
                 wingColor: 'rgba(160, 180, 255, 0.7)'
             }
         ];
+
+        // Проверка ориентации устройства
+        function checkOrientation() {
+            const isLandscape = window.innerWidth > window.innerHeight;
+            const orientationWarning = document.getElementById('orientationWarning');
+            
+            if (isLandscape && gameActive) {
+                isLandscapeMode = true;
+                isPausedByOrientation = true;
+                orientationWarning.style.display = 'flex';
+                pauseGame();
+            } else {
+                isLandscapeMode = false;
+                orientationWarning.style.display = 'none';
+                if (isPausedByOrientation && gameActive) {
+                    isPausedByOrientation = false;
+                    resumeGame();
+                }
+            }
+        }
+
+        function pauseGame() {
+            if (!gameActive || isGameOver) return;
+            
+            // Приостанавливаем таймеры
+            clearInterval(gameTimer);
+            clearTimeout(reloadTimeout);
+            
+            // Приостанавливаем музыку
+            backgroundMusic.pause();
+        }
+
+        function resumeGame() {
+            if (!gameActive || isGameOver) return;
+            
+            // Возобновляем таймер игры
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                updateHUD();
+                
+                if (timeLeft <= 0) {
+                    levelUp();
+                }
+            }, 1000);
+            
+            // Возобновляем музыку
+            backgroundMusic.play().catch(e => console.log("Music play error:", e));
+            
+            // Если была перезарядка, восстанавливаем таймер
+            if (isReloading) {
+                const elapsed = Date.now() - reloadStartTime;
+                const remaining = Math.max(0, config.reloadTime - elapsed);
+                
+                reloadTimeout = setTimeout(() => {
+                    ammo = 5;
+                    isReloading = false;
+                    document.getElementById('reloading').style.display = 'none';
+                    updateHUD();
+                }, remaining);
+            }
+        }
 
         // Инициализация звуков
         function initSounds() {
@@ -1878,13 +1905,13 @@
                 this.particles = [];
                 this.color = color;
                 
-                for (let i = 0; i < 15; i++) { // Уменьшено количество частиц для оптимизации
+                for (let i = 0; i < 20; i++) {
                     this.particles.push({
                         x: 0,
                         y: 0,
                         vx: (Math.random() - 0.5) * 6,
                         vy: (Math.random() - 0.5) * 6,
-                        size: Math.random() * 4 + 2, // Уменьшен размер частиц
+                        size: Math.random() * 6 + 3,
                         alpha: 1,
                         life: Math.random() * 0.5 + 0.5
                     });
@@ -2001,57 +2028,7 @@
             }, 2000);
         }
 
-        // Функция проверки ориентации
-        function checkOrientation() {
-            const warning = document.getElementById('orientationWarning');
-            const isLandscape = window.innerWidth > window.innerHeight;
-            
-            if (isLandscape && gameActive && window.innerWidth < 1024) {
-                // Горизонтальная ориентация на мобильном устройстве
-                warning.style.display = 'flex';
-                isPausedByOrientation = true;
-                pauseGame();
-            } else {
-                // Вертикальная ориентация или десктоп
-                warning.style.display = 'none';
-                if (isPausedByOrientation) {
-                    isPausedByOrientation = false;
-                    resumeGame();
-                }
-            }
-        }
-
-        function pauseGame() {
-            if (!gameActive || isGameOver) return;
-            
-            // Приостанавливаем таймеры
-            clearInterval(gameTimer);
-            clearTimeout(reloadTimeout);
-            clearTimeout(levelUpDisplayTimeout);
-            
-            // Приостанавливаем звук
-            backgroundMusic.pause();
-            reloadSound.pause();
-        }
-
-        function resumeGame() {
-            if (!gameActive || isGameOver || isPausedByOrientation) return;
-            
-            // Возобновляем таймеры
-            gameTimer = setInterval(() => {
-                timeLeft--;
-                updateHUD();
-                
-                if (timeLeft <= 0) {
-                    levelUp();
-                }
-            }, 1000);
-            
-            // Возобновляем звук
-            backgroundMusic.play().catch(e => console.log("Music play error:", e));
-        }
-
-        function startGame() {
+      function startGame() {
             // Убираем эффект завершения игры
             const effect = document.getElementById('gameOverEffect');
             effect.classList.remove('active');
@@ -2063,7 +2040,10 @@
             document.getElementById('gameOverMenu').style.display = 'none';
             document.getElementById('reloading').style.display = 'none';
             document.getElementById('levelUp').style.display = 'none';
-            document.getElementById('orientationWarning').style.display = 'none';
+            
+            // Проверяем ориентацию
+            checkOrientation();
+            if (isLandscapeMode) return;
             
             // Показать HUD
             document.getElementById('topHUD').style.display = 'flex';
@@ -2112,9 +2092,6 @@
             updateLevelDisplay();
             resizeCanvas();
             
-            // Проверяем ориентацию при старте
-            checkOrientation();
-            
             clearInterval(gameTimer);
             gameTimer = setInterval(() => {
                 timeLeft--;
@@ -2146,12 +2123,6 @@
             // Останавливаем все звуки
             backgroundMusic.pause();
             reloadSound.pause();
-            
-            // Отменяем анимацию
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
             
             document.getElementById('mainMenu').style.display = 'block';
             document.getElementById('gameOverMenu').style.display = 'none';
@@ -2202,12 +2173,6 @@
             backgroundMusic.pause();
             reloadSound.pause();
             
-            // Отменяем анимацию
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-            
             // Активируем эффект завершения игры
             const effect = document.getElementById('gameOverEffect');
             effect.classList.add('active');
@@ -2223,7 +2188,6 @@
             document.getElementById('topHUD').style.display = 'none';
             document.getElementById('bottomHUD').style.display = 'none';
             document.getElementById('reloading').style.display = 'none';
-            document.getElementById('orientationWarning').style.display = 'none';
 
             // Вызываем новую функцию после завершения игры
             handlePostGame();
@@ -2486,7 +2450,7 @@
 
         function gameLoop(timestamp) {
             if (!gameActive || isGameOver || isPausedByOrientation) {
-                animationFrameId = requestAnimationFrame(gameLoop);
+                requestAnimationFrame(gameLoop);
                 return;
             }
             
@@ -2495,23 +2459,14 @@
             
             drawBackground();
             
-            // Оптимизация: ограничиваем количество обновлений для мертвых коров
             cows.forEach(cow => {
                 cow.update();
                 cow.draw();
             });
             
-            // Мертвые коровы обновляются реже для оптимизации
-            deadCows.forEach((cow, index) => {
-                if (cow.deathAnimationProgress < 1) {
-                    cow.update();
-                }
+            deadCows.forEach(cow => {
+                cow.update();
                 cow.draw();
-                
-                // Удаляем старые мертвые коровы для оптимизации
-                if (cow.deathAnimationProgress > 3) {
-                    deadCows.splice(index, 1);
-                }
             });
             
             shots.forEach((shot, index) => {
@@ -2530,14 +2485,16 @@
             
             drawLifeBonuses();
             
-            animationFrameId = requestAnimationFrame(gameLoop);
+            requestAnimationFrame(gameLoop);
         }
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             initStars();
-            checkOrientation(); // Проверяем ориентацию при изменении размера
+            
+            // Проверяем ориентацию при изменении размера
+            checkOrientation();
         }
 
         canvas.addEventListener('pointerdown', (e) => {
@@ -2565,7 +2522,6 @@
 
         window.addEventListener('resize', resizeCanvas);
         window.addEventListener('orientationchange', checkOrientation);
-        window.addEventListener('resize', checkOrientation);
         
         // Анимация северного сияния
         function initAurora() {
@@ -2687,6 +2643,9 @@
 
         // Инициализация таблицы лидеров при загрузке
         displayLeaderboard();
+        
+        // Проверяем ориентацию при загрузке
+        checkOrientation();
     </script>
 </body>
 </html>
