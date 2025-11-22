@@ -601,7 +601,6 @@
         let isPaused = false;
         let originalCowSpeeds = [];
         let spawnCowTimeout;
-        let soundInstances = {}; // Для хранения клонов звуков
 
         // Configuration
         const config = {
@@ -673,50 +672,33 @@
             clickSound.play().catch(e => console.log("Sound play error:", e));
         }
 
-        // Функция для воспроизведения звуков с созданием клонов
-        function playSound(soundElement, soundType) {
-            if (!gameActive || isGameOver) return;
-            
+        // Функции для работы со звуками бонуса и перезарядки
+        function playLifeBonusSound() {
             initSounds();
+            // Создаем клон звука для одновременного воспроизведения
+            const soundClone = lifeBonusSound.cloneNode();
+            soundClone.currentTime = 0;
+            soundClone.volume = 0.7;
+            soundClone.play().catch(e => console.log("Life bonus sound error:", e));
             
-            try {
-                // Создаем клон звукового элемента для одновременного воспроизведения
-                const soundClone = soundElement.cloneNode();
-                soundClone.muted = false;
-                soundClone.volume = soundType === 'background' ? 0.5 : 0.7;
-                
-                // Добавляем в DOM для iOS
-                document.body.appendChild(soundClone);
-                
-                // Воспроизводим
-                soundClone.play().catch(e => {
-                    console.log(`${soundType} sound play error:`, e);
-                });
-                
-                // Удаляем после воспроизведения
-                soundClone.onended = function() {
-                    if (document.body.contains(soundClone)) {
-                        document.body.removeChild(soundClone);
-                    }
-                };
-                
-                // Удаляем через 10 секунд на всякий случай
-                setTimeout(() => {
-                    if (document.body.contains(soundClone)) {
-                        document.body.removeChild(soundClone);
-                    }
-                }, 10000);
-                
-            } catch (error) {
-                console.log(`Error playing ${soundType} sound:`, error);
-                // Fallback: пытаемся воспроизвести оригинальный звук
-                try {
-                    soundElement.currentTime = 0;
-                    soundElement.play().catch(e => console.log("Fallback sound play error:", e));
-                } catch (fallbackError) {
-                    console.log("Fallback also failed:", fallbackError);
-                }
-            }
+            // Удаляем клон после воспроизведения
+            soundClone.onended = function() {
+                soundClone.remove();
+            };
+        }
+
+        function playReloadSound() {
+            initSounds();
+            // Создаем клон звука для одновременного воспроизведения
+            const soundClone = reloadSound.cloneNode();
+            soundClone.currentTime = 0;
+            soundClone.volume = 0.6;
+            soundClone.play().catch(e => console.log("Reload sound error:", e));
+            
+            // Удаляем клон после воспроизведения
+            soundClone.onended = function() {
+                soundClone.remove();
+            };
         }
 
         // Leaderboard functions
@@ -1019,7 +1001,9 @@
                 this.alpha = 1;
                 
                 // Play death sound
-                playSound(deathSound, 'death');
+                initSounds();
+                deathSound.currentTime = 0;
+                deathSound.play().catch(e => console.log("Death sound error:", e));
                 
                 // Создаем части тела для анимации смерти
                 this.limbs = [
@@ -2307,7 +2291,7 @@ function restartCowSpawning() {
                     updateHUD();
                     
                     // Воспроизвести звук бонуса жизни с использованием клона
-                    playSound(lifeBonusSound, 'lifeBonus');
+                    playLifeBonusSound();
                     
                     explosions.push(new Explosion(bonus.x, bonus.y, '255, 51, 102'));
                     hitDetected = true;
@@ -2368,7 +2352,7 @@ function restartCowSpawning() {
             document.getElementById('reloading').style.display = 'block';
             
             // Воспроизводим звук перезарядки с использованием клона
-            playSound(reloadSound, 'reload');
+            playReloadSound();
             
             reloadTimeout = setTimeout(() => {
                 ammo = 5;
