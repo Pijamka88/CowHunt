@@ -401,6 +401,12 @@
     <audio id="lifeBonusSound" src="Life-Bonus.mp3" preload="auto" muted playsinline></audio>
     <audio id="reloadSound" src="Reloading.mp3" preload="auto" muted playsinline></audio>
     
+    <div id="orientationWarning" class="orientation-warning">
+        <h2>⚠️ ПОВОРОТ ЭКРАНА</h2>
+        <p>Пожалуйста, переверните устройство в вертикальное положение</p>
+        <p>для продолжения игры</p>
+    </div>
+    
     <div id="helpModal" class="menu" style="display: none; width: 90%; max-width: 600px;">
         <h2>Как играть в Cosmic Cow Hunt</h2>
         <div style="text-align: left; max-height: 60vh; overflow-y: auto; padding: 10px;">
@@ -480,12 +486,6 @@
         <p>Уровень: <span id="finalLevel">1</span></p>
         <button onclick="playClickSound(); startGame()">ИГРАТЬ СНОВА</button>
         <button onclick="playClickSound(); returnToMainMenu()">ГЛАВНОЕ МЕНЮ</button>
-    </div>
-
-    <div id="orientationWarning" class="orientation-warning" style="display: none;">
-        <h2>ПОВЕРНИТЕ УСТРОЙСТВО</h2>
-        <p>Для игры требуется портретный режим</p>
-        <p>Пожалуйста, поверните устройство вертикально</p>
     </div>
 
     <div id="reloading" class="reloading" style="display: none;">ПЕРЕЗАРЯДКА...</div>
@@ -605,8 +605,8 @@
         let soundsInitialized = false;
         let lastShotTime = 0;
         let reloadStartTime = 0;
-        let isLandscapeMode = false;
-        let isPausedByOrientation = false;
+        let isPausedDueToOrientation = false;
+        let originalGameActiveState = false;
 
         // Configuration
         const config = {
@@ -651,67 +651,6 @@
                 wingColor: 'rgba(160, 180, 255, 0.7)'
             }
         ];
-
-        // Проверка ориентации устройства
-        function checkOrientation() {
-            const isLandscape = window.innerWidth > window.innerHeight;
-            const orientationWarning = document.getElementById('orientationWarning');
-            
-            if (isLandscape && gameActive) {
-                isLandscapeMode = true;
-                isPausedByOrientation = true;
-                orientationWarning.style.display = 'flex';
-                pauseGame();
-            } else {
-                isLandscapeMode = false;
-                orientationWarning.style.display = 'none';
-                if (isPausedByOrientation && gameActive) {
-                    isPausedByOrientation = false;
-                    resumeGame();
-                }
-            }
-        }
-
-        function pauseGame() {
-            if (!gameActive || isGameOver) return;
-            
-            // Приостанавливаем таймеры
-            clearInterval(gameTimer);
-            clearTimeout(reloadTimeout);
-            
-            // Приостанавливаем музыку
-            backgroundMusic.pause();
-        }
-
-        function resumeGame() {
-            if (!gameActive || isGameOver) return;
-            
-            // Возобновляем таймер игры
-            gameTimer = setInterval(() => {
-                timeLeft--;
-                updateHUD();
-                
-                if (timeLeft <= 0) {
-                    levelUp();
-                }
-            }, 1000);
-            
-            // Возобновляем музыку
-            backgroundMusic.play().catch(e => console.log("Music play error:", e));
-            
-            // Если была перезарядка, восстанавливаем таймер
-            if (isReloading) {
-                const elapsed = Date.now() - reloadStartTime;
-                const remaining = Math.max(0, config.reloadTime - elapsed);
-                
-                reloadTimeout = setTimeout(() => {
-                    ammo = 5;
-                    isReloading = false;
-                    document.getElementById('reloading').style.display = 'none';
-                    updateHUD();
-                }, remaining);
-            }
-        }
 
         // Инициализация звуков
         function initSounds() {
@@ -2035,15 +1974,12 @@
             
             gameActive = true;
             isGameOver = false;
-            isPausedByOrientation = false;
+            isPausedDueToOrientation = false;
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('gameOverMenu').style.display = 'none';
             document.getElementById('reloading').style.display = 'none';
             document.getElementById('levelUp').style.display = 'none';
-            
-            // Проверяем ориентацию
-            checkOrientation();
-            if (isLandscapeMode) return;
+            document.getElementById('orientationWarning').style.display = 'none';
             
             // Показать HUD
             document.getElementById('topHUD').style.display = 'flex';
@@ -2094,17 +2030,22 @@
             
             clearInterval(gameTimer);
             gameTimer = setInterval(() => {
-                timeLeft--;
-                updateHUD();
-                
-                if (timeLeft <= 0) {
-                    levelUp();
+                if (!isPausedDueToOrientation) {
+                    timeLeft--;
+                    updateHUD();
+                    
+                    if (timeLeft <= 0) {
+                        levelUp();
+                    }
                 }
             }, 1000);
             
             spawnCow();
             lastTime = performance.now();
             gameLoop();
+            
+            // Проверяем ориентацию при старте игры
+            checkOrientation();
         }
 
        function returnToMainMenu() {
@@ -2114,7 +2055,7 @@
             
             gameActive = false;
             isGameOver = false;
-            isPausedByOrientation = false;
+            isPausedDueToOrientation = false;
             clearInterval(gameTimer);
             clearInterval(levelTimer);
             clearTimeout(reloadTimeout);
@@ -2165,7 +2106,7 @@
         function endGame() {
             gameActive = false;
             isGameOver = true;
-            isPausedByOrientation = false;
+            isPausedDueToOrientation = false;
             clearInterval(gameTimer);
             clearInterval(levelTimer);
             clearTimeout(reloadTimeout);
@@ -2188,6 +2129,7 @@
             document.getElementById('topHUD').style.display = 'none';
             document.getElementById('bottomHUD').style.display = 'none';
             document.getElementById('reloading').style.display = 'none';
+            document.getElementById('orientationWarning').style.display = 'none';
 
             // Вызываем новую функцию после завершения игры
             handlePostGame();
@@ -2263,7 +2205,7 @@
         }
 
         function spawnCow() {
-            if (!gameActive || timeLeft <= 0 || isGameOver || isPausedByOrientation) return;
+            if (!gameActive || timeLeft <= 0 || isGameOver || isPausedDueToOrientation) return;
             
             const aliveCows = cows.filter(cow => cow.alive);
             
@@ -2276,7 +2218,7 @@
         }
 
         function checkHit(x, y) {
-            if (isGameOver || isPausedByOrientation) return;
+            if (isGameOver || isPausedDueToOrientation) return;
             
             let hitDetected = false;
 
@@ -2449,7 +2391,7 @@
         }
 
         function gameLoop(timestamp) {
-            if (!gameActive || isGameOver || isPausedByOrientation) {
+            if (!gameActive || isGameOver || isPausedDueToOrientation) {
                 requestAnimationFrame(gameLoop);
                 return;
             }
@@ -2492,13 +2434,28 @@
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             initStars();
+        }
+
+        // Функция проверки ориентации
+        function checkOrientation() {
+            const isLandscape = window.innerWidth > window.innerHeight;
+            const orientationWarning = document.getElementById('orientationWarning');
             
-            // Проверяем ориентацию при изменении размера
-            checkOrientation();
+            if (isLandscape && gameActive) {
+                isPausedDueToOrientation = true;
+                orientationWarning.style.display = 'flex';
+                backgroundMusic.pause();
+            } else {
+                isPausedDueToOrientation = false;
+                orientationWarning.style.display = 'none';
+                if (gameActive && !isGameOver) {
+                    backgroundMusic.play().catch(e => console.log("Music play error:", e));
+                }
+            }
         }
 
         canvas.addEventListener('pointerdown', (e) => {
-            if (!gameActive || isReloading || isGameOver || isPausedByOrientation) return;
+            if (!gameActive || isReloading || isGameOver || isPausedDueToOrientation) return;
             
             const currentTime = Date.now();
             if (currentTime - lastShotTime < config.shotCooldown) return;
@@ -2520,7 +2477,11 @@
             }
         });
 
-        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('resize', function() {
+            resizeCanvas();
+            checkOrientation();
+        });
+
         window.addEventListener('orientationchange', checkOrientation);
         
         // Анимация северного сияния
@@ -2611,7 +2572,10 @@
         }
 
         // Инициализируем анимацию при загрузке
-        window.addEventListener('load', initAurora);
+        window.addEventListener('load', function() {
+            initAurora();
+            checkOrientation(); // Проверяем ориентацию при загрузке
+        });
 
         function showHelp() {
             playClickSound();
@@ -2643,9 +2607,6 @@
 
         // Инициализация таблицы лидеров при загрузке
         displayLeaderboard();
-        
-        // Проверяем ориентацию при загрузке
-        checkOrientation();
     </script>
 </body>
 </html>
