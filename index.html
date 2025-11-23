@@ -565,6 +565,11 @@
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const deathSound = document.getElementById('deathSound');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const clickSound = document.getElementById('clickSound');
+        const lifeBonusSound = document.getElementById('lifeBonusSound');
+        const reloadSound = document.getElementById('reloadSound');
         
         // Game state
         let gameActive = false;
@@ -596,6 +601,7 @@
         let isPaused = false;
         let originalCowSpeeds = [];
         let spawnCowTimeout;
+        let reloadSoundPlayed = false;
 
         // Configuration
         const config = {
@@ -646,11 +652,10 @@
             originalCowSpeeds[index] = cowType.speed;
         });
 
-        // Система звуков
-        const SoundManager = {
+        // Система управления звуками
+        const soundManager = {
             sounds: {},
             audioContext: null,
-            gainNode: null,
             initialized: false,
             
             init() {
@@ -658,74 +663,96 @@
                 
                 try {
                     this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    this.gainNode = this.audioContext.createGain();
-                    this.gainNode.connect(this.audioContext.destination);
-                    this.gainNode.gain.value = 0.7;
+                    
+                    // Создаем заранее загруженные буферы для звуков
+                    this.sounds = {
+                        death: deathSound,
+                        background: backgroundMusic,
+                        click: clickSound,
+                        lifeBonus: lifeBonusSound,
+                        reload: reloadSound
+                    };
                     
                     // Предзагрузка звуков
-                    this.loadSound('death', 'Death-Cow.mp3');
-                    this.loadSound('click', 'Click.mp3');
-                    this.loadSound('lifeBonus', 'Life-Bonus.mp3');
-                    this.loadSound('reload', 'Reloading.mp3');
-                    this.loadSound('background', 'Last-Call.mp3');
+                    Object.values(this.sounds).forEach(sound => {
+                        sound.load();
+                        sound.volume = sound === backgroundMusic ? 0.5 : 0.7;
+                    });
                     
                     this.initialized = true;
                 } catch (error) {
-                    console.log('AudioContext not supported:', error);
+                    console.log('Audio context not supported, using fallback');
+                    this.initialized = true; // Все равно помечаем как инициализированную для fallback
                 }
             },
             
-            async loadSound(name, url) {
-                try {
-                    const response = await fetch(url);
-                    const arrayBuffer = await response.arrayBuffer();
-                    const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-                    this.sounds[name] = audioBuffer;
-                } catch (error) {
-                    console.log(`Error loading sound ${name}:`, error);
-                }
-            },
-            
-            playSound(name, volume = 1.0) {
-                if (!this.initialized || !this.sounds[name] || !gameActive) return;
+            play(soundName, allowOverlap = true) {
+                if (!gameActive || isGameOver) return;
+                
+                const sound = this.sounds[soundName];
+                if (!sound) return;
                 
                 try {
-                    const source = this.audioContext.createBufferSource();
-                    const gainNode = this.audioContext.createGain();
-                    
-                    source.buffer = this.sounds[name];
-                    gainNode.gain.value = volume;
-                    
-                    source.connect(gainNode);
-                    gainNode.connect(this.audioContext.destination);
-                    
-                    source.start(0);
-                    
-                    // Для фоновой музыки сохраняем источник для управления
-                    if (name === 'background') {
-                        this.backgroundSource = source;
-                        this.backgroundGain = gainNode;
+                    if (soundName === 'background') {
+                        // Для фоновой музыки используем оригинальный элемент
+                        if (sound.paused) {
+                            sound.currentTime = 0;
+                            sound.play().catch(e => console.log('Background music error:', e));
+                        }
+                    } else {
+                        // Для остальных звуков создаем клоны для одновременного воспроизведения
+                        const soundClone = sound.cloneNode();
+                        soundClone.volume = sound.volume;
+                        
+                        const playPromise = soundClone.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(e => {
+                                console.log(`Sound ${soundName} play error:`, e);
+                            });
+                        }
+                        
+                        // Автоматическое удаление после воспроизведения
+                        soundClone.onended = () => {
+                            if (document.body.contains(soundClone)) {
+                                document.body.removeChild(soundClone);
+                            }
+                        };
+                        
+                        // Добавляем в DOM для корректной работы в iOS
+                        document.body.appendChild(soundClone);
+                        
+                        // Автоудаление через 10 секунд на всякий случай
+                        setTimeout(() => {
+                            if (document.body.contains(soundClone)) {
+                                document.body.removeChild(soundClone);
+                            }
+                        }, 10000);
                     }
-                    
-                    return source;
                 } catch (error) {
-                    console.log(`Error playing sound ${name}:`, error);
-                }
-            },
-            
-            stopBackgroundMusic() {
-                if (this.backgroundSource) {
+                    console.log(`Error playing ${soundName}:`, error);
+                    // Fallback: пытаемся воспроизвести оригинальный звук
                     try {
-                        this.backgroundSource.stop();
-                    } catch (e) {}
-                    this.backgroundSource = null;
+                        sound.currentTime = 0;
+                        sound.play().catch(e => console.log('Fallback sound error:', e));
+                    } catch (fallbackError) {
+                        console.log('Fallback also failed:', fallbackError);
+                    }
                 }
             },
             
-            setMasterVolume(volume) {
-                if (this.gainNode) {
-                    this.gainNode.gain.value = volume;
+            stop(soundName) {
+                const sound = this.sounds[soundName];
+                if (sound) {
+                    sound.pause();
+                    sound.currentTime = 0;
                 }
+            },
+            
+            stopAll() {
+                Object.values(this.sounds).forEach(sound => {
+                    sound.pause();
+                    sound.currentTime = 0;
+                });
             }
         };
 
@@ -733,13 +760,20 @@
         function initSounds() {
             if (soundsInitialized) return;
             
-            SoundManager.init();
+            soundManager.init();
+            
+            // Включаем звук после пользовательского взаимодействия
+            document.addEventListener('click', function init() {
+                soundManager.init();
+                document.removeEventListener('click', init);
+            });
+            
             soundsInitialized = true;
         }
 
         function playClickSound() {
             initSounds();
-            SoundManager.playSound('click', 0.8);
+            soundManager.play('click');
         }
 
         // Leaderboard functions
@@ -884,6 +918,7 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
+                // Добавляем эффект радуги
                 this.rainbowTrails = [];
                 this.rainbowPhase = 0;
                 this.rainbowSpeed = 0.1;
@@ -892,6 +927,7 @@
             reset() {
                 this.direction = Math.random() > 0.5 ? 1 : -1;
                 
+                // Используем оригинальные скорости без учета уровня
                 const baseSpeed = cowTypes[this.type].speed;
                 
                 if (this.direction === 1) {
@@ -920,6 +956,7 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
+                // Сбрасываем эффект радуги
                 this.rainbowTrails = [];
                 this.rainbowPhase = 0;
             }
@@ -933,6 +970,7 @@
                 this.tailPhase += this.tailSpeed;
                 this.rainbowPhase += this.rainbowSpeed;
                 
+                // Random tongue animation
                 if (Math.random() < 0.005) {
                     this.tongueOut = true;
                     this.tongueTimer = 30;
@@ -958,6 +996,7 @@
                         break;
                 }
                 
+                // Ограничение движения в пределах игровой зоны
                 if (this.y < config.playAreaTop + this.height/2) {
                     this.y = config.playAreaTop + this.height/2;
                 }
@@ -966,9 +1005,11 @@
                 }
             }
 
+            // Добавляем метод для обновления эффекта радуги
             updateRainbowTrail() {
                 if (!this.alive || isPaused) return;
                 
+                // Добавляем новый след радуги
                 const trailX = this.x + (this.direction === 1 ? -this.width/2 : this.width/2);
                 this.rainbowTrails.push({
                     x: trailX,
@@ -978,17 +1019,20 @@
                     size: Math.random() * 20 + 30
                 });
                 
+                // Обновляем существующие следы
                 for (let i = this.rainbowTrails.length - 1; i >= 0; i--) {
                     const trail = this.rainbowTrails[i];
                     trail.alpha -= 0.05;
                     trail.size *= 0.95;
                     
+                    // Удаляем старые следы
                     if (trail.alpha <= 0 || trail.size <= 5) {
                         this.rainbowTrails.splice(i, 1);
                     }
                 }
             }
 
+            // Добавляем метод для рисования эффекта радуги
             drawRainbowTrail() {
                 if (!this.alive) return;
                 
@@ -1031,8 +1075,8 @@
                 this.deathAnimationProgress = 0;
                 this.alpha = 1;
                 
-                // Play death sound immediately
-                SoundManager.playSound('death', 0.8);
+                // Play death sound - немедленное воспроизведение
+                soundManager.play('death');
                 
                 // Создаем части тела для анимации смерти
                 this.limbs = [
@@ -1050,71 +1094,138 @@
                         tongueOut: true,
                         tongueTimer: 120,
                         horns: [
-                            { x: -6, y: -this.headRadius + 2, rotation: 0 },
-                            { x: 6, y: -this.headRadius + 2, rotation: 0 }
+                            { // Левый рог
+                                x: -6,
+                                y: -this.headRadius + 2,
+                                rotation: 0
+                            },
+                            { // Правый рог
+                                x: 6,
+                                y: -this.headRadius + 2,
+                                rotation: 0
+                            }
                         ],
                         ears: [
-                            { x: -this.headRadius * 0.6, y: -this.headRadius * 0.6, rotation: -Math.PI/4 },
-                            { x: this.headRadius * 0.6, y: -this.headRadius * 0.6, rotation: Math.PI/4 }
+                            { // Левое ухо
+                                x: -this.headRadius * 0.6,
+                                y: -this.headRadius * 0.6,
+                                rotation: -Math.PI/4
+                            },
+                            { // Правое ухо
+                                x: this.headRadius * 0.6,
+                                y: -this.headRadius * 0.6,
+                                rotation: Math.PI/4
+                            }
                         ]
                     },
                     { // Тело
-                        x: this.x, y: this.y,
-                        vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3,
-                        rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.05,
-                        width: this.width, height: this.height, color: this.color
+                        x: this.x,
+                        y: this.y,
+                        vx: (Math.random() - 0.5) * 3,
+                        vy: (Math.random() - 0.5) * 3,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.05,
+                        width: this.width,
+                        height: this.height,
+                        color: this.color
                     },
                     { // Левое крыло
-                        x: this.x - 5, y: this.y - 5,
-                        vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
-                        rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.08,
-                        color: cowTypes[this.type].wingColor, wingPhase: this.wingPhase
+                        x: this.x - 5,
+                        y: this.y - 5,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.08,
+                        color: cowTypes[this.type].wingColor,
+                        wingPhase: this.wingPhase
                     },
                     { // Правое крыло
-                        x: this.x + 5, y: this.y - 5,
-                        vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
-                        rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.08,
-                        color: cowTypes[this.type].wingColor, wingPhase: this.wingPhase
+                        x: this.x + 5,
+                        y: this.y - 5,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.08,
+                        color: cowTypes[this.type].wingColor,
+                        wingPhase: this.wingPhase
                     },
                     { // Нос
-                        x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2), y: this.y + 8,
-                        vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2,
-                        rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.03, color: '#f5d0b0'
+                        x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2),
+                        y: this.y + 8,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.03,
+                        color: '#f5d0b0'
                     },
                     { // Язык
-                        x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2), y: this.y + 16,
-                        vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2,
-                        rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.03, color: '#ff0000'
+                        x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2),
+                        y: this.y + 16,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.03,
+                        color: '#ff0000'
                     },
                     { // Передняя нога 1
-                        x: this.x + (this.direction === 1 ? this.width/4 : -this.width/4), y: this.y + this.height/2.5,
-                        vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
-                        rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.1, width: 10, height: 20
+                        x: this.x + (this.direction === 1 ? this.width/4 : -this.width/4),
+                        y: this.y + this.height/2.5,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 10,
+                        height: 20
                     },
                     { // Передняя нога 2
-                        x: this.x + (this.direction === 1 ? this.width/4 + 15 : -this.width/4 - 15), y: this.y + this.height/2.5,
-                        vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
-                        rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.1, width: 10, height: 20
+                        x: this.x + (this.direction === 1 ? this.width/4 + 15 : -this.width/4 - 15),
+                        y: this.y + this.height/2.5,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 10,
+                        height: 20
                     },
-                    { // Задняя нога 1
-                        x: this.x - (this.direction === 1 ? this.width/4 : -this.width/4), y: this.y + this.height/2.5,
-                        vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
-                        rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.1, width: 10, height: 20
+                    { // Задняя нога 1 (перенесена за вымя)
+                        x: this.x - (this.direction === 1 ? this.width/4 : -this.width/4),
+                        y: this.y + this.height/2.5,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 10,
+                        height: 20
                     },
-                    { // Задняя нога 2
-                        x: this.x - (this.direction === 1 ? this.width/4 + 15 : -this.width/4 - 15), y: this.y + this.height/2.5,
-                        vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
-                        rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.1, width: 10, height: 20
+                    { // Задняя нога 2 (перенесена за вымя)
+                        x: this.x - (this.direction === 1 ? this.width/4 + 15 : -this.width/4 - 15),
+                        y: this.y + this.height/2.5,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 10,
+                        height: 20
                     },
                     { // Хвост
-                        x: this.x - (this.direction === 1 ? this.width/2 : -this.width/2), y: this.y,
-                        vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
-                        rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.1, width: 15, height: 15
+                        x: this.x - (this.direction === 1 ? this.width/2 : -this.width/2),
+                        y: this.y,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        width: 15,
+                        height: 15
                     },
                     { // Вымя
-                        x: this.x - (this.direction === 1 ? this.width/8 : -this.width/8), y: this.y + this.height/2.5,
-                        vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3,
-                        rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.05, width: 24, height: 16
+                        x: this.x - (this.direction === 1 ? this.width/8 : -this.width/8),
+                        y: this.y + this.height/2.5,
+                        vx: (Math.random() - 0.5) * 3,
+                        vy: (Math.random() - 0.5) * 3,
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.05,
+                        width: 24,
+                        height: 16
                     }
                 ];
                 
@@ -1134,20 +1245,23 @@
                     this.updateMovement();
                     this.x += this.vx;
                     this.wingPhase += this.wingSpeed;
-                    this.updateRainbowTrail();
+                    this.updateRainbowTrail(); // Обновляем эффект радуги
                     
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
                         (this.direction === -1 && this.x < -this.width*2)) {
                         this.reset();
                     }
                 } else if (!this.alive && !isPaused) {
+                    // Анимация смерти - разлетающиеся конечности в космосе
                     this.deathAnimationProgress += 0.02;
                     
+                    // Обновляем части тела
                     this.limbs.forEach(limb => {
                         limb.x += limb.vx;
                         limb.y += limb.vy;
                         limb.rotation += limb.rotationSpeed;
                         
+                        // Обновляем таймер языка
                         if (limb.tongueTimer !== undefined) {
                             limb.tongueTimer--;
                             if (limb.tongueTimer <= 0) {
@@ -1155,10 +1269,12 @@
                             }
                         }
                         
+                        // Обновляем фазу крыльев
                         if (limb.wingPhase !== undefined) {
                             limb.wingPhase += 0.05;
                         }
                         
+                        // Через некоторое время показываем мертвые глаза
                         if (limb.deadEyes !== undefined && this.deathAnimationProgress > 0.3) {
                             limb.deadEyes = true;
                         }
@@ -1167,6 +1283,7 @@
             }
 
             draw() {
+                // Сначала рисуем эффект радуги
                 if (this.alive) {
                     this.drawRainbowTrail();
                 }
@@ -1180,7 +1297,7 @@
                         ctx.scale(-1, 1);
                     }
                     
-                    // Body
+                    // Body (oval) с окантовкой
                     ctx.fillStyle = this.color;
                     ctx.beginPath();
                     ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
@@ -1189,7 +1306,7 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
-                    // Legs
+                    // Legs (серые, опущены ниже)
                     ctx.strokeStyle = '#888';
                     ctx.lineWidth = 6;
                     
@@ -1217,6 +1334,7 @@
                         );
                         ctx.stroke();
                         
+                        // Hooves (темно-синие)
                         ctx.fillStyle = '#3E3D5C';
                         ctx.fillRect(
                             leg.x + Math.sin(legSwing) * 8 - 3,
@@ -1225,9 +1343,10 @@
                         );
                     });
                     
-                    // Head
+                    // Head at the end of body
                     const headX = this.width/2;
                     
+                    // Head с окантовкой
                     ctx.fillStyle = this.color;
                     ctx.beginPath();
                     ctx.arc(headX, 0, this.headRadius, 0, Math.PI * 2);
@@ -1236,101 +1355,149 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
-                    // Ears
+                    // Ears в форме листа
+                    // Left ear (повернуто влево)
                     ctx.save();
                     ctx.translate(headX - this.headRadius * 0.6, -this.headRadius * 0.6);
                     ctx.rotate(-Math.PI/4);
                     ctx.fillStyle = this.color;
                     ctx.beginPath();
                     ctx.moveTo(0, 0);
-                    ctx.quadraticCurveTo(-this.headRadius * 0.5, -this.headRadius * 0.4, 0, -this.headRadius * 0.75);
-                    ctx.quadraticCurveTo(this.headRadius * 0.5, -this.headRadius * 0.4, 0, 0);
+                    ctx.quadraticCurveTo(
+                        -this.headRadius * 0.5, -this.headRadius * 0.4,
+                        0, -this.headRadius * 0.75
+                    );
+                    ctx.quadraticCurveTo(
+                        this.headRadius * 0.5, -this.headRadius * 0.4,
+                        0, 0
+                    );
                     ctx.closePath();
                     ctx.fill();
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 1;
                     ctx.stroke();
                     
+                    // Внутренняя часть уха (розовая)
                     ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
                     ctx.beginPath();
                     ctx.moveTo(0, 0);
-                    ctx.quadraticCurveTo(-this.headRadius * 0.3, -this.headRadius * 0.3, 0, -this.headRadius * 0.6);
-                    ctx.quadraticCurveTo(this.headRadius * 0.3, -this.headRadius * 0.3, 0, 0);
+                    ctx.quadraticCurveTo(
+                        -this.headRadius * 0.3, -this.headRadius * 0.3,
+                        0, -this.headRadius * 0.6
+                    );
+                    ctx.quadraticCurveTo(
+                        this.headRadius * 0.3, -this.headRadius * 0.3,
+                        0, 0
+                    );
                     ctx.closePath();
                     ctx.fill();
                     ctx.restore();
                     
+                    // Right ear (повернуто вправо)
                     ctx.save();
                     ctx.translate(headX + this.headRadius * 0.6, -this.headRadius * 0.6);
                     ctx.rotate(Math.PI/4);
                     ctx.fillStyle = this.color;
                     ctx.beginPath();
                     ctx.moveTo(0, 0);
-                    ctx.quadraticCurveTo(-this.headRadius * 0.5, -this.headRadius * 0.4, 0, -this.headRadius * 0.75);
-                    ctx.quadraticCurveTo(this.headRadius * 0.5, -this.headRadius * 0.4, 0, 0);
+                    ctx.quadraticCurveTo(
+                        -this.headRadius * 0.5, -this.headRadius * 0.4,
+                        0, -this.headRadius * 0.75
+                    );
+                    ctx.quadraticCurveTo(
+                        this.headRadius * 0.5, -this.headRadius * 0.4,
+                        0, 0
+                    );
                     ctx.closePath();
                     ctx.fill();
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 1;
                     ctx.stroke();
                     
+                    // Внутренняя часть уха (розовая)
                     ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
                     ctx.beginPath();
                     ctx.moveTo(0, 0);
-                    ctx.quadraticCurveTo(-this.headRadius * 0.3, -this.headRadius * 0.3, 0, -this.headRadius * 0.4);
-                    ctx.quadraticCurveTo(this.headRadius * 0.3, -this.headRadius * 0.3, 0, 0);
+                    ctx.quadraticCurveTo(
+                        -this.headRadius * 0.3, -this.headRadius * 0.3,
+                        0, -this.headRadius * 0.4
+                    );
+                    ctx.quadraticCurveTo(
+                        this.headRadius * 0.3, -this.headRadius * 0.3,
+                        0, 0
+                    );
                     ctx.closePath();
                     ctx.fill();
                     ctx.restore();
              
-                    // Eyes
+                    // Eyes (анимешные без склеры)
                     const eyeYOffset = 2;
                     const eyeClosed = Math.abs(Math.sin(this.eyePhase)) < 0.1;
 
+                    // Левый глаз
                     if (!eyeClosed) {
+                        // Открытый глаз
                         ctx.fillStyle = '#333';
                         ctx.beginPath();
                         ctx.ellipse(headX - 6, -eyeYOffset, 4, 5, 0, 0, Math.PI * 2);
                         ctx.fill();
+                        // Блик в глазе
                         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
                         ctx.beginPath();
                         ctx.arc(headX - 8, -eyeYOffset - 1, 1.5, 0, Math.PI * 2);
                         ctx.fill();
                     } else {
+                        // Закрытый глаз в форме ")"
                         ctx.strokeStyle = '#333';
                         ctx.lineWidth = 2;
                         ctx.beginPath();
                         ctx.moveTo(headX - 10, -eyeYOffset);
-                        ctx.quadraticCurveTo(headX - 6, -eyeYOffset + 3, headX - 2, -eyeYOffset);
+                        ctx.quadraticCurveTo(
+                            headX - 6, -eyeYOffset + 3,
+                            headX - 2, -eyeYOffset
+                        );
                         ctx.stroke();
                     }
 
+                    // Правый глаз
                     if (!eyeClosed) {
+                        // Открытый глаз
                         ctx.fillStyle = '#333';
                         ctx.beginPath();
                         ctx.ellipse(headX + 6, -eyeYOffset, 4, 5, 0, 0, Math.PI * 2);
                         ctx.fill();
+                        // Блик в глазе
                         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
                         ctx.beginPath();
                         ctx.arc(headX + 4, -eyeYOffset - 1, 1.5, 0, Math.PI * 2);
                         ctx.fill();
                     } else {
+                        // Закрытый глаз в форме ")"
                         ctx.strokeStyle = '#333';
                         ctx.lineWidth = 2;
                         ctx.beginPath();
                         ctx.moveTo(headX + 2, -eyeYOffset);
-                        ctx.quadraticCurveTo(headX + 6, -eyeYOffset + 3, headX + 10, -eyeYOffset);
+                        ctx.quadraticCurveTo(
+                            headX + 6, -eyeYOffset + 3,
+                            headX + 10, -eyeYOffset
+                        );
                         ctx.stroke();
                     }      
                     
-                    // Eyebrows
+                    // Eyebrows (немного тоньше)
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.moveTo(headX - 8, -eyeYOffset - 6);
-                    ctx.quadraticCurveTo(headX - 6, -eyeYOffset - 9, headX - 2, -eyeYOffset - 6);
+                    ctx.quadraticCurveTo(
+                        headX - 6, -eyeYOffset - 9,
+                        headX - 2, -eyeYOffset - 6
+                    );
                     ctx.moveTo(headX + 2, -eyeYOffset - 6);
-                    ctx.quadraticCurveTo(headX + 6, -eyeYOffset - 9, headX + 8, -eyeYOffset - 6);
+                    ctx.quadraticCurveTo(
+                        headX + 6, -eyeYOffset - 9,
+                        headX + 8, -eyeYOffset - 6
+                    );
                     ctx.stroke();
                     
                     // Nose
@@ -1342,7 +1509,7 @@
                     ctx.lineWidth = 1;
                     ctx.stroke();
                     
-                    // Nostrils
+                    // Nostrils (вытянутые и чуть меньше)
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
                     ctx.ellipse(headX - 4, eyeYOffset + 8, 1.5, 2.5, 0, 0, Math.PI * 2);
@@ -1351,7 +1518,7 @@
                     ctx.ellipse(headX + 4, eyeYOffset + 8, 1.5, 2.5, 0, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Tongue
+                    // Язык (красный, под носом)
                     if (this.tongueOut) {
                         ctx.fillStyle = '#ff0000';
                         ctx.beginPath();
@@ -1359,30 +1526,32 @@
                         ctx.fill();
                     }
                     
-                    // Horns
-                    ctx.fillStyle = '#000';
-                    ctx.strokeStyle = '#000';
-                    ctx.lineWidth = 2;
+            // Horns (черные, как у реальных коров, уменьшенные в 2 раза)
+            ctx.fillStyle = '#000';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2; // Толщина линии тоже уменьшена
 
-                    ctx.save();
-                    ctx.translate(headX - 4, -this.headRadius + 2);
-                    ctx.rotate(-0.3);
-                    ctx.beginPath();
-                    ctx.moveTo(0, 0);
-                    ctx.quadraticCurveTo(-2, -4, 0, -7);
-                    ctx.stroke();
-                    ctx.restore();
+            // Left horn (изогнутый)
+            ctx.save();
+            ctx.translate(headX - 4, -this.headRadius + 2); // Позиция сдвинута ближе
+            ctx.rotate(-0.3);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(-2, -4, 0, -7); // Уменьшены координаты кривой
+            ctx.stroke();
+            ctx.restore();
 
-                    ctx.save();
-                    ctx.translate(headX + 4, -this.headRadius + 2);
-                    ctx.rotate(0.3);
-                    ctx.beginPath();
-                    ctx.moveTo(0, 0);
-                    ctx.quadraticCurveTo(2, -4, 0, -7);
-                    ctx.stroke();
-                    ctx.restore();
+            // Right horn (изогнутый)
+            ctx.save();
+            ctx.translate(headX + 4, -this.headRadius + 2); // Позиция сдвинута ближе
+            ctx.rotate(0.3);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(2, -4, 0, -7); // Уменьшены координаты кривой
+            ctx.stroke();
+            ctx.restore();
                     
-                    // Helmet
+                    // Helmet (большой и прозрачный с белой окантовкой)
                     ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
                     ctx.beginPath();
                     ctx.arc(headX, 0, this.headRadius * 1.5, 0, Math.PI * 2);
@@ -1391,21 +1560,31 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // Wings
+                    // Wings (крылья Пегаса - большие и изящные)
                     const wingYOffset = Math.sin(this.wingPhase) * 15;
                     const wingTipX = 50;
                     const wingTipY = -30 + wingYOffset;
                     
+                    // Back wing
                     ctx.fillStyle = cowTypes[this.type].wingColor;
                     ctx.beginPath();
                     ctx.moveTo(-5, -5);
-                    ctx.bezierCurveTo(-20, -10 + wingYOffset * 0.5, -40, -20 + wingYOffset, -wingTipX, wingTipY);
-                    ctx.bezierCurveTo(-40, 0 + wingYOffset * 0.5, -20, 5 + wingYOffset * 0.3, -5, -5);
+                    ctx.bezierCurveTo(
+                        -20, -10 + wingYOffset * 0.5,
+                        -40, -20 + wingYOffset,
+                        -wingTipX, wingTipY
+                    );
+                    ctx.bezierCurveTo(
+                        -40, 0 + wingYOffset * 0.5,
+                        -20, 5 + wingYOffset * 0.3,
+                        -5, -5
+                    );
                     ctx.fill();
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
+                    // Feather details
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
                     ctx.lineWidth = 1;
                     for (let i = 1; i <= 3; i++) {
@@ -1414,20 +1593,33 @@
                         
                         ctx.beginPath();
                         ctx.moveTo(-5, -5);
-                        ctx.quadraticCurveTo(featherX * 1.2, featherY * 0.8, featherX, featherY);
+                        ctx.quadraticCurveTo(
+                            featherX * 1.2, featherY * 0.8,
+                            featherX, featherY
+                        );
                         ctx.stroke();
                     }
                     
+                    // Front wing
                     ctx.globalCompositeOperation = 'destination-over';
                     ctx.beginPath();
                     ctx.moveTo(5, -5);
-                    ctx.bezierCurveTo(20, -10 + wingYOffset * 0.5, 40, -20 + wingYOffset, wingTipX, wingTipY);
-                    ctx.bezierCurveTo(40, 0 + wingYOffset * 0.5, 20, 5 + wingYOffset * 0.3, 5, -5);
+                    ctx.bezierCurveTo(
+                        20, -10 + wingYOffset * 0.5,
+                        40, -20 + wingYOffset,
+                        wingTipX, wingTipY
+                    );
+                    ctx.bezierCurveTo(
+                        40, 0 + wingYOffset * 0.5,
+                        20, 5 + wingYOffset * 0.3,
+                        5, -5
+                    );
                     ctx.fill();
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
+                    // Feather details
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
                     ctx.lineWidth = 1;
                     for (let i = 1; i <= 3; i++) {
@@ -1436,12 +1628,15 @@
                         
                         ctx.beginPath();
                         ctx.moveTo(5, -5);
-                        ctx.quadraticCurveTo(featherX * 0.8, featherY * 0.8, featherX, featherY);
+                        ctx.quadraticCurveTo(
+                            featherX * 0.8, featherY * 0.8,
+                            featherX, featherY
+                        );
                         ctx.stroke();
                     }
                     ctx.globalCompositeOperation = 'source-over';
                     
-                    // Tail
+                    // Tail (коричневый с кончиком светло-коричневым)
                     const tailX = -this.width/2;
                     const tailY = 0;
                     const tailSwing = Math.sin(this.tailPhase) * 0.3;
@@ -1450,18 +1645,30 @@
                     ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.moveTo(tailX, tailY);
-                    ctx.quadraticCurveTo(tailX - 10, tailY + 10 + tailSwing * 5, tailX - 15, tailY + 15 + tailSwing * 10);
+                    ctx.quadraticCurveTo(
+                        tailX - 10, 
+                        tailY + 10 + tailSwing * 5, 
+                        tailX - 15, 
+                        tailY + 15 + tailSwing * 10
+                    );
                     ctx.stroke();
                     
+                    // Tail brush (светло-коричневый)
                     ctx.fillStyle = '#CD853F';
                     ctx.beginPath();
                     ctx.moveTo(tailX - 15, tailY + 15 + tailSwing * 10);
-                    ctx.quadraticCurveTo(tailX - 20, tailY + 25 + tailSwing * 10, tailX - 10, tailY + 25 + tailSwing * 10);
-                    ctx.quadraticCurveTo(tailX - 5, tailY + 20 + tailSwing * 10, tailX - 15, tailY + 15 + tailSwing * 10);
+                    ctx.quadraticCurveTo(
+                        tailX - 20, tailY + 25 + tailSwing * 10,
+                        tailX - 10, tailY + 25 + tailSwing * 10
+                    );
+                    ctx.quadraticCurveTo(
+                        tailX - 5, tailY + 20 + tailSwing * 10,
+                        tailX - 15, tailY + 15 + tailSwing * 10
+                    );
                     ctx.closePath();
                     ctx.fill();
                     
-                    // Udder
+                    // Вымя (теперь рисуется последним, чтобы быть на переднем плане)
                     ctx.fillStyle = '#FFC0CB';
                     ctx.beginPath();
                     ctx.ellipse(-this.width/8, this.height/2.5, 12, 8, 0, 0, Math.PI * 2);
@@ -1470,6 +1677,7 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
+                    // Соски (3 штуки)
                     ctx.fillStyle = '#D88';
                     for (let i = 0; i < 3; i++) {
                         const nippleX = -this.width/8 - 6 + i * 6;
@@ -1479,17 +1687,18 @@
                         ctx.fill();
                     }
                 } else {
-                    // Death animation
+                    // Анимация смерти - разлетающиеся конечности в космосе
                     ctx.globalAlpha = this.alpha;
                     
+                    // Сначала рисуем все части тела, кроме вымени
                     this.limbs.forEach(limb => {
-                        if (limb === this.limbs[11]) return;
+                        if (limb === this.limbs[11]) return; // Пропускаем вымя
                         
                         ctx.save();
                         ctx.translate(limb.x, limb.y);
                         ctx.rotate(limb.rotation);
                         
-                        if (limb === this.limbs[0]) {
+                        if (limb === this.limbs[0]) { // Голова с рожками и ушами
                             ctx.fillStyle = limb.color;
                             ctx.beginPath();
                             ctx.arc(0, 0, limb.width/2, 0, Math.PI * 2);
@@ -1498,6 +1707,7 @@
                             ctx.lineWidth = 1;
                             ctx.stroke();
                             
+                            // Мертвые глаза "X_X" (увеличенные и тонкие)
                             ctx.strokeStyle = '#333';
                             ctx.lineWidth = 1;
                             ctx.beginPath();
@@ -1511,6 +1721,7 @@
                             ctx.lineTo(3, -8);
                             ctx.stroke();
                             
+                            // Нос мертвой коровы
                             ctx.fillStyle = '#f5d0b0';
                             ctx.beginPath();
                             ctx.ellipse(0, 10, 10, 8, 0, 0, Math.PI * 2);
@@ -1519,6 +1730,7 @@
                             ctx.lineWidth = 1;
                             ctx.stroke();
                             
+                            // Ноздри мертвой коровы
                             ctx.fillStyle = '#333';
                             ctx.beginPath();
                             ctx.ellipse(-4, 10, 1.5, 2.5, 0, 0, Math.PI * 2);
@@ -1527,6 +1739,7 @@
                             ctx.ellipse(4, 10, 1.5, 2.5, 0, 0, Math.PI * 2);
                             ctx.fill();
                             
+                            // Язык мертвой коровы (высунутый)
                             if (limb.tongueOut) {
                                 ctx.fillStyle = '#ff0000';
                                 ctx.beginPath();
@@ -1534,29 +1747,31 @@
                                 ctx.fill();
                             }
                             
-                            if (limb.horns) {
-                                limb.horns.forEach(horn => {
-                                    ctx.save();
-                                    ctx.translate(horn.x, horn.y);
-                                    ctx.rotate(horn.rotation);
-                                    
-                                    ctx.strokeStyle = '#000';
-                                    ctx.fillStyle = '#000';
-                                    ctx.lineWidth = 1.5;
-                                    
-                                    ctx.beginPath();
-                                    ctx.moveTo(0, 0);
-                                    if (horn.x < 0) {
-                                        ctx.quadraticCurveTo(-1.2, -3.5, 0, -6);
-                                    } else {
-                                        ctx.quadraticCurveTo(1.2, -3.5, 0, -6);
-                                    }
-                                    ctx.stroke();
-                                    
-                                    ctx.restore();
-                                });
-                            }
+                            // Рожки (маленькие черные)
+                    if (limb.horns) {
+                        limb.horns.forEach(horn => {
+                            ctx.save();
+                            ctx.translate(horn.x, horn.y);
+                            ctx.rotate(horn.rotation);
                             
+                            ctx.strokeStyle = '#000';
+                            ctx.fillStyle = '#000';
+                            ctx.lineWidth = 1.5; // Уменьшил толщину с 2 до 1.5
+                            
+                            // Более изящные рожки
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            if (horn.x < 0) { // Левый рог
+                                ctx.quadraticCurveTo(-1.2, -3.5, 0, -6); // Еще уменьшил размер
+                            } else { // Правый рог
+                                ctx.quadraticCurveTo(1.2, -3.5, 0, -6); // Еще уменьшил размер
+                            }
+                            ctx.stroke();
+                            
+                            ctx.restore();
+                        });
+                    }
+                            // Уши (измененная форма)
                             if (limb.ears) {
                                 limb.ears.forEach(ear => {
                                     ctx.save();
@@ -1566,40 +1781,69 @@
                                     ctx.fillStyle = limb.color;
                                     ctx.beginPath();
                                     ctx.moveTo(0, 0);
-                                    ctx.quadraticCurveTo(-limb.width/4, -limb.height/4, 0, -limb.height * 0.5);
-                                    ctx.quadraticCurveTo(limb.width/4, -limb.height/4, 0, 0);
+                                    ctx.quadraticCurveTo(
+                                        -limb.width/4, -limb.height/4,
+                                        0, -limb.height * 0.5
+                                    );
+                                    ctx.quadraticCurveTo(
+                                        limb.width/4, -limb.height/4,
+                                        0, 0
+                                    );
                                     ctx.closePath();
                                     ctx.fill();
                                     ctx.strokeStyle = '#333';
                                     ctx.lineWidth = 1;
                                     ctx.stroke();
                                     
+                                    // Внутренняя часть уха
                                     ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
                                     ctx.beginPath();
                                     ctx.moveTo(0, 0);
-                                    ctx.quadraticCurveTo(-limb.width/6, -limb.height/6, 0, -limb.height * 0.4);
-                                    ctx.quadraticCurveTo(limb.width/6, -limb.height/6, 0, 0);
+                                    ctx.quadraticCurveTo(
+                                        -limb.width/6, -limb.height/6,
+                                        0, -limb.height * 0.4
+                                    );
+                                    ctx.quadraticCurveTo(
+                                        limb.width/6, -limb.height/6,
+                                        0, 0
+                                    );
                                     ctx.closePath();
                                     ctx.fill();
                                     
                                     ctx.restore();
                                 });
                             }
-                        } else if (limb === this.limbs[2] || limb === this.limbs[3]) {
+                        } else if (limb === this.limbs[2] || limb === this.limbs[3]) { // Крылья
                             const wingYOffset = Math.sin(limb.wingPhase) * 15;
                             const wingTipX = 50;
                             const wingTipY = -30 + wingYOffset;
                             
                             ctx.fillStyle = limb.color;
                             ctx.beginPath();
-                            if (limb === this.limbs[2]) {
+                            if (limb === this.limbs[2]) { // Левое крыло
                                 ctx.moveTo(0, 0);
-                                ctx.bezierCurveTo(-20, -10 + wingYOffset * 0.5, -40, -20 + wingYOffset, -wingTipX, wingTipY);
-                                ctx.bezierCurveTo(-40, 0 + wingYOffset * 0.5, -20, 5 + wingYOffset * 0.3, 0, 0);
-                            } else {
+                                ctx.bezierCurveTo(
+                                    -20, -10 + wingYOffset * 0.5,
+                                    -40, -20 + wingYOffset,
+                                    -wingTipX, wingTipY
+                                );
+                                ctx.bezierCurveTo(
+                                    -40, 0 + wingYOffset * 0.5,
+                                    -20, 5 + wingYOffset * 0.3,
+                                    0, 0
+                                );
+                            } else { // Правое крыло
                                 ctx.moveTo(0, 0);
-                                ctx.bezierCurveTo(20, -10 + wingYOffset * 0.5, 40, -20 + wingYOffset, wingTipX, wingTipY);
-                                ctx.bezierCurveTo(40, 0 + wingYOffset * 0.5, 20, 5 + wingYOffset * 0.3, 0, 0);
+                                ctx.bezierCurveTo(
+                                    20, -10 + wingYOffset * 0.5,
+                                    40, -20 + wingYOffset,
+                                    wingTipX, wingTipY
+                                );
+                                ctx.bezierCurveTo(
+                                    40, 0 + wingYOffset * 0.5,
+                                    20, 5 + wingYOffset * 0.3,
+                                    0, 0
+                                );
                             }
                             ctx.closePath();
                             ctx.fill();
@@ -1607,6 +1851,7 @@
                             ctx.lineWidth = 2;
                             ctx.stroke();
                             
+                            // Feather details
                             ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
                             ctx.lineWidth = 1;
                             for (let i = 1; i <= 3; i++) {
@@ -1624,7 +1869,7 @@
                                 );
                                 ctx.stroke();
                             }
-                        } else if (limb === this.limbs[1]) {
+                        } else if (limb === this.limbs[1]) { // Тело
                             ctx.fillStyle = limb.color;
                             ctx.beginPath();
                             ctx.ellipse(0, 0, limb.width/2, limb.height/2, 0, 0, Math.PI * 2);
@@ -1632,7 +1877,7 @@
                             ctx.strokeStyle = '#333';
                             ctx.lineWidth = 1;
                             ctx.stroke();
-                        } else if (limb === this.limbs[10]) {
+                        } else if (limb === this.limbs[10]) { // Хвост
                             ctx.fillStyle = '#8B4513';
                             ctx.beginPath();
                             ctx.moveTo(0, 0);
@@ -1648,7 +1893,7 @@
                             ctx.quadraticCurveTo(0, 10, -10, 10);
                             ctx.closePath();
                             ctx.fill();
-                        } else if (limb.width && limb.height) {
+                        } else if (limb.width && limb.height) { // Ноги
                             ctx.strokeStyle = '#888';
                             ctx.lineWidth = 6;
                             ctx.beginPath();
@@ -1656,6 +1901,7 @@
                             ctx.lineTo(0, limb.height);
                             ctx.stroke();
                             
+                            // Копыта
                             ctx.fillStyle = '#3E3D5C';
                             ctx.fillRect(-3, limb.height - 3, 6, 6);
                         }
@@ -1663,6 +1909,7 @@
                         ctx.restore();
                     });
                     
+                    // Затем рисуем вымя поверх всех частей
                     const udder = this.limbs[11];
                     if (udder) {
                         ctx.save();
@@ -1768,9 +2015,11 @@
             ctx.translate(planet.x, planet.y);
             ctx.rotate(planet.rotation);
 
-            const time = Date.now() / 1000;
-            const angle = (time * 0.5) % (2 * Math.PI);
+            // Получаем текущее время для анимации
+            const time = Date.now() / 1000; // в секундах
+            const angle = (time * 0.5) % (2 * Math.PI); // меняющийся угол от времени (в радианах)
 
+            // Создаем линейный градиент под динамическим углом
             const gradient = ctx.createLinearGradient(
                 -planet.radius * Math.cos(angle),
                 -planet.radius * Math.sin(angle),
@@ -1778,6 +2027,7 @@
                 planet.radius * Math.sin(angle)
             );
 
+            // Устанавливаем цвета градиента в зависимости от типа планеты
             if (planet.color === '#40E0D0' || planet.color === '#00CED1') {
                 gradient.addColorStop(0, '#00FFFF');
                 gradient.addColorStop(0.5, planet.color);
@@ -1792,17 +2042,20 @@
                 gradient.addColorStop(1, '#B8860B');
             }
 
+            // Рисуем основное тело планеты с градиентом
             ctx.fillStyle = gradient;
             ctx.beginPath();
             ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
             ctx.fill();
 
+            // Добавляем тень для объема
             ctx.beginPath();
             ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
             ctx.lineWidth = 2;
             ctx.stroke();
 
+            // Легкая полупрозрачная атмосфера вокруг
             ctx.beginPath();
             ctx.arc(0, 0, planet.radius * 1.05, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
@@ -1824,7 +2077,8 @@
             }, 2000);
         }
 
-        function startGame() {
+      function startGame() {
+            // Убираем эффект завершения игры
             const effect = document.getElementById('gameOverEffect');
             effect.classList.remove('active');
             
@@ -1837,9 +2091,11 @@
             document.getElementById('levelUp').style.display = 'none';
             document.getElementById('pausedOverlay').style.display = 'none';
             
+            // Показать HUD
             document.getElementById('topHUD').style.display = 'flex';
             document.getElementById('bottomHUD').style.display = 'flex';
             
+            // Инициализация звуков
             initSounds();
             
             cows = [];
@@ -1857,13 +2113,18 @@
             level = 1;
             lastShotTime = 0;
             reloadStartTime = 0;
+            reloadSoundPlayed = false;
             
+            // Сбрасываем скорости коров к оригинальным значениям
             cowTypes.forEach((cowType, index) => {
                 cowType.speed = originalCowSpeeds[index];
             });
             
-            // Start background music
-            SoundManager.playSound('background', 0.5);
+            // Start background music - гарантированное воспроизведение
+            soundManager.stop('background');
+            setTimeout(() => {
+                soundManager.play('background');
+            }, 100);
             
             const heartElements = document.querySelectorAll('.heart');
             heartElements.forEach(heart => {
@@ -1893,10 +2154,12 @@
             lastTime = performance.now();
             gameLoop();
             
+            // Проверяем ориентацию при старте игры
             checkOrientation();
         }
 
-        function returnToMainMenu() {
+       function returnToMainMenu() {
+            // Убираем эффект завершения игры
             const effect = document.getElementById('gameOverEffect');
             effect.classList.remove('active');
             
@@ -1909,12 +2172,14 @@
             clearTimeout(levelUpDisplayTimeout);
             clearTimeout(spawnCowTimeout);
             
-            SoundManager.stopBackgroundMusic();
+            // Останавливаем все звуки
+            soundManager.stopAll();
             
             document.getElementById('mainMenu').style.display = 'block';
             document.getElementById('gameOverMenu').style.display = 'none';
             document.getElementById('pausedOverlay').style.display = 'none';
             
+            // Скрыть HUD и сообщение о перезарядке
             document.getElementById('topHUD').style.display = 'none';
             document.getElementById('bottomHUD').style.display = 'none';
             document.getElementById('reloading').style.display = 'none';
@@ -1939,6 +2204,7 @@
             updateLevelDisplay();
             showLevelUp();
             
+            // Увеличиваем скорости коров с учетом уровня
             cowTypes.forEach((cowType, index) => {
                 cowType.speed = originalCowSpeeds[index] * (1 + (level - 1) * 0.2);
             });
@@ -1962,26 +2228,35 @@
             clearTimeout(levelUpDisplayTimeout);
             clearTimeout(spawnCowTimeout);
             
-            SoundManager.stopBackgroundMusic();
+            // Останавливаем все звуки кроме фоновой музыки
+            soundManager.stop('death');
+            soundManager.stop('lifeBonus');
+            soundManager.stop('reload');
+            soundManager.stop('click');
             
+            // Активируем эффект завершения игры
             const effect = document.getElementById('gameOverEffect');
             effect.classList.add('active');
             
+            // Показываем экран окончания
             document.getElementById('gameOverMenu').style.display = 'block';
             document.getElementById('finalScore').textContent = score;
             document.getElementById('finalHits').textContent = hits;
             document.getElementById('finalMisses').textContent = misses;
             document.getElementById('finalLevel').textContent = level;
 
+            // Скрываем HUD
             document.getElementById('topHUD').style.display = 'none';
             document.getElementById('bottomHUD').style.display = 'none';
             document.getElementById('reloading').style.display = 'none';
             document.getElementById('pausedOverlay').style.display = 'none';
 
+            // Вызываем новую функцию после завершения игры
             handlePostGame();
         }
 
         function handlePostGame() {
+            // Задержка нужна, чтобы браузер успел отобразить интерфейс
             setTimeout(() => {
                 const playerName = prompt('Введите ваше имя для таблицы лидеров:', 'Игрок') || 'Игрок';
 
@@ -2000,6 +2275,7 @@
                     displayLeaderboard();
                 }
 
+                // Сбрасываем все состояния игры перед следующим запуском
                 resetGameState();
             }, 100);
         }
@@ -2048,32 +2324,32 @@
             document.getElementById('currentLevel').textContent = level;
         }
 
-        function spawnCow() {
-            if (!gameActive || timeLeft <= 0 || isGameOver || isPaused) return;
-            
-            const aliveCows = cows.filter(cow => cow.alive);
-            
-            if (aliveCows.length < config.maxCows) {
-                const cow = new Cow();
-                cows.push(cow);
-            }
-            
-            spawnCowTimeout = setTimeout(spawnCow, config.spawnInterval / (1 + level * 0.1));
-        }
+function spawnCow() {
+    if (!gameActive || timeLeft <= 0 || isGameOver || isPaused) return;
+    
+    const aliveCows = cows.filter(cow => cow.alive);
+    
+    if (aliveCows.length < config.maxCows) {
+        const cow = new Cow();
+        cows.push(cow);
+    }
+    
+    spawnCowTimeout = setTimeout(spawnCow, config.spawnInterval / (1 + level * 0.1));
+}
 
-        function restartCowSpawning() {
-            if (spawnCowTimeout) {
-                clearTimeout(spawnCowTimeout);
-            }
-            spawnCow();
-        }
+function restartCowSpawning() {
+    if (spawnCowTimeout) {
+        clearTimeout(spawnCowTimeout);
+    }
+    spawnCow();
+}
 
         function checkHit(x, y) {
             if (isGameOver || isPaused) return;
             
             let hitDetected = false;
 
-            // Check life bonuses first
+            // Сначала проверяем попадание в бонус жизни
             for (let i = 0; i < lifeBonuses.length; i++) {
                 const bonus = lifeBonuses[i];
                 if (bonus.collected) continue;
@@ -2085,7 +2361,8 @@
                     lives = Math.min(3, lives + 1);
                     updateHUD();
                     
-                    SoundManager.playSound('lifeBonus', 0.8);
+                    // Воспроизвести звук бонуса жизни - немедленное воспроизведение
+                    soundManager.play('lifeBonus');
                     
                     explosions.push(new Explosion(bonus.x, bonus.y, '255, 51, 102'));
                     hitDetected = true;
@@ -2093,7 +2370,7 @@
                 }
             }
 
-            // Check cows
+            // Теперь проверяем попадание в корову
             for (let i = 0; i < cows.length; i++) {
                 const cow = cows[i];
                 if (!cow.alive) continue;
@@ -2124,6 +2401,7 @@
                 }
             }
 
+            // Если ни в одну цель не попали
             if (!hitDetected) {
                 misses++;
                 lives = Math.max(0, lives - 1);
@@ -2143,14 +2421,20 @@
             if (isReloading) return;
             
             isReloading = true;
+            reloadSoundPlayed = false;
             reloadStartTime = Date.now();
             document.getElementById('reloading').style.display = 'block';
             
-            SoundManager.playSound('reload', 0.8);
+            // Воспроизводим звук перезарядки - немедленное воспроизведение
+            if (!reloadSoundPlayed) {
+                soundManager.play('reload');
+                reloadSoundPlayed = true;
+            }
             
             reloadTimeout = setTimeout(() => {
                 ammo = 5;
                 isReloading = false;
+                reloadSoundPlayed = false;
                 document.getElementById('reloading').style.display = 'none';
                 updateHUD();
             }, config.reloadTime);
@@ -2182,6 +2466,7 @@
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
+            // Рисуем планеты
             planets.forEach(planet => {
                 if (!isPaused) {
                     planet.rotation += planet.rotationSpeed;
@@ -2189,6 +2474,7 @@
                 drawPlanet(planet);
             });
             
+            // Рисуем звезды
             const time = Date.now() / 1000;
             eyeAnimationPhase = time * 2;
             stars.forEach(star => {
@@ -2197,7 +2483,13 @@
                     star.rotation += 0.005;
                 }
                 
-                draw4PointStar(star.x, star.y, star.size * pulse, star.color, star.rotation);
+                draw4PointStar(
+                    star.x, 
+                    star.y, 
+                    star.size * pulse, 
+                    star.color, 
+                    star.rotation
+                );
                 
                 if (!isPaused) {
                     star.x += star.speed;
@@ -2279,25 +2571,26 @@
             initStars();
         }
 
-        function checkOrientation() {
-            const isLandscape = window.innerWidth > window.innerHeight;
-            
-            if (isLandscape && gameActive && !isGameOver) {
-                isPaused = true;
-                document.getElementById('pausedOverlay').style.display = 'flex';
-            } else if (!isLandscape && gameActive && !isGameOver && isPaused) {
-                isPaused = false;
-                document.getElementById('pausedOverlay').style.display = 'none';
-                restartCowSpawning();
-            }
-        }
+function checkOrientation() {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    
+    if (isLandscape && gameActive && !isGameOver) {
+        isPaused = true;
+        document.getElementById('pausedOverlay').style.display = 'flex';
+    } else if (!isLandscape && gameActive && !isGameOver && isPaused) {
+        isPaused = false;
+        document.getElementById('pausedOverlay').style.display = 'none';
+        // Перезапускаем спавн коров при возобновлении игры
+        restartCowSpawning();
+    }
+}
 
-        function restartCowSpawning() {
-            if (spawnCowTimeout) {
-                clearTimeout(spawnCowTimeout);
-            }
-            spawnCow();
-        }
+function restartCowSpawning() {
+    if (spawnCowTimeout) {
+        clearTimeout(spawnCowTimeout);
+    }
+    spawnCow();
+}
 
         canvas.addEventListener('pointerdown', (e) => {
             if (!gameActive || isReloading || isGameOver || isPaused) return;
@@ -2331,7 +2624,7 @@
             setTimeout(checkOrientation, 100);
         });
         
-        // Aurora animation
+        // Анимация северного сияния
         function initAurora() {
             const aurora = document.getElementById('auroraBackground');
             const canvas = document.createElement('canvas');
@@ -2344,6 +2637,7 @@
             let time = 0;
             const layers = [];
             
+            // Создаем 4 слоя северного сияния с разными параметрами
             for (let i = 0; i < 4; i++) {
                 layers.push({
                     speed: 0.002 + Math.random() * 0.002,
@@ -2371,15 +2665,19 @@
                     const points = [];
                     const segments = 50;
                     
+                    // Создаем плавные точки волны
                     for (let i = 0; i <= segments; i++) {
                         const x = i * (canvas.width / segments);
                         const noise = Math.sin(time * layer.speed * 1000 + x * 0.01 + layer.offset) * 
                                       Math.sin(x * 0.005 + time * 0.1) * layer.curve;
                         
-                        const y = canvas.height * 0.6 + noise * layer.height;
+                        const y = canvas.height * 0.6 + 
+                                  noise * layer.height;
+                        
                         points.push({x, y});
                     }
                     
+                    // Рисуем плавную волну
                     ctx.beginPath();
                     ctx.moveTo(0, canvas.height);
                     ctx.lineTo(points[0].x, points[0].y);
@@ -2413,6 +2711,7 @@
             animateAurora();
         }
 
+        // Инициализируем анимацию при загрузке
         window.addEventListener('load', initAurora);
 
         function showHelp() {
@@ -2428,18 +2727,22 @@
         }
         
         function switchToOtherGame() {
+            // Остановка текущей игры
             if (gameActive) {
                 gameActive = false;
-                SoundManager.stopBackgroundMusic();
+                soundManager.stopAll();
                 clearInterval(gameTimer);
             }
             
+            // Переход на другую игру
             setTimeout(() => { window.location.href = "index2.html"; }, 500);
         }
 
+        // Инициализация звуков при первом взаимодействии
         document.addEventListener('click', initSounds);
         document.addEventListener('touchstart', initSounds);
 
+        // Инициализация таблицы лидеров при загрузке
         displayLeaderboard();
     </script>
 </body>
