@@ -577,6 +577,7 @@
         let deadCows = [];
         let shots = [];
         let explosions = [];
+        let missTexts = []; // Добавляем массив для текстов промахов
         let stars = [];
         let lifeBonuses = [];
         let planets = [];
@@ -621,7 +622,8 @@
             planetCount: 3,
             planetMinRadius: 150,
             planetMaxRadius: 300,
-            shotCooldown: 100
+            shotCooldown: 100,
+            missTextDuration: 1000 // длительность показа текста "мимо!" в мс
         };
 
         // Cow types and colors
@@ -1359,29 +1361,29 @@
                         ctx.fill();
                     }
                     
-// Horns (цвет как у окантовки)
-ctx.strokeStyle = '#333'; // Тот же цвет что и у окантовки тела
-ctx.lineWidth = 2;
+                    // Horns (цвет как у окантовки)
+                    ctx.strokeStyle = '#333'; // Тот же цвет что и у окантовки тела
+                    ctx.lineWidth = 2;
 
-// Left horn (изогнутый)
-ctx.save();
-ctx.translate(headX - 4, -this.headRadius + 2);
-ctx.rotate(-0.3);
-ctx.beginPath();
-ctx.moveTo(0, 0);
-ctx.quadraticCurveTo(-2, -4, 0, -7);
-ctx.stroke();
-ctx.restore();
+                    // Left horn (изогнутый)
+                    ctx.save();
+                    ctx.translate(headX - 4, -this.headRadius + 2);
+                    ctx.rotate(-0.3);
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(-2, -4, 0, -7);
+                    ctx.stroke();
+                    ctx.restore();
 
-// Right horn (изогнутый)
-ctx.save();
-ctx.translate(headX + 4, -this.headRadius + 2);
-ctx.rotate(0.3);
-ctx.beginPath();
-ctx.moveTo(0, 0);
-ctx.quadraticCurveTo(2, -4, 0, -7);
-ctx.stroke();
-ctx.restore();
+                    // Right horn (изогнутый)
+                    ctx.save();
+                    ctx.translate(headX + 4, -this.headRadius + 2);
+                    ctx.rotate(0.3);
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(2, -4, 0, -7);
+                    ctx.stroke();
+                    ctx.restore();
                     
                     // Helmet
                     ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
@@ -1540,8 +1542,7 @@ ctx.restore();
                                     ctx.translate(horn.x, horn.y);
                                     ctx.rotate(horn.rotation);
                                     
-                                    ctx.strokeStyle = '#000';
-                                    ctx.fillStyle = '#000';
+                                    ctx.strokeStyle = '#333';
                                     ctx.lineWidth = 1.5;
                                     
                                     ctx.beginPath();
@@ -1763,6 +1764,45 @@ ctx.restore();
             }
         }
 
+        class MissText {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.text = "МИМО!";
+                this.alpha = 1;
+                this.life = config.missTextDuration;
+                this.createdTime = Date.now();
+            }
+
+            update() {
+                if (isPaused) return true;
+                
+                const elapsed = Date.now() - this.createdTime;
+                this.life = config.missTextDuration - elapsed;
+                this.alpha = this.life / config.missTextDuration;
+                
+                // Поднимаем текст вверх
+                this.y -= 1;
+                
+                return this.life > 0;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = '#ff6b6b';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.restore();
+            }
+        }
+
         function drawPlanet(planet) {
             ctx.save();
             ctx.translate(planet.x, planet.y);
@@ -1846,6 +1886,7 @@ ctx.restore();
             deadCows = [];
             shots = [];
             explosions = [];
+            missTexts = []; // Сбрасываем тексты промахов
             lifeBonuses = [];
             score = 0;
             lives = 3;
@@ -2012,6 +2053,7 @@ ctx.restore();
             deadCows = [];
             shots = [];
             explosions = [];
+            missTexts = [];
             lifeBonuses = [];
             planets = [];
 
@@ -2132,6 +2174,9 @@ ctx.restore();
                 misses++;
                 lives = Math.max(0, lives - 1);
                 updateHUD();
+                
+                // Добавляем текст "МИМО!" на месте промаха
+                missTexts.push(new MissText(x, y));
                 
                 if (lives <= 0) {
                     endGame();
@@ -2281,6 +2326,15 @@ ctx.restore();
                     explosions.splice(index, 1);
                 } else {
                     explosion.draw();
+                }
+            });
+            
+            // Добавляем обновление и отрисовку текстов промахов
+            missTexts.forEach((missText, index) => {
+                if (!missText.update()) {
+                    missTexts.splice(index, 1);
+                } else {
+                    missText.draw();
                 }
             });
             
