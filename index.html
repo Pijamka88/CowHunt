@@ -797,15 +797,6 @@
 
         // Initialize stars and planets
         function initStars() {
-            // Если звезды уже инициализированы, просто обновим их позиции для нового размера канваса
-            if (stars.length > 0) {
-                stars.forEach(star => {
-                    star.x = (star.x / canvas.width) * window.innerWidth;
-                    star.y = (star.y / canvas.height) * window.innerHeight;
-                });
-                return;
-            }
-
             stars = [];
             const colors = ['#FFD700', '#00CED1', '#FFEC8B', '#40E0D0'];
             for (let i = 0; i < config.starCount; i++) {
@@ -1393,10 +1384,10 @@
                     ctx.stroke();
                     ctx.restore();
                     
-                    // Helmet - увеличенный размер
+                    // Helmet
                     ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
                     ctx.beginPath();
-                    ctx.arc(headX, 0, this.headRadius * 1.8, 0, Math.PI * 2); // Увеличили с 1.5 до 1.8
+                    ctx.arc(headX, 0, this.headRadius * 1.5, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.lineWidth = 2;
@@ -1814,7 +1805,11 @@
         function drawPlanet(planet) {
             ctx.save();
             ctx.translate(planet.x, planet.y);
-            ctx.rotate(planet.rotation);
+            
+            // Не обновляем вращение при паузе
+            if (!isPaused) {
+                planet.rotation += planet.rotationSpeed;
+            }
 
             const time = Date.now() / 1000;
             const angle = (time * 0.5) % (2 * Math.PI);
@@ -2245,16 +2240,23 @@
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Сначала рисуем звезды заднего слоя (layer 0)
             const time = Date.now() / 1000;
             eyeAnimationPhase = time * 2;
             
+            // Сначала рисуем звезды заднего слоя (layer 0)
             stars.forEach(star => {
                 if (star.layer !== 0) return;
                 
                 const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
+                
+                // Не обновляем вращение и позицию при паузе
                 if (!isPaused) {
                     star.rotation += 0.005;
+                    star.x += star.speed;
+                    if (star.x > canvas.width) {
+                        star.x = 0;
+                        star.y = Math.random() * canvas.height;
+                    }
                 }
                 
                 draw4PointStar(
@@ -2264,23 +2266,11 @@
                     star.color, 
                     star.rotation
                 );
-                
-                if (!isPaused) {
-                    star.x += star.speed;
-                    if (star.x > canvas.width) {
-                        star.x = 0;
-                        star.y = Math.random() * canvas.height;
-                    }
-                }
             });
             
             // Затем рисуем планеты слоя 1
             planets.forEach(planet => {
                 if (planet.layer !== 1) return;
-                
-                if (!isPaused) {
-                    planet.rotation += planet.rotationSpeed;
-                }
                 drawPlanet(planet);
             });
             
@@ -2289,8 +2279,15 @@
                 if (star.layer !== 1) return;
                 
                 const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
+                
+                // Не обновляем вращение и позицию при паузе
                 if (!isPaused) {
                     star.rotation += 0.005;
+                    star.x += star.speed;
+                    if (star.x > canvas.width) {
+                        star.x = 0;
+                        star.y = Math.random() * canvas.height;
+                    }
                 }
                 
                 draw4PointStar(
@@ -2300,23 +2297,11 @@
                     star.color, 
                     star.rotation
                 );
-                
-                if (!isPaused) {
-                    star.x += star.speed;
-                    if (star.x > canvas.width) {
-                        star.x = 0;
-                        star.y = Math.random() * canvas.height;
-                    }
-                }
             });
             
             // Затем планеты слоя 2
             planets.forEach(planet => {
                 if (planet.layer !== 2) return;
-                
-                if (!isPaused) {
-                    planet.rotation += planet.rotationSpeed;
-                }
                 drawPlanet(planet);
             });
             
@@ -2325,8 +2310,15 @@
                 if (star.layer !== 2) return;
                 
                 const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
+                
+                // Не обновляем вращение и позицию при паузе
                 if (!isPaused) {
                     star.rotation += 0.005;
+                    star.x += star.speed;
+                    if (star.x > canvas.width) {
+                        star.x = 0;
+                        star.y = Math.random() * canvas.height;
+                    }
                 }
                 
                 draw4PointStar(
@@ -2336,14 +2328,6 @@
                     star.color, 
                     star.rotation
                 );
-                
-                if (!isPaused) {
-                    star.x += star.speed;
-                    if (star.x > canvas.width) {
-                        star.x = 0;
-                        star.y = Math.random() * canvas.height;
-                    }
-                }
             });
         }
 
@@ -2388,7 +2372,7 @@
                 cow.draw();
             });
             
-            // Затем живых коров
+            // Затем рисуем живых коров
             cows.forEach(cow => {
                 cow.update();
                 cow.draw();
@@ -2423,60 +2407,9 @@
         }
 
         function resizeCanvas() {
-            const oldWidth = canvas.width;
-            const oldHeight = canvas.height;
-            
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            
-            // Масштабируем существующие объекты вместо пересоздания
-            if (oldWidth > 0 && oldHeight > 0) {
-                const scaleX = canvas.width / oldWidth;
-                const scaleY = canvas.height / oldHeight;
-                
-                // Масштабируем коров
-                cows.forEach(cow => {
-                    cow.x *= scaleX;
-                    cow.y *= scaleY;
-                    cow.originalY *= scaleY;
-                });
-                
-                // Масштабируем мертвых коров
-                deadCows.forEach(cow => {
-                    cow.x *= scaleX;
-                    cow.y *= scaleY;
-                    cow.limbs.forEach(limb => {
-                        limb.x *= scaleX;
-                        limb.y *= scaleY;
-                    });
-                });
-                
-                // Масштабируем выстрелы
-                shots.forEach(shot => {
-                    shot.x *= scaleX;
-                    shot.y *= scaleY;
-                });
-                
-                // Масштабируем взрывы
-                explosions.forEach(explosion => {
-                    explosion.x *= scaleX;
-                    explosion.y *= scaleY;
-                });
-                
-                // Масштабируем тексты промахов
-                missTexts.forEach(missText => {
-                    missText.x *= scaleX;
-                    missText.y *= scaleY;
-                });
-                
-                // Масштабируем бонусы жизни
-                lifeBonuses.forEach(bonus => {
-                    bonus.x *= scaleX;
-                    bonus.y *= scaleY;
-                });
-            }
-            
-            initStars(); // Обновляем позиции звезд без пересоздания
+            initStars();
         }
 
         function checkOrientation() {
