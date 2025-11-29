@@ -577,7 +577,7 @@
         let deadCows = [];
         let shots = [];
         let explosions = [];
-        let missTexts = [];
+        let missTexts = []; // Добавляем массив для текстов промахов
         let stars = [];
         let lifeBonuses = [];
         let planets = [];
@@ -623,7 +623,7 @@
             planetMinRadius: 150,
             planetMaxRadius: 300,
             shotCooldown: 100,
-            missTextDuration: 1000
+            missTextDuration: 1000 // длительность показа текста "мимо!" в мс
         };
 
         // Cow types and colors
@@ -659,6 +659,7 @@
             if (soundsInitialized) return;
             
             try {
+                // Предварительно загружаем все звуки
                 const sounds = [deathSound, backgroundMusic, clickSound, lifeBonusSound, reloadSound];
                 
                 sounds.forEach(sound => {
@@ -672,10 +673,12 @@
             }
         }
 
+        // Улучшенная функция воспроизведения звуков
         function playSound(soundElement, soundType) {
             if (!soundsInitialized) initSounds();
             
             try {
+                // Для фоновой музыки используем оригинальный элемент
                 if (soundType === 'background') {
                     if (!gameActive || isGameOver) return;
                     
@@ -686,18 +689,25 @@
                     return;
                 }
                 
+                // Для остальных звуков создаем клоны
                 const soundClone = soundElement.cloneNode();
+                
+                // Устанавливаем громкость
                 soundClone.volume = 0.7;
+                
+                // Воспроизводим немедленно
                 soundClone.play().catch(e => {
                     console.log(`${soundType} sound play error:`, e);
                 });
                 
+                // Удаляем после воспроизведения
                 soundClone.onended = function() {
                     if (document.body.contains(soundClone)) {
                         document.body.removeChild(soundClone);
                     }
                 };
                 
+                // Удаляем через 5 секунд на всякий случай
                 setTimeout(() => {
                     if (document.body.contains(soundClone)) {
                         document.body.removeChild(soundClone);
@@ -709,6 +719,7 @@
             }
         }
 
+        // Функция для кнопок - простая и надежная
         function playClickSound() {
             if (!soundsInitialized) initSounds();
             
@@ -722,6 +733,7 @@
             }
         }
 
+        // Остановка фоновой музыки
         function stopBackgroundMusic() {
             try {
                 backgroundMusic.pause();
@@ -748,8 +760,10 @@
                     date: new Date().toLocaleDateString()
                 });
                 
+                // Sort by score descending
                 leaderboard.sort((a, b) => b.score - a.score);
                 
+                // Keep only top 10
                 if (leaderboard.length > 10) {
                     leaderboard.length = 10;
                 }
@@ -795,13 +809,15 @@
                     color: colors[Math.floor(Math.random() * colors.length)],
                     phase: Math.random() * Math.PI * 2,
                     rotation: Math.random() * Math.PI * 2,
-                    layer: Math.floor(Math.random() * 3) // 0, 1, 2
+                    layer: Math.floor(Math.random() * 3) // 0, 1, 2 - определяет слой звезды
                 });
             }
 
+            // Initialize planets with no overlap
             planets = [];
             const planetColors = ['#40E0D0', '#00CED1', '#FFD700', '#FFA500'];
             
+            // Adjust planet sizes for mobile
             const isMobile = window.innerWidth < 768;
             const minRadius = isMobile ? 75 : config.planetMinRadius;
             const maxRadius = isMobile ? 200 : config.planetMaxRadius;
@@ -819,9 +835,10 @@
                         color: planetColors[Math.floor(Math.random() * planetColors.length)],
                         rotation: Math.random() * Math.PI * 2,
                         rotationSpeed: Math.random() * 0.002 - 0.001,
-                        layer: Math.floor(Math.random() * 2) + 1
+                        layer: Math.floor(Math.random() * 2) + 1 // 1 или 2 - определяет слой планеты
                     };
                     
+                    // Check for overlap with existing planets
                     for (const planet of planets) {
                         const dx = newPlanet.x - planet.x;
                         const dy = newPlanet.y - planet.y;
@@ -1016,10 +1033,12 @@
                 this.deathAnimationProgress = 0;
                 this.alpha = 1;
                 
+                // Воспроизводим звук смерти немедленно
                 playSound(deathSound, 'death');
                 
+                // Создаем части тела для анимации смерти
                 this.limbs = [
-                    {
+                    { // Голова с рожками и ушами
                         x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2),
                         y: this.y,
                         vx: (Math.random() - 0.5) * 5,
@@ -1041,60 +1060,60 @@
                             { x: this.headRadius * 0.6, y: -this.headRadius * 0.6, rotation: Math.PI/4 }
                         ]
                     },
-                    {
+                    { // Тело
                         x: this.x, y: this.y,
                         vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3,
                         rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.05,
                         width: this.width, height: this.height, color: this.color
                     },
-                    {
+                    { // Левое крыло
                         x: this.x - 5, y: this.y - 5,
                         vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
                         rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.08,
                         color: cowTypes[this.type].wingColor, wingPhase: this.wingPhase
                     },
-                    {
+                    { // Правое крыло
                         x: this.x + 5, y: this.y - 5,
                         vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
                         rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.08,
                         color: cowTypes[this.type].wingColor, wingPhase: this.wingPhase
                     },
-                    {
+                    { // Нос
                         x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2), y: this.y + 8,
                         vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2,
                         rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.03, color: '#f5d0b0'
                     },
-                    {
+                    { // Язык
                         x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2), y: this.y + 16,
                         vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2,
                         rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.03, color: '#ff0000'
                     },
-                    {
+                    { // Передняя нога 1
                         x: this.x + (this.direction === 1 ? this.width/4 : -this.width/4), y: this.y + this.height/2.5,
                         vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
                         rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.1, width: 10, height: 20
                     },
-                    {
+                    { // Передняя нога 2
                         x: this.x + (this.direction === 1 ? this.width/4 + 15 : -this.width/4 - 15), y: this.y + this.height/2.5,
                         vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
                         rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.1, width: 10, height: 20
                     },
-                    {
+                    { // Задняя нога 1
                         x: this.x - (this.direction === 1 ? this.width/4 : -this.width/4), y: this.y + this.height/2.5,
                         vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
                         rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.1, width: 10, height: 20
                     },
-                    {
+                    { // Задняя нога 2
                         x: this.x - (this.direction === 1 ? this.width/4 + 15 : -this.width/4 - 15), y: this.y + this.height/2.5,
                         vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
                         rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.1, width: 10, height: 20
                     },
-                    {
+                    { // Хвост
                         x: this.x - (this.direction === 1 ? this.width/2 : -this.width/2), y: this.y,
                         vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
                         rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.1, width: 15, height: 15
                     },
-                    {
+                    { // Вымя
                         x: this.x - (this.direction === 1 ? this.width/8 : -this.width/8), y: this.y + this.height/2.5,
                         vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3,
                         rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.05, width: 24, height: 16
@@ -1341,11 +1360,11 @@
                         ctx.fill();
                     }
                     
-                    // Horns
-                    ctx.strokeStyle = '#333';
+                    // Horns (цвет как у окантовки)
+                    ctx.strokeStyle = '#333'; // Тот же цвет что и у окантовки тела
                     ctx.lineWidth = 2;
 
-                    // Left horn
+                    // Left horn (изогнутый)
                     ctx.save();
                     ctx.translate(headX - 4, -this.headRadius + 2);
                     ctx.rotate(-0.3);
@@ -1355,7 +1374,7 @@
                     ctx.stroke();
                     ctx.restore();
 
-                    // Right horn
+                    // Right horn (изогнутый)
                     ctx.save();
                     ctx.translate(headX + 4, -this.headRadius + 2);
                     ctx.rotate(0.3);
@@ -1368,7 +1387,7 @@
                     // Helmet - увеличен на 1px
                     ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
                     ctx.beginPath();
-                    ctx.arc(headX, 0, this.headRadius * 1.5 + 1, 0, Math.PI * 2);
+                    ctx.arc(headX, 0, this.headRadius * 1.5 + 1, 0, Math.PI * 2); // +1px к радиусу
                     ctx.fill();
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.lineWidth = 2;
@@ -1761,6 +1780,7 @@
                 this.life = config.missTextDuration - elapsed;
                 this.alpha = this.life / config.missTextDuration;
                 
+                // Поднимаем текст вверх
                 this.y -= 1;
                 
                 return this.life > 0;
@@ -1786,6 +1806,7 @@
             ctx.save();
             ctx.translate(planet.x, planet.y);
             
+            // Не обновляем вращение при паузе
             if (!isPaused) {
                 planet.rotation += planet.rotationSpeed;
             }
@@ -1878,7 +1899,7 @@
             deadCows = [];
             shots = [];
             explosions = [];
-            missTexts = [];
+            missTexts = []; // Сбрасываем тексты промахов
             lifeBonuses = [];
             score = 0;
             lives = 3;
@@ -1896,6 +1917,7 @@
                 cowType.speed = originalCowSpeeds[index];
             });
             
+            // Запускаем фоновую музыку
             playSound(backgroundMusic, 'background');
             
             const heartElements = document.querySelectorAll('.heart');
@@ -1942,6 +1964,7 @@
             clearTimeout(levelUpDisplayTimeout);
             clearTimeout(spawnCowTimeout);
             
+            // Останавливаем фоновую музыку
             stopBackgroundMusic();
             
             document.getElementById('mainMenu').style.display = 'block';
@@ -1995,6 +2018,7 @@
             clearTimeout(levelUpDisplayTimeout);
             clearTimeout(spawnCowTimeout);
             
+            // Останавливаем фоновую музыку при завершении игры
             stopBackgroundMusic();
             
             const effect = document.getElementById('gameOverEffect');
@@ -2107,6 +2131,7 @@
             
             let hitDetected = false;
 
+            // Проверяем попадание в бонус жизни
             for (let i = 0; i < lifeBonuses.length; i++) {
                 const bonus = lifeBonuses[i];
                 if (bonus.collected) continue;
@@ -2118,6 +2143,7 @@
                     lives = Math.min(3, lives + 1);
                     updateHUD();
                     
+                    // Немедленно воспроизводим звук бонуса
                     playSound(lifeBonusSound, 'lifeBonus');
                     
                     explosions.push(new Explosion(bonus.x, bonus.y, '255, 51, 102'));
@@ -2126,6 +2152,7 @@
                 }
             }
 
+            // Проверяем попадание в корову
             for (let i = 0; i < cows.length; i++) {
                 const cow = cows[i];
                 if (!cow.alive) continue;
@@ -2161,6 +2188,7 @@
                 lives = Math.max(0, lives - 1);
                 updateHUD();
                 
+                // Добавляем текст "МИМО!" на месте промаха
                 missTexts.push(new MissText(x, y));
                 
                 if (lives <= 0) {
@@ -2181,6 +2209,7 @@
             reloadStartTime = Date.now();
             document.getElementById('reloading').style.display = 'block';
             
+            // Немедленно воспроизводим звук перезарядки
             if (!reloadSoundPlayed) {
                 playSound(reloadSound, 'reload');
                 reloadSoundPlayed = true;
@@ -2230,6 +2259,7 @@
                 
                 const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
                 
+                // Не обновляем вращение и позицию при паузе
                 if (!isPaused) {
                     star.rotation += 0.005;
                     star.x += star.speed;
@@ -2254,48 +2284,19 @@
                 drawPlanetAtmosphere(planet);
             });
             
-            // Затем звезды среднего слоя (layer 1) - проходят за атмосферами
-            stars.forEach(star => {
-                if (star.layer !== 1) return;
-                
-                const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
-                
-                if (!isPaused) {
-                    star.rotation += 0.005;
-                    star.x += star.speed;
-                    if (star.x > canvas.width) {
-                        star.x = 0;
-                        star.y = Math.random() * canvas.height;
-                    }
-                }
-                
-                draw4PointStar(
-                    star.x, 
-                    star.y, 
-                    star.size * pulse, 
-                    star.color, 
-                    star.rotation
-                );
-            });
-            
-            // Затем сами планеты слоя 1 (перед звездами layer 1)
+            // Затем рисуем планеты слоя 1 (перед звездами)
             planets.forEach(planet => {
                 if (planet.layer !== 1) return;
                 drawPlanet(planet);
             });
             
-            // Затем атмосферы планет слоя 2
-            planets.forEach(planet => {
-                if (planet.layer !== 2) return;
-                drawPlanetAtmosphere(planet);
-            });
-            
-            // Затем звезды переднего слоя (layer 2) - проходят за атмосферами
+            // Затем звезды среднего слоя (layer 1)
             stars.forEach(star => {
-                if (star.layer !== 2) return;
+                if (star.layer !== 1) return;
                 
                 const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
                 
+                // Не обновляем вращение и позицию при паузе
                 if (!isPaused) {
                     star.rotation += 0.005;
                     star.x += star.speed;
@@ -2314,10 +2315,41 @@
                 );
             });
             
-            // Затем сами планеты слоя 2 (перед звездами layer 2)
+            // Затем рисуем атмосферы планет слоя 2 (звезды проходят за ними)
+            planets.forEach(planet => {
+                if (planet.layer !== 2) return;
+                drawPlanetAtmosphere(planet);
+            });
+            
+            // Затем планеты слоя 2 (перед звездами)
             planets.forEach(planet => {
                 if (planet.layer !== 2) return;
                 drawPlanet(planet);
+            });
+            
+            // И наконец звезды переднего слоя (layer 2)
+            stars.forEach(star => {
+                if (star.layer !== 2) return;
+                
+                const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
+                
+                // Не обновляем вращение и позицию при паузе
+                if (!isPaused) {
+                    star.rotation += 0.005;
+                    star.x += star.speed;
+                    if (star.x > canvas.width) {
+                        star.x = 0;
+                        star.y = Math.random() * canvas.height;
+                    }
+                }
+                
+                draw4PointStar(
+                    star.x, 
+                    star.y, 
+                    star.size * pulse, 
+                    star.color, 
+                    star.rotation
+                );
             });
         }
 
@@ -2356,11 +2388,13 @@
             
             drawBackground();
             
+            // Сначала рисуем мертвых коров (они должны быть позади живых)
             deadCows.forEach(cow => {
                 cow.update();
                 cow.draw();
             });
             
+            // Затем рисуем живых коров
             cows.forEach(cow => {
                 cow.update();
                 cow.draw();
@@ -2380,6 +2414,7 @@
                 }
             });
             
+            // Добавляем обновление и отрисовку текстов промахов
             missTexts.forEach((missText, index) => {
                 if (!missText.update()) {
                     missTexts.splice(index, 1);
@@ -2451,6 +2486,7 @@
             setTimeout(checkOrientation, 100);
         });
         
+        // Анимация северного сияния
         function initAurora() {
             const aurora = document.getElementById('auroraBackground');
             const canvas = document.createElement('canvas');
@@ -2534,6 +2570,7 @@
             animateAurora();
         }
 
+        // Инициализируем анимацию при загрузке
         window.addEventListener('load', initAurora);
 
         function showHelp() {
@@ -2558,9 +2595,11 @@
             setTimeout(() => { window.location.href = "index2.html"; }, 500);
         }
 
+        // Инициализация звуков при первом взаимодействии
         document.addEventListener('click', initSounds);
         document.addEventListener('touchstart', initSounds);
 
+        // Инициализация таблицы лидеров при загрузке
         displayLeaderboard();
     </script>
 </body>
