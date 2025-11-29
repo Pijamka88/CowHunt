@@ -603,7 +603,7 @@
         let originalCowSpeeds = [];
         let spawnCowTimeout;
         let reloadSoundPlayed = false;
-        let universeInitialized = false; // Флаг инициализации вселенной
+        let backgroundInitialized = false; // Флаг инициализации фона
 
         // Configuration
         const config = {
@@ -799,115 +799,83 @@
             });
         }
 
-        // Initialize stars and planets - теперь вызывается только один раз
-        function initUniverse() {
-            if (universeInitialized) {
-                // Если вселенная уже инициализирована, просто обновляем позиции для нового размера
-                repositionUniverse();
-                return;
-            }
-
-            stars = [];
-            const colors = ['#FFD700', '#00CED1', '#FFEC8B', '#40E0D0'];
-            
-            // Создаем звезды с разными слоями (z-index)
-            for (let i = 0; i < config.starCount; i++) {
-                stars.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    size: Math.random() * 8 + 6,
-                    alpha: Math.random() * 0.8 + 0.2,
-                    speed: Math.random() * 0.2 + 0.1,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    phase: Math.random() * Math.PI * 2,
-                    rotation: Math.random() * Math.PI * 2,
-                    layer: Math.floor(Math.random() * 3) // 0, 1, 2 - разные слои
-                });
-            }
-
-            // Initialize planets with no overlap
-            planets = [];
-            const planetColors = ['#40E0D0', '#00CED1', '#FFD700', '#FFA500'];
-            
-            // Adjust planet sizes for current screen size
-            const isMobile = window.innerWidth < 768;
-            const minRadius = isMobile ? 75 : config.planetMinRadius;
-            const maxRadius = isMobile ? 200 : config.planetMaxRadius;
-            
-            for (let i = 0; i < config.planetCount; i++) {
-                let newPlanet, overlapping;
-                let attempts = 0;
-                
-                do {
-                    overlapping = false;
-                    newPlanet = {
+        // Initialize stars and planets - улучшенная версия
+        function initStars() {
+            // Инициализируем звезды только если они еще не созданы
+            if (stars.length === 0) {
+                const colors = ['#FFD700', '#00CED1', '#FFEC8B', '#40E0D0'];
+                for (let i = 0; i < config.starCount; i++) {
+                    stars.push({
                         x: Math.random() * canvas.width,
                         y: Math.random() * canvas.height,
-                        radius: Math.random() * (maxRadius - minRadius) + minRadius,
-                        color: planetColors[Math.floor(Math.random() * planetColors.length)],
+                        size: Math.random() * 8 + 6,
+                        alpha: Math.random() * 0.8 + 0.2,
+                        speed: Math.random() * 0.2 + 0.1,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        phase: Math.random() * Math.PI * 2,
                         rotation: Math.random() * Math.PI * 2,
-                        rotationSpeed: Math.random() * 0.002 - 0.001,
-                        layer: 1 // Планеты на среднем слое
-                    };
-                    
-                    // Check for overlap with existing planets
-                    for (const planet of planets) {
-                        const dx = newPlanet.x - planet.x;
-                        const dy = newPlanet.y - planet.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        
-                        if (distance < (newPlanet.radius + planet.radius) * 1.2) {
-                            overlapping = true;
-                            break;
-                        }
-                    }
-                    
-                    attempts++;
-                    if (attempts > 100) break;
-                } while (overlapping);
-                
-                planets.push(newPlanet);
-            }
-            
-            universeInitialized = true;
-        }
-
-        // Функция для перепозиционирования вселенной при изменении размера
-        function repositionUniverse() {
-            const scaleX = canvas.width / (stars[0]?.originalX || canvas.width);
-            const scaleY = canvas.height / (stars[0]?.originalY || canvas.height);
-            
-            // Сохраняем оригинальные позиции при первом создании
-            if (!stars[0]?.originalX) {
+                        layer: Math.random() < 0.3 ? 'back' : 'front' // 30% звезд будут сзади планет
+                    });
+                }
+            } else {
+                // Если звезды уже есть, просто обновим их позиции для нового размера канваса
                 stars.forEach(star => {
-                    star.originalX = star.x;
-                    star.originalY = star.y;
+                    star.x = Math.min(star.x, canvas.width);
+                    star.y = Math.min(star.y, canvas.height);
                 });
+            }
+
+            // Initialize planets with no overlap - только если планеты еще не созданы
+            if (planets.length === 0) {
+                const planetColors = ['#40E0D0', '#00CED1', '#FFD700', '#FFA500'];
+                
+                // Adjust planet sizes for mobile
+                const isMobile = window.innerWidth < 768;
+                const minRadius = isMobile ? 75 : config.planetMinRadius;
+                const maxRadius = isMobile ? 200 : config.planetMaxRadius;
+                
+                for (let i = 0; i < config.planetCount; i++) {
+                    let newPlanet, overlapping;
+                    let attempts = 0;
+                    
+                    do {
+                        overlapping = false;
+                        newPlanet = {
+                            x: Math.random() * canvas.width,
+                            y: Math.random() * canvas.height,
+                            radius: Math.random() * (maxRadius - minRadius) + minRadius,
+                            color: planetColors[Math.floor(Math.random() * planetColors.length)],
+                            rotation: Math.random() * Math.PI * 2,
+                            rotationSpeed: Math.random() * 0.002 - 0.001
+                        };
+                        
+                        // Check for overlap with existing planets
+                        for (const planet of planets) {
+                            const dx = newPlanet.x - planet.x;
+                            const dy = newPlanet.y - planet.y;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            
+                            if (distance < (newPlanet.radius + planet.radius) * 1.2) {
+                                overlapping = true;
+                                break;
+                            }
+                        }
+                        
+                        attempts++;
+                        if (attempts > 100) break;
+                    } while (overlapping);
+                    
+                    planets.push(newPlanet);
+                }
+            } else {
+                // Если планеты уже есть, просто обновим их позиции для нового размера канваса
                 planets.forEach(planet => {
-                    planet.originalX = planet.x;
-                    planet.originalY = planet.y;
+                    planet.x = Math.min(planet.x, canvas.width);
+                    planet.y = Math.min(planet.y, canvas.height);
                 });
             }
             
-            // Масштабируем позиции звезд
-            stars.forEach(star => {
-                star.x = star.originalX * scaleX;
-                star.y = star.originalY * scaleY;
-                
-                // Если звезда вышла за границы, перемещаем ее
-                if (star.x > canvas.width) star.x = canvas.width;
-                if (star.y > canvas.height) star.y = canvas.height;
-            });
-            
-            // Масштабируем позиции планет
-            planets.forEach(planet => {
-                planet.x = planet.originalX * scaleX;
-                planet.y = planet.originalY * scaleY;
-                
-                // Если планета вышла за границы, перемещаем ее
-                if (planet.x > canvas.width) planet.x = canvas.width;
-                if (planet.y > canvas.height) planet.y = canvas.height;
-            });
+            backgroundInitialized = true;
         }
 
         class Cow {
