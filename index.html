@@ -664,19 +664,7 @@
                 
                 sounds.forEach(sound => {
                     sound.volume = sound === backgroundMusic ? 0.5 : 0.7;
-                    // Устанавливаем preload для лучшей загрузки
-                    sound.preload = 'auto';
-                    // Создаем промисы для загрузки звуков
-                    const playPromise = sound.play();
-                    
-                    if (playPromise !== undefined) {
-                        playPromise.then(() => {
-                            sound.pause();
-                            sound.currentTime = 0;
-                        }).catch(e => {
-                            console.log("Sound preload error:", e);
-                        });
-                    }
+                    sound.load();
                 });
                 
                 soundsInitialized = true;
@@ -695,33 +683,22 @@
                     if (!gameActive || isGameOver) return;
                     
                     soundElement.currentTime = 0;
-                    const playPromise = soundElement.play();
-                    
-                    if (playPromise !== undefined) {
-                        playPromise.catch(e => {
-                            console.log("Background music play error:", e);
-                        });
-                    }
+                    soundElement.play().catch(e => {
+                        console.log("Background music play error:", e);
+                    });
                     return;
                 }
                 
-                // Для остальных звуков создаем клоны для мгновенного воспроизведения
+                // Для остальных звуков создаем клоны
                 const soundClone = soundElement.cloneNode();
                 
                 // Устанавливаем громкость
                 soundClone.volume = 0.7;
                 
-                // Добавляем в DOM
-                document.body.appendChild(soundClone);
-                
                 // Воспроизводим немедленно
-                const playPromise = soundClone.play();
-                
-                if (playPromise !== undefined) {
-                    playPromise.catch(e => {
-                        console.log(`${soundType} sound play error:`, e);
-                    });
-                }
+                soundClone.play().catch(e => {
+                    console.log(`${soundType} sound play error:`, e);
+                });
                 
                 // Удаляем после воспроизведения
                 soundClone.onended = function() {
@@ -747,15 +724,10 @@
             if (!soundsInitialized) initSounds();
             
             try {
-                // Используем оригинальный элемент для мгновенного воспроизведения
                 clickSound.currentTime = 0;
-                const playPromise = clickSound.play();
-                
-                if (playPromise !== undefined) {
-                    playPromise.catch(e => {
-                        console.log("Click sound error:", e);
-                    });
-                }
+                clickSound.play().catch(e => {
+                    console.log("Click sound error:", e);
+                });
             } catch (error) {
                 console.log("Click sound play failed:", error);
             }
@@ -837,8 +809,7 @@
                     color: colors[Math.floor(Math.random() * colors.length)],
                     phase: Math.random() * Math.PI * 2,
                     rotation: Math.random() * Math.PI * 2,
-                    // Добавляем z-index для определения глубины
-                    zIndex: Math.random() // 0-1, где 0 - задний план, 1 - передний план
+                    layer: Math.floor(Math.random() * 3) // 0, 1, 2 - определяет слой звезды
                 });
             }
 
@@ -863,7 +834,8 @@
                         radius: Math.random() * (maxRadius - minRadius) + minRadius,
                         color: planetColors[Math.floor(Math.random() * planetColors.length)],
                         rotation: Math.random() * Math.PI * 2,
-                        rotationSpeed: Math.random() * 0.002 - 0.001
+                        rotationSpeed: Math.random() * 0.002 - 0.001,
+                        layer: Math.floor(Math.random() * 2) + 1 // 1 или 2 - определяет слой планеты
                     };
                     
                     // Check for overlap with existing planets
@@ -2264,58 +2236,103 @@
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Сортируем звезды по zIndex для правильного порядка отрисовки
-            const sortedStars = [...stars].sort((a, b) => a.zIndex - b.zIndex);
+            // Сначала рисуем звезды заднего слоя (layer 0)
+            const time = Date.now() / 1000;
+            eyeAnimationPhase = time * 2;
             
-            // Отрисовываем звезды с низким zIndex (дальние) сначала
-            sortedStars.forEach(star => {
-                if (star.zIndex < 0.5) { // Задние звезды
-                    const pulse = Math.sin(Date.now() / 1000 * 2 + star.phase) * 0.2 + 0.8;
-                    if (!isPaused) {
-                        star.rotation += 0.005;
-                    }
-                    
-                    draw4PointStar(
-                        star.x, 
-                        star.y, 
-                        star.size * pulse, 
-                        star.color, 
-                        star.rotation
-                    );
-                }
-            });
-            
-            // Отрисовываем планеты
-            planets.forEach(planet => {
+            stars.forEach(star => {
+                if (star.layer !== 0) return;
+                
+                const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
                 if (!isPaused) {
-                    planet.rotation += planet.rotationSpeed;
+                    star.rotation += 0.005;
                 }
-                drawPlanet(planet);
-            });
-            
-            // Отрисовываем звезды с высоким zIndex (ближние) поверх планет
-            sortedStars.forEach(star => {
-                if (star.zIndex >= 0.5) { // Передние звезды
-                    const pulse = Math.sin(Date.now() / 1000 * 2 + star.phase) * 0.2 + 0.8;
-                    if (!isPaused) {
-                        star.rotation += 0.005;
-                    }
-                    
-                    draw4PointStar(
-                        star.x, 
-                        star.y, 
-                        star.size * pulse, 
-                        star.color, 
-                        star.rotation
-                    );
-                }
+                
+                draw4PointStar(
+                    star.x, 
+                    star.y, 
+                    star.size * pulse, 
+                    star.color, 
+                    star.rotation
+                );
                 
                 if (!isPaused) {
                     star.x += star.speed;
                     if (star.x > canvas.width) {
                         star.x = 0;
                         star.y = Math.random() * canvas.height;
-                        star.zIndex = Math.random(); // Обновляем zIndex при перерождении
+                    }
+                }
+            });
+            
+            // Затем рисуем планеты слоя 1
+            planets.forEach(planet => {
+                if (planet.layer !== 1) return;
+                
+                if (!isPaused) {
+                    planet.rotation += planet.rotationSpeed;
+                }
+                drawPlanet(planet);
+            });
+            
+            // Затем звезды среднего слоя (layer 1)
+            stars.forEach(star => {
+                if (star.layer !== 1) return;
+                
+                const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
+                if (!isPaused) {
+                    star.rotation += 0.005;
+                }
+                
+                draw4PointStar(
+                    star.x, 
+                    star.y, 
+                    star.size * pulse, 
+                    star.color, 
+                    star.rotation
+                );
+                
+                if (!isPaused) {
+                    star.x += star.speed;
+                    if (star.x > canvas.width) {
+                        star.x = 0;
+                        star.y = Math.random() * canvas.height;
+                    }
+                }
+            });
+            
+            // Затем планеты слоя 2
+            planets.forEach(planet => {
+                if (planet.layer !== 2) return;
+                
+                if (!isPaused) {
+                    planet.rotation += planet.rotationSpeed;
+                }
+                drawPlanet(planet);
+            });
+            
+            // И наконец звезды переднего слоя (layer 2)
+            stars.forEach(star => {
+                if (star.layer !== 2) return;
+                
+                const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
+                if (!isPaused) {
+                    star.rotation += 0.005;
+                }
+                
+                draw4PointStar(
+                    star.x, 
+                    star.y, 
+                    star.size * pulse, 
+                    star.color, 
+                    star.rotation
+                );
+                
+                if (!isPaused) {
+                    star.x += star.speed;
+                    if (star.x > canvas.width) {
+                        star.x = 0;
+                        star.y = Math.random() * canvas.height;
                     }
                 }
             });
