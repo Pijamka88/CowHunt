@@ -888,7 +888,7 @@
                 this.alpha = 1;
         this.cosmicTrails = [];
 this.spawnTimer = 0;
-this.spawnInterval = 4; // Более частые частицы для более плотного шлейфа
+this.spawnInterval = 3; // Более частые частицы для плотного шлейфа
             }
 
             reset() {
@@ -922,7 +922,8 @@ this.spawnInterval = 4; // Более частые частицы для бол�
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
-    this.cosmicTrails = [];
+this.spawnInterval = 3;
+this.cosmicTrails = [];
     this.spawnTimer = 0;
             }
 
@@ -975,20 +976,16 @@ updateCosmicTrail() {
     
     // Добавляем новую частицу каждые N кадров
     if (this.spawnTimer >= this.spawnInterval) {
-        // Позиция шлейфа - сзади коровы
-        const trailX = this.x + (this.direction === 1 ? -this.width/2 : this.width/2);
-        const trailY = this.y;
-        
+        // Создаем синий размытый шлейф
         this.cosmicTrails.push({
-            x: trailX,
-            y: trailY + (Math.random() - 0.5) * 8, // Немного разброса по вертикали
-            size: Math.random() * 15 + 10, // Размер как у крыльев
-            color: 'rgba(100, 150, 255, 0.6)', // Синий с прозрачностью как у крыльев
+            x: this.x + (this.direction === 1 ? -this.width/2 : this.width/2),
+            y: this.y + (Math.random() - 0.5) * 10, // Более широкое разброс по Y
+            size: Math.random() * 15 + 10, // Увеличиваем размер для размытия
+            color: this.getTrailColor(),
             life: 1.0,
-            speed: Math.random() * 0.3 + 0.2,
-            rotation: Math.random() * Math.PI * 2,
-            decay: Math.random() * 0.01 + 0.005,
-            blur: Math.random() * 4 + 2 // Размытие как у крыльев
+            speed: Math.random() * 0.8 + 0.5,
+            blur: Math.random() * 5 + 3, // Больше размытие
+            drift: (Math.random() - 0.5) * 0.5 // Дрейф частиц
         });
         this.spawnTimer = 0;
     }
@@ -997,19 +994,23 @@ updateCosmicTrail() {
     for (let i = this.cosmicTrails.length - 1; i >= 0; i--) {
         const trail = this.cosmicTrails[i];
         
-        // Движение частиц (быстрее улетают назад)
+        // Движение частиц в направлении коровы
         if (this.direction === 1) {
-            trail.x -= trail.speed * 4;
+            trail.x -= trail.speed * 1.5;
         } else {
-            trail.x += trail.speed * 4;
+            trail.x += trail.speed * 1.5;
         }
         
-        // Легкое вертикальное колебание
-        trail.y += Math.sin(trail.life * 15) * 0.5;
+        // Вертикальный дрейф для эффекта рассеивания
+        trail.y += trail.drift;
         
-        // Уменьшаем жизнь и размер
-        trail.life -= trail.decay;
-        trail.size *= 0.96; // Быстро уменьшаем размер
+        // Легкое горизонтальное колебание
+        trail.x += Math.sin(trail.life * 20) * 0.3;
+        
+        // Уменьшаем жизнь, размер и размытие
+        trail.life -= 0.01;
+        trail.size *= 0.96;
+        trail.blur *= 0.98;
         
         // Удаляем старые частицы
         if (trail.life <= 0 || trail.size < 1) {
@@ -1018,82 +1019,95 @@ updateCosmicTrail() {
     }
 }
 
+// Добавьте этот метод в класс Cow (после updateCosmicTrail):
+getTrailColor() {
+    // Синие оттенки для шлейфа
+    const colors = [
+        'rgba(100, 150, 255, 0.7)',  // Яркий синий
+        'rgba(150, 200, 255, 0.6)',  // Светло-синий
+        'rgba(200, 220, 255, 0.5)',  // Очень светлый синий
+        'rgba(100, 180, 255, 0.8)',  // Голубой
+        'rgba(80, 120, 255, 0.9)'    // Темно-синий
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+
 drawCosmicTrail() {
     if (!this.alive) return;
 
-    // Сортируем частицы для правильного наложения
-    const sortedTrails = [...this.cosmicTrails].sort((a, b) => a.size - b.size);
-
-    sortedTrails.forEach(trail => {
+    this.cosmicTrails.forEach(trail => {
         ctx.save();
         
-        // Применяем размытие как у крыльев
+        // Применяем размытие для эффекта следа
         ctx.filter = `blur(${trail.blur}px)`;
         
-        // Прозрачность как у крыльев
-        const alpha = trail.life * 0.6;
-        
-        // Градиент как у крыльев - от синего к бирюзовому
+        // Градиент для каждой частицы (центр ярче, края прозрачнее)
         const gradient = ctx.createRadialGradient(
             trail.x, trail.y, 0,
-            trail.x, trail.y, trail.size * 1.5
+            trail.x, trail.y, trail.size * 1.2
         );
         
-        gradient.addColorStop(0, `rgba(100, 150, 255, ${alpha * 0.8})`);
-        gradient.addColorStop(0.4, `rgba(100, 200, 255, ${alpha * 0.6})`);
-        gradient.addColorStop(0.8, `rgba(150, 230, 255, ${alpha * 0.3})`);
-        gradient.addColorStop(1, `rgba(200, 240, 255, ${alpha * 0.1})`);
+        // Яркая синяя середина
+        gradient.addColorStop(0, trail.color);
+        // Средняя часть с прозрачностью
+        const midColor = trail.color.replace(/[\d.]+\)$/, (trail.life * 0.5) + ')');
+        gradient.addColorStop(0.5, midColor);
+        // Прозрачные края
+        const edgeColor = trail.color.replace(/[\d.]+\)$/, '0)');
+        gradient.addColorStop(1, edgeColor);
         
-        // Рисуем размытое крыло-шлейф
+        // Рисуем размытый круг
         ctx.fillStyle = gradient;
         ctx.beginPath();
+        ctx.arc(trail.x, trail.y, trail.size, 0, Math.PI * 2);
+        ctx.fill();
         
-        // Форма похожая на крыло - эллипс с изгибом
-        const width = trail.size * 0.7;
-        const height = trail.size;
-        
-        // Основная часть
-        ctx.ellipse(
-            trail.x, 
-            trail.y, 
-            width, 
-            height, 
-            trail.rotation, 
-            0, 
-            Math.PI * 2
-        );
-        
-        // Добавляем изогнутый конец как у крыла
-        const controlX = trail.x + Math.cos(trail.rotation) * trail.size * 1.2;
-        const controlY = trail.y + Math.sin(trail.rotation) * trail.size * 0.8;
-        const endX = trail.x + Math.cos(trail.rotation + 0.3) * trail.size * 1.5;
-        const endY = trail.y + Math.sin(trail.rotation + 0.3) * trail.size * 0.5;
-        
-        ctx.quadraticCurveTo(controlX, controlY, endX, endY);
-        ctx.closePath();
+        // Внешнее свечение (более размытое)
+        ctx.filter = `blur(${trail.blur * 2}px)`;
+        ctx.fillStyle = trail.color.replace(/[\d.]+\)$/, (trail.life * 0.2) + ')');
+        ctx.beginPath();
+        ctx.arc(trail.x, trail.y, trail.size * 1.5, 0, Math.PI * 2);
         ctx.fill();
         
         ctx.restore();
         
-        // Добавляем энергетические искры (как в крыльях из примера)
-        if (Math.random() < 0.3 && trail.life > 0.5) {
+        // Для некоторых частиц добавляем дополнительное сияние
+        if (Math.random() < 0.3) {
             ctx.save();
-            ctx.globalAlpha = trail.life * 0.3;
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.filter = `blur(${trail.blur * 3}px)`;
+            ctx.fillStyle = 'rgba(100, 150, 255, ' + (trail.life * 0.1) + ')';
             ctx.beginPath();
-            // Маленькие искры вокруг шлейфа
-            for (let i = 0; i < 3; i++) {
-                const sparkX = trail.x + (Math.random() - 0.5) * trail.size;
-                const sparkY = trail.y + (Math.random() - 0.5) * trail.size;
-                const sparkSize = Math.random() * 2 + 1;
-                ctx.moveTo(sparkX, sparkY);
-                ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
-            }
+            ctx.arc(trail.x, trail.y, trail.size * 2, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         }
     });
-}            die() {
+}
+
+// В классе Cow добавьте:
+createVortex(trail) {
+    if (Math.random() < 0.1) {
+        // Создаем завихрение
+        for (let i = 0; i < 3; i++) {
+            this.cosmicTrails.push({
+                x: trail.x + (Math.random() - 0.5) * 15,
+                y: trail.y + (Math.random() - 0.5) * 15,
+                size: Math.random() * 8 + 4,
+                color: 'rgba(150, 200, 255, 0.4)',
+                life: 0.5,
+                speed: (Math.random() - 0.5) * 0.5,
+                blur: Math.random() * 4 + 2,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.1
+            });
+        }
+    }
+}
+
+// И вызовите его в updateCosmicTrail():
+this.createVortex(trail);
+
+         die() {
                 this.alive = false;
                 this.deathAnimation = 1;
                 this.deathTime = Date.now();
