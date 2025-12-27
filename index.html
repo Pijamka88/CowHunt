@@ -1069,37 +1069,39 @@ updateMovement() {
                 }
             }
 
-update() {
-    if (this.alive && !isPaused) {
-        this.updateMovement();
-        this.x += this.vx;
-        this.wingPhase += this.wingSpeed;  // Обновление фазы крыльев
-        
-        if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
-            (this.direction === -1 && this.x < -this.width*2)) {
-            this.reset();
-        }
-    } else if (!this.alive && !isPaused) {
-                    this.deathAnimationProgress += 0.02;
-                    
-                    this.limbs.forEach(limb => {
-                        limb.x += limb.vx;
-                        limb.y += limb.vy;
-                        limb.rotation += limb.rotationSpeed;
-                        
-                        if (limb.tongueTimer !== undefined) {
-                            limb.tongueTimer--;
-                            if (limb.tongueTimer <= 0) {
-                                limb.tongueOut = false;
-                            }
-                        }
-                        
-                        if (limb.wingPhase !== undefined) {
-                            limb.wingPhase += 0.05;
-                        }
-                    });
+    update() {
+        if (this.alive) {
+            if (!isPaused) {
+                this.updateMovement();
+                this.x += this.vx;
+                this.wingPhase += this.wingSpeed;
+                
+                if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
+                    (this.direction === -1 && this.x < -this.width*2)) {
+                    this.reset();
                 }
             }
+        } else if (!this.alive && !isPaused) {
+            this.deathAnimationProgress += 0.02;
+            
+            this.limbs.forEach(limb => {
+                limb.x += limb.vx;
+                limb.y += limb.vy;
+                limb.rotation += limb.rotationSpeed;
+                
+                if (limb.tongueTimer !== undefined) {
+                    limb.tongueTimer--;
+                    if (limb.tongueTimer <= 0) {
+                        limb.tongueOut = false;
+                    }
+                }
+                
+                if (limb.wingPhase !== undefined) {
+                    limb.wingPhase += 0.05;
+                }
+            });
+        }
+    }
 
             draw() {
                 ctx.save();
@@ -2087,25 +2089,28 @@ ctx.strokeStyle = '#333'; // тот же цвет что у обводки те�
             document.getElementById('currentLevel').textContent = level;
         }
 
-        function spawnCow() {
-            if (!gameActive || timeLeft <= 0 || isGameOver || isPaused) return;
-            
-            const aliveCows = cows.filter(cow => cow.alive);
-            
-            if (aliveCows.length < config.maxCows) {
-                const cow = new Cow();
-                cows.push(cow);
-            }
-            
-            spawnCowTimeout = setTimeout(spawnCow, config.spawnInterval / (1 + level * 0.1));
-        }
+function spawnCow() {
+    if (!gameActive || timeLeft <= 0 || isGameOver) return; // Убрал проверку isPaused
+    
+    const aliveCows = cows.filter(cow => cow.alive);
+    
+    if (aliveCows.length < config.maxCows) {
+        const cow = new Cow();
+        cows.push(cow);
+    }
+    
+    // Упростил логику спавна
+    if (!isPaused) {
+        spawnCowTimeout = setTimeout(spawnCow, config.spawnInterval / (1 + level * 0.1));
+    }
+}
 
-        function restartCowSpawning() {
-            if (spawnCowTimeout) {
-                clearTimeout(spawnCowTimeout);
-            }
-            spawnCow();
-        }
+function restartCowSpawning() {
+    if (spawnCowTimeout) {
+        clearTimeout(spawnCowTimeout);
+    }
+    spawnCow();
+}
 
         function checkHit(x, y) {
             if (isGameOver || isPaused) return;
@@ -2363,19 +2368,19 @@ if (cow.alive) { // Проверяем, что корова еще жива
             });
         }
 
-        function gameLoop(timestamp) {
-            if (!gameActive || isGameOver) return;
-            
-            const deltaTime = timestamp - lastTime;
-            lastTime = timestamp;
-            
-            drawBackground();
-            
-            // Сначала рисуем мертвых коров (они должны быть позади живых)
-            deadCows.forEach(cow => {
-                cow.update();
-                cow.draw();
-            });
+function gameLoop(timestamp) {
+    if (!gameActive || isGameOver) return;
+    
+    const deltaTime = timestamp - lastTime;
+    lastTime = timestamp;
+    
+    drawBackground();
+    
+    // Обновляем и рисуем всех коров
+    cows.forEach(cow => {
+        cow.update();
+        cow.draw();
+    });
             
             // Затем рисуем живых коров
             cows.forEach(cow => {
@@ -2417,18 +2422,19 @@ if (cow.alive) { // Проверяем, что корова еще жива
             initStars();
         }
 
-        function checkOrientation() {
-            const isLandscape = window.innerWidth > window.innerHeight;
-            
-            if (isLandscape && gameActive && !isGameOver) {
-                isPaused = true;
-                document.getElementById('pausedOverlay').style.display = 'flex';
-            } else if (!isLandscape && gameActive && !isGameOver && isPaused) {
-                isPaused = false;
-                document.getElementById('pausedOverlay').style.display = 'none';
-                restartCowSpawning();
-            }
-        }
+function checkOrientation() {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    
+    if (isLandscape && gameActive && !isGameOver) {
+        isPaused = true;
+        document.getElementById('pausedOverlay').style.display = 'flex';
+    } else if (!isLandscape && gameActive && !isGameOver && isPaused) {
+        isPaused = false;
+        document.getElementById('pausedOverlay').style.display = 'none';
+        restartCowSpawning(); // Запускаем спавн коров при снятии паузы
+        lastTime = performance.now(); // Сбрасываем время для игрового цикла
+    }
+}
 
         function restartCowSpawning() {
             if (spawnCowTimeout) {
