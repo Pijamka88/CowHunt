@@ -886,9 +886,11 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
-        this.cosmicTrails = [];
+this.cosmicTrails = [];
 this.spawnTimer = 0;
-this.spawnInterval = 3; // Более частые частицы для плотного шлейфа
+this.spawnInterval = 5; // Частота появления частиц (меньше = чаще)
+this.rainbowPhase = 0;
+this.rainbowSpeed = 0.02;
             }
 
             reset() {
@@ -922,9 +924,9 @@ this.spawnInterval = 3; // Более частые частицы для пло�
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
-this.spawnInterval = 3;
 this.cosmicTrails = [];
-    this.spawnTimer = 0;
+this.spawnTimer = 0;
+this.rainbowPhase = 0;
             }
 
             updateMovement() {
@@ -934,6 +936,7 @@ this.cosmicTrails = [];
                 this.legPhase += this.legSpeed;
                 this.eyePhase += this.eyeSpeed;
                 this.tailPhase += this.tailSpeed;
+                this.rainbowPhase += this.rainbowSpeed;
                 
                 if (Math.random() < 0.005) {
                     this.tongueOut = true;
@@ -968,6 +971,7 @@ this.cosmicTrails = [];
                 }
             }
 
+// Новый метод для обновления космического шлейфа
 updateCosmicTrail() {
     if (!this.alive || isPaused) return;
     
@@ -975,16 +979,28 @@ updateCosmicTrail() {
     
     // Добавляем новую частицу каждые N кадров
     if (this.spawnTimer >= this.spawnInterval) {
-        // Создаем синий размытый шлейф
+        const colors = [
+            '#4a6fa5', // Глубокий синий
+            '#00b4d8', // Голубой
+            '#0077b6', // Синий океан
+            '#48cae4', // Светло-голубой
+            '#03045e', // Темно-синий
+            '#ade8f4', // Очень светлый голубой
+            '#0096c7'  // Яркий синий
+        ];
+        
+        const trailX = this.x + (this.direction === 1 ? -this.width/2 : this.width/2);
         this.cosmicTrails.push({
-            x: this.x + (this.direction === 1 ? -this.width/2 : this.width/2),
-            y: this.y + (Math.random() - 0.5) * 10, // Более широкое разброс по Y
-            size: Math.random() * 15 + 10, // Увеличиваем размер для размытия
-            color: this.getTrailColor(),
+            x: trailX,
+            y: this.y + (Math.random() - 0.5) * 10,
+            size: Math.random() * 8 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
             life: 1.0,
-            speed: Math.random() * 0.8 + 0.5,
-            blur: Math.random() * 5 + 3, // Больше размытие
-            drift: (Math.random() - 0.5) * 0.5 // Дрейф частиц
+            speed: Math.random() * 0.5 + 0.5,
+            rotation: Math.random() * Math.PI * 2,
+            rotationSpeed: (Math.random() - 0.5) * 0.1,
+            pulseSpeed: Math.random() * 0.05 + 0.02,
+            pulsePhase: Math.random() * Math.PI * 2
         });
         this.spawnTimer = 0;
     }
@@ -993,119 +1009,100 @@ updateCosmicTrail() {
     for (let i = this.cosmicTrails.length - 1; i >= 0; i--) {
         const trail = this.cosmicTrails[i];
         
-        // Движение частиц в направлении коровы
+        // Движение частиц
         if (this.direction === 1) {
-            trail.x -= trail.speed * 1.5;
+            trail.x -= trail.speed * 3;
         } else {
-            trail.x += trail.speed * 1.5;
+            trail.x += trail.speed * 3;
         }
         
-        // Вертикальный дрейф для эффекта рассеивания
-        trail.y += trail.drift;
+        // Легкое вертикальное колебание
+        trail.y += Math.sin(trail.life * 10) * 0.2;
         
-        // Легкое горизонтальное колебание
-        trail.x += Math.sin(trail.life * 20) * 0.3;
+        // Уменьшаем жизнь
+        trail.life -= 0.02;
         
-        // Уменьшаем жизнь, размер и размытие
-        trail.life -= 0.01;
-        trail.size *= 0.96;
-        trail.blur *= 0.98;
-        
-        // Создаем завихрения для некоторых частиц
-        this.createVortex(trail);
+        // Вращение
+        trail.rotation += trail.rotationSpeed;
         
         // Удаляем старые частицы
-        if (trail.life <= 0 || trail.size < 1) {
+        if (trail.life <= 0) {
             this.cosmicTrails.splice(i, 1);
         }
     }
 }
-
-   // === ДОБАВЬТЕ ЭТОТ МЕТОД ЗДЕСЬ ===
-    getTrailColor() {
-        // Синие оттенки для шлейфа
-        const colors = [
-            'rgba(100, 150, 255, 0.7)',  // Яркий синий
-            'rgba(150, 200, 255, 0.6)',  // Светло-синий
-            'rgba(200, 220, 255, 0.5)',  // Очень светлый синий
-            'rgba(100, 180, 255, 0.8)',  // Голубой
-            'rgba(80, 120, 255, 0.9)'    // Темно-синий
-        ];
-        return colors[Math.floor(Math.random() * colors.length)];
-    }
-
-    // === ДОБАВЬТЕ ЭТОТ МЕТОД ЗДЕСЬ ===
-    createVortex(trail) {
-        if (Math.random() < 0.1 && trail.life > 0.3) {
-            // Создаем завихрение только для частиц с достаточной жизнью
-            for (let i = 0; i < 3; i++) {
-                this.cosmicTrails.push({
-                    x: trail.x + (Math.random() - 0.5) * 15,
-                    y: trail.y + (Math.random() - 0.5) * 15,
-                    size: Math.random() * 8 + 4,
-                    color: 'rgba(150, 200, 255, 0.4)',
-                    life: 0.5,
-                    speed: (Math.random() - 0.5) * 0.5,
-                    blur: Math.random() * 4 + 2,
-                    rotation: Math.random() * Math.PI * 2,
-                    rotationSpeed: (Math.random() - 0.5) * 0.1
-                });
-            }
-        }
-    }
-
+// Новый метод для отрисовки космического шлейфа
 drawCosmicTrail() {
     if (!this.alive) return;
-
+    
     this.cosmicTrails.forEach(trail => {
+        const pulse = Math.sin(trail.life * 20 + trail.pulsePhase) * 0.3 + 0.7;
+        const currentSize = trail.size * pulse * trail.life;
+        
         ctx.save();
+        ctx.translate(trail.x, trail.y);
+        ctx.rotate(trail.rotation);
         
-        // Применяем размытие для эффекта следа
-        ctx.filter = `blur(${trail.blur}px)`;
+        // Основная звезда
+        this.drawCosmicStar(0, 0, currentSize, trail.color, trail.life);
         
-        // Градиент для каждой частицы (центр ярче, края прозрачнее)
-        const gradient = ctx.createRadialGradient(
-            trail.x, trail.y, 0,
-            trail.x, trail.y, trail.size * 1.2
-        );
+        // Свечение
+        const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, currentSize * 2);
+        gradient.addColorStop(0, trail.color + '80');
+        gradient.addColorStop(1, 'transparent');
         
-        // Яркая синяя середина
-        gradient.addColorStop(0, trail.color);
-        // Средняя часть с прозрачностью
-        const midColor = trail.color.replace(/[\d.]+\)$/, (trail.life * 0.5) + ')');
-        gradient.addColorStop(0.5, midColor);
-        // Прозрачные края
-        const edgeColor = trail.color.replace(/[\d.]+\)$/, '0)');
-        gradient.addColorStop(1, edgeColor);
-        
-        // Рисуем размытый круг
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(trail.x, trail.y, trail.size, 0, Math.PI * 2);
+        ctx.arc(0, 0, currentSize * 2, 0, Math.PI * 2);
         ctx.fill();
         
-        // Внешнее свечение (более размытое)
-        ctx.filter = `blur(${trail.blur * 2}px)`;
-        ctx.fillStyle = trail.color.replace(/[\d.]+\)$/, (trail.life * 0.2) + ')');
+        // Внешнее свечение
+        const outerGlow = ctx.createRadialGradient(0, 0, currentSize * 1.5, 0, 0, currentSize * 4);
+        outerGlow.addColorStop(0, trail.color + '40');
+        outerGlow.addColorStop(1, 'transparent');
+        
+        ctx.fillStyle = outerGlow;
         ctx.beginPath();
-        ctx.arc(trail.x, trail.y, trail.size * 1.5, 0, Math.PI * 2);
+        ctx.arc(0, 0, currentSize * 4, 0, Math.PI * 2);
         ctx.fill();
         
         ctx.restore();
-        
-        // Для некоторых частиц добавляем дополнительное сияние
-        if (Math.random() < 0.3) {
-            ctx.save();
-            ctx.filter = `blur(${trail.blur * 3}px)`;
-            ctx.fillStyle = 'rgba(100, 150, 255, ' + (trail.life * 0.1) + ')';
-            ctx.beginPath();
-            ctx.arc(trail.x, trail.y, trail.size * 2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-        }
     });
 }
-         die() {
+
+// Метод для отрисовки космической звезды
+drawCosmicStar(x, y, size, color, alpha) {
+    ctx.save();
+    ctx.translate(x, y);
+    
+    // Основная звезда (4 луча)
+    ctx.fillStyle = color;
+    ctx.globalAlpha = alpha;
+    
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+        const angle = Math.PI / 2 * i;
+        ctx.lineTo(Math.cos(angle) * size, Math.sin(angle) * size);
+        ctx.lineTo(Math.cos(angle + Math.PI/4) * size * 0.5, Math.sin(angle + Math.PI/4) * size * 0.5);
+    }
+    ctx.closePath();
+    ctx.fill();
+    
+    // Внутренний круг
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Блики
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.beginPath();
+    ctx.arc(-size * 0.2, -size * 0.2, size * 0.15, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+}
+
+            die() {
                 this.alive = false;
                 this.deathAnimation = 1;
                 this.deathTime = Date.now();
@@ -1217,7 +1214,8 @@ update() {
         this.updateMovement();
         this.x += this.vx;
         this.wingPhase += this.wingSpeed;
-        this.updateCosmicTrail(); // Эта строка должна быть здесь
+        this.rainbowPhase += this.rainbowSpeed;
+        this.updateCosmicTrail(); // Добавляем обновление шлейфа
         
         if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
             (this.direction === -1 && this.x < -this.width*2)) {
@@ -1246,8 +1244,8 @@ update() {
             }
 
             draw() {
-    if (this.alive) {
-        this.drawCosmicTrail();
+if (this.alive) {
+    this.drawCosmicTrail();
     }
                 ctx.save();
                 
@@ -1472,75 +1470,55 @@ ctx.restore();
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-// Градиентные крылья
-const wingYOffset = Math.sin(this.wingPhase) * 15;
-const wingTipX = 50;
-const wingTipY = -30 + wingYOffset;
-
-// Левое крыло с градиентом
-const leftWingGradient = ctx.createLinearGradient(
-    -5, -5,
-    -wingTipX, wingTipY
-);
-leftWingGradient.addColorStop(0, 'rgba(255, 100, 150, 0.8)'); // Начальный цвет
-leftWingGradient.addColorStop(0.5, cowTypes[this.type].wingColor); // Основной цвет
-leftWingGradient.addColorStop(1, 'rgba(150, 200, 255, 0.6)'); // Конечный цвет
-
-ctx.fillStyle = leftWingGradient;
-ctx.beginPath();
-ctx.moveTo(-5, -5);
-ctx.bezierCurveTo(-20, -10 + wingYOffset * 0.5, -40, -20 + wingYOffset, -wingTipX, wingTipY);
-ctx.bezierCurveTo(-40, 0 + wingYOffset * 0.5, -20, 5 + wingYOffset * 0.3, -5, -5);
-ctx.fill();
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-ctx.lineWidth = 2;
-ctx.stroke();
-
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-ctx.lineWidth = 1;
-for (let i = 1; i <= 3; i++) {
-    const featherX = -5 - (wingTipX + 5) * i / 4;
-    const featherY = -5 + (wingTipY + 5) * i / 4;
-    
-    ctx.beginPath();
-    ctx.moveTo(-5, -5);
-    ctx.quadraticCurveTo(featherX * 1.2, featherY * 0.8, featherX, featherY);
-    ctx.stroke();
-}
-
-// Правое крыло с градиентом (через composite operation)
-ctx.globalCompositeOperation = 'destination-over';
-
-const rightWingGradient = ctx.createLinearGradient(
-    5, -5,
-    wingTipX, wingTipY
-);
-rightWingGradient.addColorStop(0, 'rgba(255, 100, 150, 0.8)'); // Начальный цвет
-rightWingGradient.addColorStop(0.5, cowTypes[this.type].wingColor); // Основной цвет
-rightWingGradient.addColorStop(1, 'rgba(150, 200, 255, 0.6)'); // Конечный цвет
-
-ctx.fillStyle = rightWingGradient;
-ctx.beginPath();
-ctx.moveTo(5, -5);
-ctx.bezierCurveTo(20, -10 + wingYOffset * 0.5, 40, -20 + wingYOffset, wingTipX, wingTipY);
-ctx.bezierCurveTo(40, 0 + wingYOffset * 0.5, 20, 5 + wingYOffset * 0.3, 5, -5);
-ctx.fill();
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-ctx.lineWidth = 2;
-ctx.stroke();
-
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-ctx.lineWidth = 1;
-for (let i = 1; i <= 3; i++) {
-    const featherX = 5 + (wingTipX - 5) * i / 4;
-    const featherY = -5 + (wingTipY + 5) * i / 4;
-    
-    ctx.beginPath();
-    ctx.moveTo(5, -5);
-    ctx.quadraticCurveTo(featherX * 0.8, featherY * 0.8, featherX, featherY);
-    ctx.stroke();
-}
-ctx.globalCompositeOperation = 'source-over';
+                    // Wings
+                    const wingYOffset = Math.sin(this.wingPhase) * 15;
+                    const wingTipX = 50;
+                    const wingTipY = -30 + wingYOffset;
+                    
+                    ctx.fillStyle = cowTypes[this.type].wingColor;
+                    ctx.beginPath();
+                    ctx.moveTo(-5, -5);
+                    ctx.bezierCurveTo(-20, -10 + wingYOffset * 0.5, -40, -20 + wingYOffset, -wingTipX, wingTipY);
+                    ctx.bezierCurveTo(-40, 0 + wingYOffset * 0.5, -20, 5 + wingYOffset * 0.3, -5, -5);
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.lineWidth = 1;
+                    for (let i = 1; i <= 3; i++) {
+                        const featherX = -5 - (wingTipX + 5) * i / 4;
+                        const featherY = -5 + (wingTipY + 5) * i / 4;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(-5, -5);
+                        ctx.quadraticCurveTo(featherX * 1.2, featherY * 0.8, featherX, featherY);
+                        ctx.stroke();
+                    }
+                    
+                    ctx.globalCompositeOperation = 'destination-over';
+                    ctx.beginPath();
+                    ctx.moveTo(5, -5);
+                    ctx.bezierCurveTo(20, -10 + wingYOffset * 0.5, 40, -20 + wingYOffset, wingTipX, wingTipY);
+                    ctx.bezierCurveTo(40, 0 + wingYOffset * 0.5, 20, 5 + wingYOffset * 0.3, 5, -5);
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.lineWidth = 1;
+                    for (let i = 1; i <= 3; i++) {
+                        const featherX = 5 + (wingTipX - 5) * i / 4;
+                        const featherY = -5 + (wingTipY + 5) * i / 4;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(5, -5);
+                        ctx.quadraticCurveTo(featherX * 0.8, featherY * 0.8, featherX, featherY);
+                        ctx.stroke();
+                    }
+                    ctx.globalCompositeOperation = 'source-over';
                     
                     // Tail
                     const tailX = -this.width/2;
@@ -1707,57 +1685,44 @@ ctx.strokeStyle = '#333'; // тот же цвет что у обводки те�
             }
         
                         } else if (limb === this.limbs[2] || limb === this.limbs[3]) {
-const wingYOffset = Math.sin(limb.wingPhase) * 15;
-const wingTipX = 50;
-const wingTipY = -30 + wingYOffset;
-
-// Создаем градиент для крыла
-let wingGradient;
-if (limb === this.limbs[2]) { // Левое крыло
-    wingGradient = ctx.createLinearGradient(0, 0, -wingTipX, wingTipY);
-} else { // Правое крыло
-    wingGradient = ctx.createLinearGradient(0, 0, wingTipX, wingTipY);
-}
-
-wingGradient.addColorStop(0, 'rgba(255, 100, 150, 0.8)');
-wingGradient.addColorStop(0.5, limb.color);
-wingGradient.addColorStop(1, 'rgba(150, 200, 255, 0.6)');
-
-ctx.fillStyle = wingGradient;
-ctx.beginPath();
-if (limb === this.limbs[2]) {
-    ctx.moveTo(0, 0);
-    ctx.bezierCurveTo(-20, -10 + wingYOffset * 0.5, -40, -20 + wingYOffset, -wingTipX, wingTipY);
-    ctx.bezierCurveTo(-40, 0 + wingYOffset * 0.5, -20, 5 + wingYOffset * 0.3, 0, 0);
-} else {
-    ctx.moveTo(0, 0);
-    ctx.bezierCurveTo(20, -10 + wingYOffset * 0.5, 40, -20 + wingYOffset, wingTipX, wingTipY);
-    ctx.bezierCurveTo(40, 0 + wingYOffset * 0.5, 20, 5 + wingYOffset * 0.3, 0, 0);
-}
-ctx.closePath();
-ctx.fill();
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-ctx.lineWidth = 2;
-ctx.stroke();
-
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-ctx.lineWidth = 1;
-for (let i = 1; i <= 3; i++) {
-    const featherX = limb === this.limbs[2] ? 
-        0 - (wingTipX) * i / 4 : 
-        0 + (wingTipX) * i / 4;
-    const featherY = 0 + (wingTipY) * i / 4;
-    
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.quadraticCurveTo(
-        featherX * (limb === this.limbs[2] ? 1.2 : 0.8), 
-        featherY * 0.8,
-        featherX, featherY
-    );
-    ctx.stroke();
-}
-
+                            const wingYOffset = Math.sin(limb.wingPhase) * 15;
+                            const wingTipX = 50;
+                            const wingTipY = -30 + wingYOffset;
+                            
+                            ctx.fillStyle = limb.color;
+                            ctx.beginPath();
+                            if (limb === this.limbs[2]) {
+                                ctx.moveTo(0, 0);
+                                ctx.bezierCurveTo(-20, -10 + wingYOffset * 0.5, -40, -20 + wingYOffset, -wingTipX, wingTipY);
+                                ctx.bezierCurveTo(-40, 0 + wingYOffset * 0.5, -20, 5 + wingYOffset * 0.3, 0, 0);
+                            } else {
+                                ctx.moveTo(0, 0);
+                                ctx.bezierCurveTo(20, -10 + wingYOffset * 0.5, 40, -20 + wingYOffset, wingTipX, wingTipY);
+                                ctx.bezierCurveTo(40, 0 + wingYOffset * 0.5, 20, 5 + wingYOffset * 0.3, 0, 0);
+                            }
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                            
+                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                            ctx.lineWidth = 1;
+                            for (let i = 1; i <= 3; i++) {
+                                const featherX = limb === this.limbs[2] ? 
+                                    0 - (wingTipX) * i / 4 : 
+                                    0 + (wingTipX) * i / 4;
+                                const featherY = 0 + (wingTipY) * i / 4;
+                                
+                                ctx.beginPath();
+                                ctx.moveTo(0, 0);
+                                ctx.quadraticCurveTo(
+                                    featherX * (limb === this.limbs[2] ? 1.2 : 0.8), 
+                                    featherY * 0.8,
+                                    featherX, featherY
+                                );
+                                ctx.stroke();
+                            }
                         } else if (limb === this.limbs[1]) {
                             ctx.fillStyle = limb.color;
                             ctx.beginPath();
