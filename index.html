@@ -888,7 +888,7 @@
                 this.alpha = 1;
         this.cosmicTrails = [];
 this.spawnTimer = 0;
-this.spawnInterval = 6; // Слегка увеличили интервал для менее плотного шлейфа
+this.spawnInterval = 4; // Более частые частицы для более плотного шлейфа
             }
 
             reset() {
@@ -975,15 +975,18 @@ updateCosmicTrail() {
     
     // Добавляем новую частицу каждые N кадров
     if (this.spawnTimer >= this.spawnInterval) {
-        const colors = [
-            '#4a6fa5', // Глубокий синий
-            '#00b4d8', // Голубой
-            '#0077b6', // Синий океан
-            '#48cae4', // Светло-голубой
-            '#03045e', // Темно-синий
-            '#ade8f4', // Очень светлый голубой
-            '#0096c7'  // Яркий синий
-        ];
+const colors = [
+    '#9400D3', // Фиолетовый
+    '#4B0082', // Индиго
+    '#0000FF', // Синий
+    '#00FF00', // Зеленый
+    '#FFFF00', // Желтый
+    '#FF7F00', // Оранжевый
+    '#FF0000', // Красный
+    '#FF1493', // Розовый
+    '#00FFFF', // Голубой
+    '#8A2BE2'  // Фиолетово-синий
+];
         
         const trailX = this.x + (this.direction === 1 ? -this.width/2 : this.width/2);
         this.cosmicTrails.push({
@@ -1030,7 +1033,10 @@ updateCosmicTrail() {
 
 drawCosmicTrail() {
     if (!this.alive) return;
-    
+
+    // Сортируем частицы по размеру для лучшего эффекта глубины
+this.cosmicTrails.sort((a, b) => b.size - a.size);
+
     this.cosmicTrails.forEach(trail => {
         const pulse = Math.sin(trail.life * 20 + trail.pulsePhase) * 0.3 + 0.7;
         const currentSize = trail.size * pulse * trail.life;
@@ -1070,29 +1076,77 @@ drawCosmicStar(x, y, size, color, alpha) {
     ctx.save();
     ctx.translate(x, y);
     
-    // Основная звезда (4 луча) - улучшенная форма
+    // Случайный выбор формы для разнообразия
+    const shapeType = Math.floor(Math.random() * 4);
+    
     ctx.fillStyle = color;
     ctx.globalAlpha = alpha;
     
-    ctx.beginPath();
-    for (let i = 0; i < 4; i++) {
-        const angle = Math.PI / 2 * i;
-        ctx.lineTo(Math.cos(angle) * size, Math.sin(angle) * size);
-        ctx.lineTo(Math.cos(angle + Math.PI/4) * size * 0.5, 
-                   Math.sin(angle + Math.PI/4) * size * 0.5);
+    switch(shapeType) {
+        case 0: // Звезда с 6 лучами
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = Math.PI / 3 * i;
+                ctx.lineTo(Math.cos(angle) * size, Math.sin(angle) * size);
+                ctx.lineTo(Math.cos(angle + Math.PI/6) * size * 0.4, 
+                          Math.sin(angle + Math.PI/6) * size * 0.4);
+            }
+            ctx.closePath();
+            break;
+            
+        case 1: // Спиральная галактика
+            ctx.beginPath();
+            for (let i = 0; i < 8; i++) {
+                const angle = Math.PI / 4 * i;
+                const spiralSize = size * (0.5 + Math.random() * 0.5);
+                ctx.lineTo(Math.cos(angle) * spiralSize, Math.sin(angle) * spiralSize);
+                ctx.lineTo(Math.cos(angle + Math.PI/8) * spiralSize * 0.3, 
+                          Math.sin(angle + Math.PI/8) * spiralSize * 0.3);
+            }
+            ctx.closePath();
+            break;
+            
+        case 2: // Кристаллическая форма
+            ctx.beginPath();
+            const points = 5 + Math.floor(Math.random() * 4);
+            for (let i = 0; i < points; i++) {
+                const angle = Math.PI * 2 / points * i;
+                const pointSize = size * (0.7 + Math.random() * 0.3);
+                ctx.lineTo(Math.cos(angle) * pointSize, Math.sin(angle) * pointSize);
+            }
+            ctx.closePath();
+            break;
+            
+        case 3: // Космическая пыль (несколько кругов)
+            for (let j = 0; j < 3; j++) {
+                const offsetX = (Math.random() - 0.5) * size * 0.5;
+                const offsetY = (Math.random() - 0.5) * size * 0.5;
+                const dustSize = size * (0.3 + Math.random() * 0.3);
+                
+                ctx.beginPath();
+                ctx.arc(offsetX, offsetY, dustSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+            return; // Выходим раньше для этого типа
     }
-    ctx.closePath();
+    
     ctx.fill();
     
-    // Внутренний круг для более объемного вида
+    // Добавляем эффект свечения
+    const glow = ctx.createRadialGradient(0, 0, size * 0.3, 0, 0, size * 1.5);
+    glow.addColorStop(0, color + '80');
+    glow.addColorStop(1, 'transparent');
+    
+    ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(0, 0, size * 0.3, 0, Math.PI * 2);
+    ctx.arc(0, 0, size * 1.5, 0, Math.PI * 2);
     ctx.fill();
     
     // Блики для сияющего эффекта
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.beginPath();
-    ctx.arc(-size * 0.2, -size * 0.2, size * 0.15, 0, Math.PI * 2);
+    ctx.arc(-size * 0.15, -size * 0.15, size * 0.1, 0, Math.PI * 2);
     ctx.fill();
     
     ctx.restore();
