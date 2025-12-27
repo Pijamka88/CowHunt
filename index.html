@@ -859,37 +859,37 @@
         }
 
         class Cow {
-constructor() {
-    this.type = Math.floor(Math.random() * cowTypes.length);
-    this.color = cowColors[Math.floor(Math.random() * cowColors.length)];
-    this.width = config.cowWidth;
-    this.height = config.cowHeight;
-    this.headRadius = config.headRadius;
-    this.reset();
-    this.alive = true;
-    this.wingPhase = Math.random() * Math.PI * 2;
-    this.wingSpeed = Math.random() * 0.05 + 0.05;
-    this.deathAnimation = 0;
-    this.movementPhase = 0;
-    this.originalY = 0;
-    this.legPhase = 0;
-    this.legSpeed = Math.random() * 0.1 + 0.1;
-    this.eyePhase = 0;
-    this.eyeSpeed = 0.02;
-    this.limbs = [];
-    this.tailPhase = Math.random() * Math.PI * 2;
-    this.tailSpeed = Math.random() * 0.05 + 0.05;
-    this.deathTime = 0;
-    this.fallSpeed = 0;
-    this.rotation = 0;
-    this.deathAnimationProgress = 0;
-    this.tongueOut = false;
-    this.tongueTimer = 0;
-    this.alpha = 1;
-    this.cosmicTrails = [];
-    this.spawnTimer = 0;
-    this.spawnInterval = 5;
-}
+            constructor() {
+                this.type = Math.floor(Math.random() * cowTypes.length);
+                this.color = cowColors[Math.floor(Math.random() * cowColors.length)];
+                this.width = config.cowWidth;
+                this.height = config.cowHeight;
+                this.headRadius = config.headRadius;
+                this.reset();
+                this.alive = true;
+                this.wingPhase = Math.random() * Math.PI * 2;
+                this.wingSpeed = Math.random() * 0.05 + 0.05;
+                this.deathAnimation = 0;
+                this.movementPhase = 0;
+                this.originalY = 0;
+                this.legPhase = 0;
+                this.legSpeed = Math.random() * 0.1 + 0.1;
+                this.eyePhase = 0;
+                this.eyeSpeed = 0.02;
+                this.limbs = [];
+                this.tailPhase = Math.random() * Math.PI * 2;
+                this.tailSpeed = Math.random() * 0.05 + 0.05;
+                this.deathTime = 0;
+                this.fallSpeed = 0;
+                this.rotation = 0;
+                this.deathAnimationProgress = 0;
+                this.tongueOut = false;
+                this.tongueTimer = 0;
+                this.alpha = 1;
+        this.cosmicTrails = [];
+        this.spawnTimer = 0;
+        this.spawnInterval = 8; // Реже появляются частицы = короче шлейф
+            }
 
             reset() {
                 this.direction = Math.random() > 0.5 ? 1 : -1;
@@ -980,21 +980,17 @@ updateCosmicTrail() {
             '#00b4d8', // Голубой
             '#0077b6', // Синий океан
             '#48cae4', // Светло-голубой
-            '#03045e', // Темно-синий
-            '#ade8f4', // Очень светлый голубой
-            '#0096c7'  // Яркий синий
         ];
         
         const trailX = this.x + (this.direction === 1 ? -this.width/2 : this.width/2);
         this.cosmicTrails.push({
             x: trailX,
-            y: this.y + (Math.random() - 0.5) * 10,
-            size: Math.random() * 8 + 4,
+            y: this.y + (Math.random() - 0.5) * 5, // Меньше разброс по Y
+            size: Math.random() * 6 + 2, // Уменьшенный размер
             color: colors[Math.floor(Math.random() * colors.length)],
             life: 1.0,
-            speed: Math.random() * 0.5 + 0.5,
-            rotation: Math.random() * Math.PI * 2,
-            rotationSpeed: (Math.random() - 0.5) * 0.1
+            speed: Math.random() * 0.3 + 0.3, // Уменьшенная скорость
+            rotation: Math.random() * Math.PI * 2
         });
         this.spawnTimer = 0;
     }
@@ -1005,19 +1001,21 @@ updateCosmicTrail() {
         
         // Движение частиц
         if (this.direction === 1) {
-            trail.x -= trail.speed * 3;
+            trail.x -= trail.speed * 2; // Уменьшенная скорость
         } else {
-            trail.x += trail.speed * 3;
+            trail.x += trail.speed * 2; // Уменьшенная скорость
         }
         
-        // Легкое вертикальное колебание
-        trail.y += Math.sin(trail.life * 10) * 0.2;
-        
-        // Уменьшаем жизнь
-        trail.life -= 0.02;
+// Сделать быстрее:
+trail.life -= 0.06; // Исчезает быстрее
+
+// Или уменьшить максимальное количество частиц:
+if (this.cosmicTrails.length > 15) { // Ограничить длину
+    this.cosmicTrails.shift(); // Удалить самую старую частицу
+}
         
         // Вращение
-        trail.rotation += trail.rotationSpeed;
+        trail.rotation += 0.01;
         
         // Удаляем старые частицы
         if (trail.life <= 0) {
@@ -1036,7 +1034,7 @@ drawCosmicTrail() {
         ctx.translate(trail.x, trail.y);
         ctx.rotate(trail.rotation);
         
-        // Основная звезда
+        // Только звезда без свечения
         this.drawCosmicStar(0, 0, currentSize, trail.color, trail.life);
         
         ctx.restore();
@@ -1047,7 +1045,7 @@ drawCosmicStar(x, y, size, color, alpha) {
     ctx.save();
     ctx.translate(x, y);
     
-    // Основная звезда (4 луча)
+    // Только основная звезда (4 луча)
     ctx.fillStyle = color;
     ctx.globalAlpha = alpha;
     
@@ -1055,14 +1053,10 @@ drawCosmicStar(x, y, size, color, alpha) {
     for (let i = 0; i < 4; i++) {
         const angle = Math.PI / 2 * i;
         ctx.lineTo(Math.cos(angle) * size, Math.sin(angle) * size);
-        ctx.lineTo(Math.cos(angle + Math.PI/4) * size * 0.5, Math.sin(angle + Math.PI/4) * size * 0.5);
+        ctx.lineTo(Math.cos(angle + Math.PI/4) * size * 0.5, 
+                   Math.sin(angle + Math.PI/4) * size * 0.5);
     }
     ctx.closePath();
-    ctx.fill();
-    
-    // Внутренний круг
-    ctx.beginPath();
-    ctx.arc(0, 0, size * 0.3, 0, Math.PI * 2);
     ctx.fill();
     
     ctx.restore();
