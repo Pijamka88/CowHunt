@@ -975,16 +975,20 @@ updateCosmicTrail() {
     
     // Добавляем новую частицу каждые N кадров
     if (this.spawnTimer >= this.spawnInterval) {
+        // Позиция шлейфа - сзади коровы
+        const trailX = this.x + (this.direction === 1 ? -this.width/2 : this.width/2);
+        const trailY = this.y;
+        
         this.cosmicTrails.push({
-            x: this.x + (this.direction === 1 ? -this.width/2 : this.width/2),
-            y: this.y + (Math.random() - 0.5) * 5,
-            size: Math.random() * 12 + 8,
-            color: `rgba(${100 + Math.random() * 100}, ${150 + Math.random() * 100}, 255, ${0.3 + Math.random() * 0.4})`,
+            x: trailX,
+            y: trailY + (Math.random() - 0.5) * 8, // Немного разброса по вертикали
+            size: Math.random() * 15 + 10, // Размер как у крыльев
+            color: 'rgba(100, 150, 255, 0.6)', // Синий с прозрачностью как у крыльев
             life: 1.0,
-            speed: Math.random() * 0.5 + 0.5,
+            speed: Math.random() * 0.3 + 0.2,
             rotation: Math.random() * Math.PI * 2,
-            rotationSpeed: (Math.random() - 0.5) * 0.05,
-            blur: Math.random() * 3 + 2
+            decay: Math.random() * 0.01 + 0.005,
+            blur: Math.random() * 4 + 2 // Размытие как у крыльев
         });
         this.spawnTimer = 0;
     }
@@ -993,22 +997,22 @@ updateCosmicTrail() {
     for (let i = this.cosmicTrails.length - 1; i >= 0; i--) {
         const trail = this.cosmicTrails[i];
         
-        // Движение частиц
+        // Движение частиц (быстрее улетают назад)
         if (this.direction === 1) {
-            trail.x -= trail.speed * 2;
+            trail.x -= trail.speed * 4;
         } else {
-            trail.x += trail.speed * 2;
+            trail.x += trail.speed * 4;
         }
         
         // Легкое вертикальное колебание
-        trail.y += Math.sin(trail.life * 10) * 0.3;
+        trail.y += Math.sin(trail.life * 15) * 0.5;
         
         // Уменьшаем жизнь и размер
-        trail.life -= 0.015;
-        trail.size *= 0.98;
+        trail.life -= trail.decay;
+        trail.size *= 0.96; // Быстро уменьшаем размер
         
         // Удаляем старые частицы
-        if (trail.life <= 0) {
+        if (trail.life <= 0 || trail.size < 1) {
             this.cosmicTrails.splice(i, 1);
         }
     }
@@ -1017,45 +1021,79 @@ updateCosmicTrail() {
 drawCosmicTrail() {
     if (!this.alive) return;
 
-    this.cosmicTrails.forEach(trail => {
+    // Сортируем частицы для правильного наложения
+    const sortedTrails = [...this.cosmicTrails].sort((a, b) => a.size - b.size);
+
+    sortedTrails.forEach(trail => {
         ctx.save();
         
-        // Размытие для эффекта шлейфа
+        // Применяем размытие как у крыльев
         ctx.filter = `blur(${trail.blur}px)`;
         
-        // Прозрачность в зависимости от оставшейся жизни
-        const alpha = trail.life * 0.5;
+        // Прозрачность как у крыльев
+        const alpha = trail.life * 0.6;
         
-        // Синий градиент для шлейфа
+        // Градиент как у крыльев - от синего к бирюзовому
         const gradient = ctx.createRadialGradient(
             trail.x, trail.y, 0,
             trail.x, trail.y, trail.size * 1.5
         );
         
-        // Яркая синяя середина
-        gradient.addColorStop(0, `rgba(100, 150, 255, ${alpha})`);
-        // Более светлый край
-        gradient.addColorStop(0.5, `rgba(150, 200, 255, ${alpha * 0.7})`);
-        // Полупрозрачный край
-        gradient.addColorStop(1, `rgba(200, 230, 255, ${alpha * 0.3})`);
+        gradient.addColorStop(0, `rgba(100, 150, 255, ${alpha * 0.8})`);
+        gradient.addColorStop(0.4, `rgba(100, 200, 255, ${alpha * 0.6})`);
+        gradient.addColorStop(0.8, `rgba(150, 230, 255, ${alpha * 0.3})`);
+        gradient.addColorStop(1, `rgba(200, 240, 255, ${alpha * 0.1})`);
         
-        // Отрисовка размытого круга
+        // Рисуем размытое крыло-шлейф
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(trail.x, trail.y, trail.size, 0, Math.PI * 2);
-        ctx.fill();
         
-        // Добавляем небольшое свечение
-        ctx.filter = `blur(${trail.blur * 1.5}px)`;
-        ctx.fillStyle = `rgba(100, 150, 255, ${alpha * 0.2})`;
-        ctx.beginPath();
-        ctx.arc(trail.x, trail.y, trail.size * 1.8, 0, Math.PI * 2);
+        // Форма похожая на крыло - эллипс с изгибом
+        const width = trail.size * 0.7;
+        const height = trail.size;
+        
+        // Основная часть
+        ctx.ellipse(
+            trail.x, 
+            trail.y, 
+            width, 
+            height, 
+            trail.rotation, 
+            0, 
+            Math.PI * 2
+        );
+        
+        // Добавляем изогнутый конец как у крыла
+        const controlX = trail.x + Math.cos(trail.rotation) * trail.size * 1.2;
+        const controlY = trail.y + Math.sin(trail.rotation) * trail.size * 0.8;
+        const endX = trail.x + Math.cos(trail.rotation + 0.3) * trail.size * 1.5;
+        const endY = trail.y + Math.sin(trail.rotation + 0.3) * trail.size * 0.5;
+        
+        ctx.quadraticCurveTo(controlX, controlY, endX, endY);
+        ctx.closePath();
         ctx.fill();
         
         ctx.restore();
+        
+        // Добавляем энергетические искры (как в крыльях из примера)
+        if (Math.random() < 0.3 && trail.life > 0.5) {
+            ctx.save();
+            ctx.globalAlpha = trail.life * 0.3;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.beginPath();
+            // Маленькие искры вокруг шлейфа
+            for (let i = 0; i < 3; i++) {
+                const sparkX = trail.x + (Math.random() - 0.5) * trail.size;
+                const sparkY = trail.y + (Math.random() - 0.5) * trail.size;
+                const sparkSize = Math.random() * 2 + 1;
+                ctx.moveTo(sparkX, sparkY);
+                ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
+            }
+            ctx.fill();
+            ctx.restore();
+        }
     });
-}
-            die() {
+}            die() {
                 this.alive = false;
                 this.deathAnimation = 1;
                 this.deathTime = Date.now();
