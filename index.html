@@ -578,6 +578,7 @@
         let shots = [];
         let explosions = [];
         let missTexts = []; // Добавляем массив для текстов промахов
+        let clickWaves = []; // Добавляем массив для волн кликов
         let stars = [];
         let lifeBonuses = [];
         let planets = [];
@@ -654,6 +655,129 @@
             originalCowSpeeds[index] = cowType.speed;
         });
 
+        // Класс для волн при клике
+        class ClickWave {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 5;
+                this.maxRadius = 200;
+                this.alpha = 1;
+                this.speed = 8;
+                this.waves = [];
+                this.colors = [
+                    {main: 'rgba(100, 200, 255, 1)', inner: 'rgba(255, 255, 255, 0.9)', glow: 'rgba(0, 191, 255, 0.7)'},
+                    {main: 'rgba(255, 100, 200, 1)', inner: 'rgba(255, 255, 255, 0.9)', glow: 'rgba(255, 0, 127, 0.7)'},
+                    {main: 'rgba(100, 255, 200, 1)', inner: 'rgba(255, 255, 255, 0.9)', glow: 'rgba(0, 255, 170, 0.7)'},
+                    {main: 'rgba(255, 200, 100, 1)', inner: 'rgba(255, 255, 255, 0.9)', glow: 'rgba(255, 170, 0, 0.7)'}
+                ];
+                this.color = this.colors[Math.floor(Math.random() * this.colors.length)];
+                this.createRippleEffect();
+            }
+            
+            createRippleEffect() {
+                // Создаем 4 волны с разными задержками
+                for (let i = 0; i < 4; i++) {
+                    this.waves.push({
+                        radius: 5 + i * 10,
+                        width: 4 - i * 0.5,
+                        alpha: 0.9 - i * 0.2,
+                        speed: this.speed * (0.8 + i * 0.1),
+                        delay: i * 3,
+                        active: i === 0,
+                        pulse: 0
+                    });
+                }
+            }
+            
+            update() {
+                if (isPaused) return true;
+                
+                let activeWaves = 0;
+                
+                for (let i = 0; i < this.waves.length; i++) {
+                    const wave = this.waves[i];
+                    
+                    if (wave.delay > 0) {
+                        wave.delay--;
+                        continue;
+                    }
+                    
+                    if (!wave.active && i > 0 && this.waves[i-1].radius > 25) {
+                        wave.active = true;
+                    }
+                    
+                    if (wave.active) {
+                        wave.radius += wave.speed;
+                        wave.alpha *= 0.95;
+                        wave.width *= 0.97;
+                        wave.pulse += 0.1;
+                        
+                        // Пульсация ширины
+                        const pulseWidth = Math.sin(wave.pulse) * 0.5 + 1;
+                        wave.currentWidth = wave.width * pulseWidth;
+                        
+                        if (wave.alpha > 0.02 && wave.radius < this.maxRadius) {
+                            activeWaves++;
+                        }
+                    }
+                }
+                
+                return activeWaves > 0;
+            }
+            
+            draw() {
+                this.waves.forEach(wave => {
+                    if (!wave.active || wave.alpha <= 0 || wave.radius > this.maxRadius) return;
+                    
+                    // Создаем градиент для волны
+                    const gradient = ctx.createRadialGradient(
+                        this.x, this.y, 0,
+                        this.x, this.y, wave.radius
+                    );
+                    gradient.addColorStop(0, this.color.inner);
+                    gradient.addColorStop(0.3, this.color.main);
+                    gradient.addColorStop(1, 'transparent');
+                    
+                    // Внешнее свечение
+                    ctx.shadowColor = this.color.glow;
+                    ctx.shadowBlur = 25 * wave.alpha;
+                    
+                    // Основная волна
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, wave.radius, 0, Math.PI * 2);
+                    ctx.strokeStyle = gradient;
+                    ctx.lineWidth = wave.currentWidth || wave.width;
+                    ctx.stroke();
+                    
+                    // Внутренняя кольцевая волна
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, wave.radius * 0.6, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${wave.alpha * 0.6})`;
+                    ctx.lineWidth = (wave.currentWidth || wave.width) * 0.4;
+                    ctx.stroke();
+                    
+                    // Яркое центральное кольцо
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, wave.radius * 0.3, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${wave.alpha * 0.8})`;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Центральная точка
+                    if (wave.radius < 50) {
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, 3 * wave.alpha, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255, 255, 255, ${wave.alpha})`;
+                        ctx.fill();
+                    }
+                    
+                    // Сброс тени
+                    ctx.shadowBlur = 0;
+                });
+            }
+        }
+
         // Инициализация звуков
         function initSounds() {
             if (soundsInitialized) return;
@@ -725,6 +849,7 @@
             
             try {
                 clickSound.currentTime = 0;
+                clickSound.volume = 0.3; // Уменьшаем громкость для волн
                 clickSound.play().catch(e => {
                     console.log("Click sound error:", e);
                 });
@@ -886,9 +1011,9 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
-        this.cosmicTrails = [];
-this.spawnTimer = 0;
-this.spawnInterval = 6; // Слегка увеличили интервал для менее плотного шлейфа
+                this.cosmicTrails = [];
+                this.spawnTimer = 0;
+                this.spawnInterval = 6; // Слегка увеличили интервал для менее плотного шлейфа
             }
 
             reset() {
@@ -922,8 +1047,8 @@ this.spawnInterval = 6; // Слегка увеличили интервал дл
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
-    this.cosmicTrails = [];
-    this.spawnTimer = 0;
+                this.cosmicTrails = [];
+                this.spawnTimer = 0;
             }
 
             updateMovement() {
@@ -933,7 +1058,6 @@ this.spawnInterval = 6; // Слегка увеличили интервал дл
                 this.legPhase += this.legSpeed;
                 this.eyePhase += this.eyeSpeed;
                 this.tailPhase += this.tailSpeed;
-                this.rainbowPhase += this.rainbowSpeed;
                 
                 if (Math.random() < 0.005) {
                     this.tongueOut = true;
@@ -968,191 +1092,192 @@ this.spawnInterval = 6; // Слегка увеличили интервал дл
                 }
             }
 
-updateCosmicTrail() {
-    if (!this.alive || isPaused) return;
-    
-    this.spawnTimer++;
-    
-    // Добавляем новую частицу каждые N кадров
-    if (this.spawnTimer >= this.spawnInterval) {
-        const colors = [
-            '#4a6fa5', // Глубокий синий
-            '#00b4d8', // Голубой
-            '#0077b6', // Синий океан
-            '#48cae4', // Светло-голубой
-            '#03045e', // Темно-синий
-            '#ade8f4', // Очень светлый голубой
-            '#0096c7', // Яркий синий
-            '#66ccff', // Светло-голубой
-            '#3388cc'  // Средний синий
-        ];
-        
-        const trailX = this.x + (this.direction === 1 ? -this.width/2 : this.width/2);
-        this.cosmicTrails.push({
-            x: trailX,
-            y: this.y + (Math.random() - 0.5) * 12, // Увеличили разброс по Y для треугольников
-            size: Math.random() * 8 + 4, // Увеличили размер для треугольников
-            color: colors[Math.floor(Math.random() * colors.length)],
-            life: 1.0,
-            speed: Math.random() * 0.4 + 0.3,
-            rotation: Math.random() * Math.PI * 2,
-            rotationSpeed: (Math.random() - 0.5) * 0.08, // Увеличили скорость вращения
-            pulseSpeed: Math.random() * 0.03 + 0.02,
-            pulsePhase: Math.random() * Math.PI * 2,
-            triangleType: Math.floor(Math.random() * 3), // Тип треугольника
-            rotationDirection: Math.random() > 0.5 ? 1 : -1 // Направление вращения
-        });
-        this.spawnTimer = 0;
-    }
-    
-    // Обновляем существующие частицы
-    for (let i = this.cosmicTrails.length - 1; i >= 0; i--) {
-        const trail = this.cosmicTrails[i];
-        
-        // Движение частиц
-        if (this.direction === 1) {
-            trail.x -= trail.speed * 2;
-        } else {
-            trail.x += trail.speed * 2;
-        }
-        
-        // Легкое вертикальное колебание
-        trail.y += Math.sin(trail.life * 15) * 0.2;
-        
-        // Уменьшаем жизнь
-        trail.life -= 0.025; // Немного медленнее для треугольников
-        
-        // Вращение треугольника
-        trail.rotation += trail.rotationSpeed * trail.rotationDirection;
-        
-        // Плавное уменьшение размера
-        trail.size *= 0.98;
-        
-        // Удаляем старые частицы
-        if (trail.life <= 0 || trail.size < 1) {
-            this.cosmicTrails.splice(i, 1);
-        }
-    }
-}
+            updateCosmicTrail() {
+                if (!this.alive || isPaused) return;
+                
+                this.spawnTimer++;
+                
+                // Добавляем новую частицу каждые N кадров
+                if (this.spawnTimer >= this.spawnInterval) {
+                    const colors = [
+                        '#4a6fa5', // Глубокий синий
+                        '#00b4d8', // Голубой
+                        '#0077b6', // Синий океан
+                        '#48cae4', // Светло-голубой
+                        '#03045e', // Темно-синий
+                        '#ade8f4', // Очень светлый голубой
+                        '#0096c7', // Яркий синий
+                        '#66ccff', // Светло-голубой
+                        '#3388cc'  // Средний синий
+                    ];
+                    
+                    const trailX = this.x + (this.direction === 1 ? -this.width/2 : this.width/2);
+                    this.cosmicTrails.push({
+                        x: trailX,
+                        y: this.y + (Math.random() - 0.5) * 12, // Увеличили разброс по Y для треугольников
+                        size: Math.random() * 8 + 4, // Увеличили размер для треугольников
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        life: 1.0,
+                        speed: Math.random() * 0.4 + 0.3,
+                        rotation: Math.random() * Math.PI * 2,
+                        rotationSpeed: (Math.random() - 0.5) * 0.08, // Увеличили скорость вращения
+                        pulseSpeed: Math.random() * 0.03 + 0.02,
+                        pulsePhase: Math.random() * Math.PI * 2,
+                        triangleType: Math.floor(Math.random() * 3), // Тип треугольника
+                        rotationDirection: Math.random() > 0.5 ? 1 : -1 // Направление вращения
+                    });
+                    this.spawnTimer = 0;
+                }
+                
+                // Обновляем существующие частицы
+                for (let i = this.cosmicTrails.length - 1; i >= 0; i--) {
+                    const trail = this.cosmicTrails[i];
+                    
+                    // Движение частиц
+                    if (this.direction === 1) {
+                        trail.x -= trail.speed * 2;
+                    } else {
+                        trail.x += trail.speed * 2;
+                    }
+                    
+                    // Легкое вертикальное колебание
+                    trail.y += Math.sin(trail.life * 15) * 0.2;
+                    
+                    // Уменьшаем жизнь
+                    trail.life -= 0.025; // Немного медленнее для треугольников
+                    
+                    // Вращение треугольника
+                    trail.rotation += trail.rotationSpeed * trail.rotationDirection;
+                    
+                    // Плавное уменьшение размера
+                    trail.size *= 0.98;
+                    
+                    // Удаляем старые частицы
+                    if (trail.life <= 0 || trail.size < 1) {
+                        this.cosmicTrails.splice(i, 1);
+                    }
+                }
+            }
 
-drawCosmicTrail() {
-    if (!this.alive) return;
-    
-    this.cosmicTrails.forEach(trail => {
-        const pulse = Math.sin(trail.life * 20 + trail.pulsePhase) * 0.3 + 0.7;
-        const currentSize = trail.size * pulse * trail.life;
-        
-        ctx.save();
-        ctx.translate(trail.x, trail.y);
-        ctx.rotate(trail.rotation);
-        
-        // Рисуем треугольник с пульсацией и свечением
-        this.drawCosmicTriangle(0, 0, currentSize, trail.color, trail.life);
-        
-        ctx.restore();
-    });
-}
+            drawCosmicTrail() {
+                if (!this.alive) return;
+                
+                this.cosmicTrails.forEach(trail => {
+                    const pulse = Math.sin(trail.life * 20 + trail.pulsePhase) * 0.3 + 0.7;
+                    const currentSize = trail.size * pulse * trail.life;
+                    
+                    ctx.save();
+                    ctx.translate(trail.x, trail.y);
+                    ctx.rotate(trail.rotation);
+                    
+                    // Рисуем треугольник с пульсацией и свечением
+                    this.drawCosmicTriangle(0, 0, currentSize, trail.color, trail.life, trail.triangleType);
+                    
+                    ctx.restore();
+                });
+            }
 
-drawCosmicTriangle(x, y, size, color, alpha) {
-    ctx.save();
-    ctx.translate(x, y);
-    
-    // Рисуем треугольник с пульсацией и свечением
-    const pulse = Math.sin(Date.now() * 0.005) * 0.3 + 0.7;
-    const currentSize = size * pulse;
-    
-    // Внешнее свечение
-    if (this.alive) {
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 15 * pulse;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-    }
-    
-    // Основной треугольник
-    ctx.fillStyle = color;
-    ctx.globalAlpha = alpha * pulse;
-    
-    ctx.beginPath();
-    const triangleType = Math.floor(Math.random() * 3);
-    
-    switch(triangleType) {
-        case 0: // Равносторонний треугольник
-            ctx.moveTo(0, -currentSize);
-            ctx.lineTo(-currentSize * 0.866, currentSize * 0.5);
-            ctx.lineTo(currentSize * 0.866, currentSize * 0.5);
-            break;
-            
-        case 1: // Острый треугольник
-            ctx.moveTo(0, -currentSize * 1.2);
-            ctx.lineTo(-currentSize * 0.6, currentSize * 0.8);
-            ctx.lineTo(currentSize * 0.6, currentSize * 0.8);
-            break;
-            
-        case 2: // Перевернутый треугольник
-            ctx.moveTo(0, currentSize * 1.2);
-            ctx.lineTo(-currentSize * 0.866, -currentSize * 0.5);
-            ctx.lineTo(currentSize * 0.866, -currentSize * 0.5);
-            break;
-    }
-    
-    ctx.closePath();
-    ctx.fill();
-    
-    // Внутренний слой
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = alpha * pulse * 0.7;
-    const innerSize = currentSize * 0.6;
-    
-    ctx.fillStyle = this.lightenColor(color, 40);
-    ctx.beginPath();
-    
-    switch(triangleType) {
-        case 0:
-            ctx.moveTo(0, -innerSize);
-            ctx.lineTo(-innerSize * 0.866, innerSize * 0.5);
-            ctx.lineTo(innerSize * 0.866, innerSize * 0.5);
-            break;
-        case 1:
-            ctx.moveTo(0, -innerSize * 1.2);
-            ctx.lineTo(-innerSize * 0.6, innerSize * 0.8);
-            ctx.lineTo(innerSize * 0.6, innerSize * 0.8);
-            break;
-        case 2:
-            ctx.moveTo(0, innerSize * 1.2);
-            ctx.lineTo(-innerSize * 0.866, -innerSize * 0.5);
-            ctx.lineTo(innerSize * 0.866, -innerSize * 0.5);
-            break;
-    }
-    
-    ctx.closePath();
-    ctx.fill();
-    
-    // Яркое ядро
-    ctx.globalAlpha = alpha * pulse;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.beginPath();
-    ctx.arc(0, 0, currentSize * 0.15, 0, Math.PI * 2);
-    ctx.fill();
-    
-    ctx.restore();
-}
+            drawCosmicTriangle(x, y, size, color, alpha, triangleType = null) {
+                ctx.save();
+                ctx.translate(x, y);
+                
+                // Рисуем треугольник с пульсацией и свечением
+                const pulse = Math.sin(Date.now() * 0.005) * 0.3 + 0.7;
+                const currentSize = size * pulse;
+                
+                // Внешнее свечение
+                if (this.alive) {
+                    ctx.shadowColor = color;
+                    ctx.shadowBlur = 15 * pulse;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
+                }
+                
+                // Основной треугольник
+                ctx.fillStyle = color;
+                ctx.globalAlpha = alpha * pulse;
+                
+                ctx.beginPath();
+                const type = triangleType !== null ? triangleType : Math.floor(Math.random() * 3);
+                
+                switch(type) {
+                    case 0: // Равносторонний треугольник
+                        ctx.moveTo(0, -currentSize);
+                        ctx.lineTo(-currentSize * 0.866, currentSize * 0.5);
+                        ctx.lineTo(currentSize * 0.866, currentSize * 0.5);
+                        break;
+                        
+                    case 1: // Острый треугольник
+                        ctx.moveTo(0, -currentSize * 1.2);
+                        ctx.lineTo(-currentSize * 0.6, currentSize * 0.8);
+                        ctx.lineTo(currentSize * 0.6, currentSize * 0.8);
+                        break;
+                        
+                    case 2: // Перевернутый треугольник
+                        ctx.moveTo(0, currentSize * 1.2);
+                        ctx.lineTo(-currentSize * 0.866, -currentSize * 0.5);
+                        ctx.lineTo(currentSize * 0.866, -currentSize * 0.5);
+                        break;
+                }
+                
+                ctx.closePath();
+                ctx.fill();
+                
+                // Внутренний слой
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = alpha * pulse * 0.7;
+                const innerSize = currentSize * 0.6;
+                
+                ctx.fillStyle = this.lightenColor(color, 40);
+                ctx.beginPath();
+                
+                switch(type) {
+                    case 0:
+                        ctx.moveTo(0, -innerSize);
+                        ctx.lineTo(-innerSize * 0.866, innerSize * 0.5);
+                        ctx.lineTo(innerSize * 0.866, innerSize * 0.5);
+                        break;
+                    case 1:
+                        ctx.moveTo(0, -innerSize * 1.2);
+                        ctx.lineTo(-innerSize * 0.6, innerSize * 0.8);
+                        ctx.lineTo(innerSize * 0.6, innerSize * 0.8);
+                        break;
+                    case 2:
+                        ctx.moveTo(0, innerSize * 1.2);
+                        ctx.lineTo(-innerSize * 0.866, -innerSize * 0.5);
+                        ctx.lineTo(innerSize * 0.866, -innerSize * 0.5);
+                        break;
+                }
+                
+                ctx.closePath();
+                ctx.fill();
+                
+                // Яркое ядро
+                ctx.globalAlpha = alpha * pulse;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.beginPath();
+                ctx.arc(0, 0, currentSize * 0.15, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
 
-// Вспомогательная функция для осветления цвета
-lightenColor(color, percent) {
-    const num = parseInt(color.replace("#", ""), 16);
-    const amt = Math.round(2.55 * percent);
-    const R = (num >> 16) + amt;
-    const G = (num >> 8 & 0x00FF) + amt;
-    const B = (num & 0x0000FF) + amt;
-    
-    return "#" + (
-        0x1000000 + 
-        (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 + 
-        (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 + 
-        (B < 255 ? (B < 1 ? 0 : B) : 255)
-    ).toString(16).slice(1);
-}
+            // Вспомогательная функция для осветления цвета
+            lightenColor(color, percent) {
+                const num = parseInt(color.replace("#", ""), 16);
+                const amt = Math.round(2.55 * percent);
+                const R = (num >> 16) + amt;
+                const G = (num >> 8 & 0x00FF) + amt;
+                const B = (num & 0x0000FF) + amt;
+                
+                return "#" + (
+                    0x1000000 + 
+                    (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 + 
+                    (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 + 
+                    (B < 255 ? (B < 1 ? 0 : B) : 255)
+                ).toString(16).slice(1);
+            }
+
             die() {
                 this.alive = false;
                 this.deathAnimation = 1;
@@ -1195,22 +1320,22 @@ lightenColor(color, percent) {
                         rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.05,
                         width: this.width, height: this.height, color: this.color
                     },
-{ // Левое крыло
-    x: this.x - 5, y: this.y - 5,
-    vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
-    rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.08,
-    color: cowTypes[this.type].wingColor, 
-    wingPhase: this.wingPhase,
-    wingSpeed: this.wingSpeed // Добавляем скорость крыльев
-},
-{ // Правое крыло
-    x: this.x + 5, y: this.y - 5,
-    vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
-    rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.08,
-    color: cowTypes[this.type].wingColor, 
-    wingPhase: this.wingPhase,
-    wingSpeed: this.wingSpeed // Добавляем скорость крыльев
-},
+                    { // Левое крыло
+                        x: this.x - 5, y: this.y - 5,
+                        vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
+                        rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.08,
+                        color: cowTypes[this.type].wingColor, 
+                        wingPhase: this.wingPhase,
+                        wingSpeed: this.wingSpeed // Добавляем скорость крыльев
+                    },
+                    { // Правое крыло
+                        x: this.x + 5, y: this.y - 5,
+                        vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
+                        rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.08,
+                        color: cowTypes[this.type].wingColor, 
+                        wingPhase: this.wingPhase,
+                        wingSpeed: this.wingSpeed // Добавляем скорость крыльев
+                    },
                     { // Нос
                         x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2), y: this.y + 8,
                         vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2,
@@ -1264,11 +1389,11 @@ lightenColor(color, percent) {
                 }
             }
 
-update() {
-    if (this.alive && !isPaused) {
-        this.updateMovement();
-        this.x += this.vx;
-        this.updateCosmicTrail(); // Этот вызов должен быть здесь
+            update() {
+                if (this.alive && !isPaused) {
+                    this.updateMovement();
+                    this.x += this.vx;
+                    this.updateCosmicTrail();
                     
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
                         (this.direction === -1 && this.x < -this.width*2)) {
@@ -1289,17 +1414,16 @@ update() {
                             }
                         }
                         
-if (limb.wingPhase !== undefined && limb.wingSpeed !== undefined && !isPaused) {
-    limb.wingPhase += limb.wingSpeed;
-}
+                        if (limb.wingPhase !== undefined && limb.wingSpeed !== undefined && !isPaused) {
+                            limb.wingPhase += limb.wingSpeed;
+                        }
                     });
                 }
             }
 
             draw() {
-    if (this.alive) {
-        this.drawCosmicTrail();
-    }
+                this.drawCosmicTrail();
+                
                 ctx.save();
                 
                 if (this.alive) {
@@ -1309,6 +1433,11 @@ if (limb.wingPhase !== undefined && limb.wingSpeed !== undefined && !isPaused) {
                         ctx.scale(-1, 1);
                     }
                     
+                    // Обновляем фазу движения крыльев если корова жива и не на паузе
+                    if (this.alive && !isPaused) {
+                        this.wingPhase += this.wingSpeed;
+                    }
+
                     // Body
                     ctx.fillStyle = this.color;
                     ctx.beginPath();
@@ -1356,11 +1485,11 @@ if (limb.wingPhase !== undefined && limb.wingSpeed !== undefined && !isPaused) {
                     
                     const headX = this.width/2;
                     
-// Head
-ctx.fillStyle = this.color;
-ctx.beginPath();
-ctx.arc(headX, 0, this.headRadius, 0, Math.PI * 2);
-ctx.fill();
+                    // Head
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(headX, 0, this.headRadius, 0, Math.PI * 2);
+                    ctx.fill();
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 2;
                     ctx.stroke();
@@ -1389,29 +1518,29 @@ ctx.fill();
                     ctx.fill();
                     ctx.restore();
                     
-ctx.save();
-ctx.translate(headX + this.headRadius * 0.6, -this.headRadius * 0.6);
-ctx.rotate(Math.PI/4);
-ctx.fillStyle = this.color;
-ctx.beginPath();
-ctx.moveTo(0, 0);
-ctx.quadraticCurveTo(-this.headRadius * 0.5, -this.headRadius * 0.4, 0, -this.headRadius * 0.75);
-ctx.quadraticCurveTo(this.headRadius * 0.5, -this.headRadius * 0.4, 0, 0);
-ctx.closePath();
-ctx.fill();
-ctx.strokeStyle = '#333';
-ctx.lineWidth = 1;
-ctx.stroke();
+                    ctx.save();
+                    ctx.translate(headX + this.headRadius * 0.6, -this.headRadius * 0.6);
+                    ctx.rotate(Math.PI/4);
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(-this.headRadius * 0.5, -this.headRadius * 0.4, 0, -this.headRadius * 0.75);
+                    ctx.quadraticCurveTo(this.headRadius * 0.5, -this.headRadius * 0.4, 0, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
 
-ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
-ctx.beginPath();
-ctx.moveTo(0, 0);
-ctx.quadraticCurveTo(-this.headRadius * 0.3, -this.headRadius * 0.3, 0, -this.headRadius * 0.6);
-ctx.quadraticCurveTo(this.headRadius * 0.3, -this.headRadius * 0.3, 0, 0);
-ctx.closePath();
-ctx.fill();
-ctx.restore();
-             
+                    ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(-this.headRadius * 0.3, -this.headRadius * 0.3, 0, -this.headRadius * 0.6);
+                    ctx.quadraticCurveTo(this.headRadius * 0.3, -this.headRadius * 0.3, 0, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                    
                     // Eyes
                     const eyeYOffset = 2;
                     const eyeClosed = Math.abs(Math.sin(this.eyePhase)) < 0.1;
@@ -1452,25 +1581,25 @@ ctx.restore();
                         ctx.stroke();
                     }      
                     
-// Eyebrows (опущенные на 1px)
-ctx.strokeStyle = '#333';
-ctx.lineWidth = 1.5;
-// Левая бровь
-ctx.beginPath();
-ctx.moveTo(headX - 8, -eyeYOffset - 7); // Опущена на 1px
-ctx.lineTo(headX - 3, -eyeYOffset - 7); // Опущена на 1px
-ctx.stroke();
-// Правая бровь
-ctx.beginPath();
-ctx.moveTo(headX + 3, -eyeYOffset - 7); // Опущена на 1px
-ctx.lineTo(headX + 8, -eyeYOffset - 7); // Опущена на 1px
-ctx.stroke();
+                    // Eyebrows (опущенные на 1px)
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 1.5;
+                    // Левая бровь
+                    ctx.beginPath();
+                    ctx.moveTo(headX - 8, -eyeYOffset - 7); // Опущена на 1px
+                    ctx.lineTo(headX - 3, -eyeYOffset - 7); // Опущена на 1px
+                    ctx.stroke();
+                    // Правая бровь
+                    ctx.beginPath();
+                    ctx.moveTo(headX + 3, -eyeYOffset - 7); // Опущена на 1px
+                    ctx.lineTo(headX + 8, -eyeYOffset - 7); // Опущена на 1px
+                    ctx.stroke();
                     
                     // Nose
-ctx.fillStyle = 'rgba(255, 182, 193, 0.8)'; // тот же цвет что у внутренней части ушей
-ctx.beginPath();
-ctx.ellipse(headX, eyeYOffset + 8, 12, 9, 0, 0, Math.PI * 2); // увеличенная овальность
-ctx.fill();
+                    ctx.fillStyle = 'rgba(255, 182, 193, 0.8)'; // тот же цвет что у внутренней части ушей
+                    ctx.beginPath();
+                    ctx.ellipse(headX, eyeYOffset + 8, 12, 9, 0, 0, Math.PI * 2); // увеличенная овальность
+                    ctx.fill();
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 1;
                     ctx.stroke();
@@ -1491,29 +1620,30 @@ ctx.fill();
                         ctx.fill();
                     }
                     
-// Horns (светло-коричневый цвет)
-ctx.strokeStyle = '#A0522D'; // Светло-коричневый цвет
-ctx.lineWidth = 2;
+                    // Horns (светло-коричневый цвет)
+                    ctx.strokeStyle = '#A0522D'; // Светло-коричневый цвет
+                    ctx.lineWidth = 2;
 
-// Left horn (изогнутый)
-ctx.save();
-ctx.translate(headX - 4, -this.headRadius + 2);
-ctx.rotate(-0.3);
-ctx.beginPath();
-ctx.moveTo(0, 0);
-ctx.quadraticCurveTo(-2, -4, 0, -7);
-ctx.stroke();
-ctx.restore();
+                    // Left horn (изогнутый)
+                    ctx.save();
+                    ctx.translate(headX - 4, -this.headRadius + 2);
+                    ctx.rotate(-0.3);
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(-2, -4, 0, -7);
+                    ctx.stroke();
+                    ctx.restore();
 
-// Right horn (изогнутый)
-ctx.save();
-ctx.translate(headX + 4, -this.headRadius + 2);
-ctx.rotate(0.3);
-ctx.beginPath();
-ctx.moveTo(0, 0);
-ctx.quadraticCurveTo(2, -4, 0, -7);
-ctx.stroke();
-ctx.restore();   
+                    // Right horn (изогнутый)
+                    ctx.save();
+                    ctx.translate(headX + 4, -this.headRadius + 2);
+                    ctx.rotate(0.3);
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(2, -4, 0, -7);
+                    ctx.stroke();
+                    ctx.restore();   
+                    
                     // Helmet - увеличен на 1px
                     ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
                     ctx.beginPath();
@@ -1523,88 +1653,83 @@ ctx.restore();
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-// Обновляем фазу движения крыльев если корова жива и не на паузе
-if (this.alive && !isPaused) {
-    this.wingPhase += this.wingSpeed;
-}
+                    // Градиентные крылья с ЭФФЕКТОМ ИЗ ВТОРОГО ФАЙЛА
+                    const wingYOffset = Math.sin(this.wingPhase) * 15; // Теперь wingYOffset будет меняться
+                    const wingTipX = 50;
+                    const wingTipY = -30 + wingYOffset;
 
-// Градиентные крылья с ЭФФЕКТОМ ИЗ ВТОРОГО ФАЙЛА
-const wingYOffset = Math.sin(this.wingPhase) * 15; // Теперь wingYOffset будет меняться
-const wingTipX = 50;
-const wingTipY = -30 + wingYOffset;
+                    // ЛЕВОЕ КРЫЛО с эффектом из второго файла
+                    const leftWingGradient = ctx.createLinearGradient(
+                        -5, -5,
+                        -wingTipX, wingTipY
+                    );
+                    leftWingGradient.addColorStop(0, 'rgba(255, 100, 150, 0.8)'); // Розовый
+                    leftWingGradient.addColorStop(0.5, cowTypes[this.type].wingColor); // Основной цвет типа
+                    leftWingGradient.addColorStop(1, 'rgba(150, 200, 255, 0.6)'); // Голубой
 
-// ЛЕВОЕ КРЫЛО с эффектом из второго файла
-const leftWingGradient = ctx.createLinearGradient(
-    -5, -5,
-    -wingTipX, wingTipY
-);
-leftWingGradient.addColorStop(0, 'rgba(255, 100, 150, 0.8)'); // Розовый
-leftWingGradient.addColorStop(0.5, cowTypes[this.type].wingColor); // Основной цвет типа
-leftWingGradient.addColorStop(1, 'rgba(150, 200, 255, 0.6)'); // Голубой
+                    ctx.fillStyle = leftWingGradient;
+                    ctx.beginPath();
+                    ctx.moveTo(-5, -5);
+                    ctx.bezierCurveTo(-20, -10 + wingYOffset * 0.5, -40, -20 + wingYOffset, -wingTipX, wingTipY);
+                    ctx.bezierCurveTo(-40, 0 + wingYOffset * 0.5, -20, 5 + wingYOffset * 0.3, -5, -5);
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
 
-ctx.fillStyle = leftWingGradient;
-ctx.beginPath();
-ctx.moveTo(-5, -5);
-ctx.bezierCurveTo(-20, -10 + wingYOffset * 0.5, -40, -20 + wingYOffset, -wingTipX, wingTipY);
-ctx.bezierCurveTo(-40, 0 + wingYOffset * 0.5, -20, 5 + wingYOffset * 0.3, -5, -5);
-ctx.fill();
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-ctx.lineWidth = 2;
-ctx.stroke();
+                    // Добавляем детали крыла как во втором файле
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.lineWidth = 1;
+                    for (let i = 1; i <= 3; i++) {
+                        const featherX = -5 - (wingTipX + 5) * i / 4;
+                        const featherY = -5 + (wingTipY + 5) * i / 4;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(-5, -5);
+                        ctx.quadraticCurveTo(featherX * 1.2, featherY * 0.8, featherX, featherY);
+                        ctx.stroke();
+                    }
 
-// Добавляем детали крыла как во втором файле
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-ctx.lineWidth = 1;
-for (let i = 1; i <= 3; i++) {
-    const featherX = -5 - (wingTipX + 5) * i / 4;
-    const featherY = -5 + (wingTipY + 5) * i / 4;
-    
-    ctx.beginPath();
-    ctx.moveTo(-5, -5);
-    ctx.quadraticCurveTo(featherX * 1.2, featherY * 0.8, featherX, featherY);
-    ctx.stroke();
-}
+                    // ПРАВОЕ КРЫЛО с эффектом из второго файла
+                    ctx.globalCompositeOperation = 'destination-over';
 
-// ПРАВОЕ КРЫЛО с эффектом из второго файла
-ctx.globalCompositeOperation = 'destination-over';
+                    const rightWingGradient = ctx.createLinearGradient(
+                        5, -5,
+                        wingTipX, wingTipY
+                    );
+                    rightWingGradient.addColorStop(0, 'rgba(255, 100, 150, 0.8)'); // Розовый
+                    rightWingGradient.addColorStop(0.5, cowTypes[this.type].wingColor); // Основной цвет типа
+                    rightWingGradient.addColorStop(1, 'rgba(150, 200, 255, 0.6)'); // Голубой
 
-const rightWingGradient = ctx.createLinearGradient(
-    5, -5,
-    wingTipX, wingTipY
-);
-rightWingGradient.addColorStop(0, 'rgba(255, 100, 150, 0.8)'); // Розовый
-rightWingGradient.addColorStop(0.5, cowTypes[this.type].wingColor); // Основной цвет типа
-rightWingGradient.addColorStop(1, 'rgba(150, 200, 255, 0.6)'); // Голубой
+                    ctx.fillStyle = rightWingGradient;
+                    ctx.beginPath();
+                    ctx.moveTo(5, -5);
+                    ctx.bezierCurveTo(20, -10 + wingYOffset * 0.5, 40, -20 + wingYOffset, wingTipX, wingTipY);
+                    ctx.bezierCurveTo(40, 0 + wingYOffset * 0.5, 20, 5 + wingYOffset * 0.3, 5, -5);
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
 
-ctx.fillStyle = rightWingGradient;
-ctx.beginPath();
-ctx.moveTo(5, -5);
-ctx.bezierCurveTo(20, -10 + wingYOffset * 0.5, 40, -20 + wingYOffset, wingTipX, wingTipY);
-ctx.bezierCurveTo(40, 0 + wingYOffset * 0.5, 20, 5 + wingYOffset * 0.3, 5, -5);
-ctx.fill();
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-ctx.lineWidth = 2;
-ctx.stroke();
-
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-ctx.lineWidth = 1;
-for (let i = 1; i <= 3; i++) {
-    const featherX = 5 + (wingTipX - 5) * i / 4;
-    const featherY = -5 + (wingTipY + 5) * i / 4;
-    
-    ctx.beginPath();
-    ctx.moveTo(5, -5);
-    ctx.quadraticCurveTo(featherX * 0.8, featherY * 0.8, featherX, featherY);
-    ctx.stroke();
-}
-ctx.globalCompositeOperation = 'source-over';
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.lineWidth = 1;
+                    for (let i = 1; i <= 3; i++) {
+                        const featherX = 5 + (wingTipX - 5) * i / 4;
+                        const featherY = -5 + (wingTipY + 5) * i / 4;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(5, -5);
+                        ctx.quadraticCurveTo(featherX * 0.8, featherY * 0.8, featherX, featherY);
+                        ctx.stroke();
+                    }
+                    ctx.globalCompositeOperation = 'source-over';
                     
                     // Tail
                     const tailX = -this.width/2;
                     const tailY = 0;
                     const tailSwing = Math.sin(this.tailPhase) * 0.3;
                     
-ctx.strokeStyle = '#333'; // тот же цвет что у обводки тела
+                    ctx.strokeStyle = '#333'; // тот же цвет что у обводки тела
                     ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.moveTo(tailX, tailY);
@@ -1636,184 +1761,184 @@ ctx.strokeStyle = '#333'; // тот же цвет что у обводки те�
                         ctx.ellipse(nippleX, nippleY, 2, 3, 0, 0, Math.PI * 2);
                         ctx.fill();
                     }
-} else {
-    ctx.globalAlpha = this.alpha;
-    
-    this.limbs.forEach(limb => {
-        if (limb === this.limbs[11]) return;
-        
-        ctx.save();
-        ctx.translate(limb.x, limb.y);
-        ctx.rotate(limb.rotation);
-        
-        if (limb === this.limbs[0]) {
-            ctx.fillStyle = limb.color;
-            ctx.beginPath();
-            ctx.arc(0, 0, limb.width/2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            
-            // Мертвые глаза (крестики) - подняты на 2px вверх
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(-8, 0); // Подняты на 2px вверх
-            ctx.lineTo(-3, -5); // Подняты на 2px вверх
-            ctx.moveTo(-3, 0); // Подняты на 2px вверх
-            ctx.lineTo(-8, -5); // Подняты на 2px вверх
-            ctx.moveTo(3, 0); // Подняты на 2px вверх
-            ctx.lineTo(8, -5); // Подняты на 2px вверх
-            ctx.moveTo(8, 0); // Подняты на 2px вверх
-            ctx.lineTo(3, -5); // Подняты на 2px вверх
-            ctx.stroke();
-            
-            // Нос (как у живой коровы)
-            ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
-            ctx.beginPath();
-            ctx.ellipse(0, 10, 12, 9, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            
-            // Ноздри (как у живой коровы)
-            ctx.fillStyle = '#333';
-            ctx.beginPath();
-            ctx.ellipse(-4, 10, 1.5, 2.5, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(4, 10, 1.5, 2.5, 0, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Брови (как у живой коровы)
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1.5;
-            // Левая бровь
-            ctx.beginPath();
-            ctx.moveTo(-8, -7);
-            ctx.lineTo(-3, -7);
-            ctx.stroke();
-            // Правая бровь
-            ctx.beginPath();
-            ctx.moveTo(3, -7);
-            ctx.lineTo(8, -7);
-            ctx.stroke();
-            
-            if (limb.tongueOut) {
-                ctx.fillStyle = '#ff0000';
-                ctx.beginPath();
-                ctx.ellipse(0, 18, 5, 3, 0, 0, Math.PI);
-                ctx.fill();
-            }
-            
-            // Рожки (светло-коричневый цвет как у живых коров)
-            if (limb.horns) {
-                limb.horns.forEach(horn => {
-                    ctx.save();
-                    ctx.translate(horn.x, horn.y);
-                    ctx.rotate(horn.rotation);
+                } else {
+                    ctx.globalAlpha = this.alpha;
                     
-                    ctx.strokeStyle = '#A0522D'; // Светло-коричневый цвет
-                    ctx.lineWidth = 2;
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(0, 0);
-                    if (horn.x < 0) {
-                        ctx.quadraticCurveTo(-2, -4, 0, -7);
-                    } else {
-                        ctx.quadraticCurveTo(2, -4, 0, -7);
-                    }
-                    ctx.stroke();
-                    
-                    ctx.restore();
-                });
-            }
-            
-            // Уши (исправленные - не вытягиваются)
-            if (limb.ears) {
-                limb.ears.forEach(ear => {
-                    ctx.save();
-                    ctx.translate(ear.x, ear.y);
-                    ctx.rotate(ear.rotation);
-                    
-                    // Внешняя часть уха
-                    ctx.fillStyle = limb.color;
-                    ctx.beginPath();
-                    ctx.moveTo(0, 0);
-                    ctx.quadraticCurveTo(-8, -8, 0, -15); // Фиксированные размеры
-                    ctx.quadraticCurveTo(8, -8, 0, 0);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.strokeStyle = '#333';
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
-                    
-                    // Внутренняя часть уха
-                    ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
-                    ctx.beginPath();
-                    ctx.moveTo(0, 0);
-                    ctx.quadraticCurveTo(-5, -5, 0, -10); // Фиксированные размеры
-                    ctx.quadraticCurveTo(5, -5, 0, 0);
-                    ctx.closePath();
-                    ctx.fill();
-                    
-                    ctx.restore();
-                });
-            }
-        
+                    this.limbs.forEach(limb => {
+                        if (limb === this.limbs[11]) return;
+                        
+                        ctx.save();
+                        ctx.translate(limb.x, limb.y);
+                        ctx.rotate(limb.rotation);
+                        
+                        if (limb === this.limbs[0]) {
+                            ctx.fillStyle = limb.color;
+                            ctx.beginPath();
+                            ctx.arc(0, 0, limb.width/2, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                            
+                            // Мертвые глаза (крестики) - подняты на 2px вверх
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(-8, 0); // Подняты на 2px вверх
+                            ctx.lineTo(-3, -5); // Подняты на 2px вверх
+                            ctx.moveTo(-3, 0); // Подняты на 2px вверх
+                            ctx.lineTo(-8, -5); // Подняты на 2px вверх
+                            ctx.moveTo(3, 0); // Подняты на 2px вверх
+                            ctx.lineTo(8, -5); // Подняты на 2px вверх
+                            ctx.moveTo(8, 0); // Подняты на 2px вверх
+                            ctx.lineTo(3, -5); // Подняты на 2px вверх
+                            ctx.stroke();
+                            
+                            // Нос (как у живой коровы)
+                            ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
+                            ctx.beginPath();
+                            ctx.ellipse(0, 10, 12, 9, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                            
+                            // Ноздри (как у живой коровы)
+                            ctx.fillStyle = '#333';
+                            ctx.beginPath();
+                            ctx.ellipse(-4, 10, 1.5, 2.5, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.beginPath();
+                            ctx.ellipse(4, 10, 1.5, 2.5, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            
+                            // Брови (как у живой коровы)
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1.5;
+                            // Левая бровь
+                            ctx.beginPath();
+                            ctx.moveTo(-8, -7);
+                            ctx.lineTo(-3, -7);
+                            ctx.stroke();
+                            // Правая бровь
+                            ctx.beginPath();
+                            ctx.moveTo(3, -7);
+                            ctx.lineTo(8, -7);
+                            ctx.stroke();
+                            
+                            if (limb.tongueOut) {
+                                ctx.fillStyle = '#ff0000';
+                                ctx.beginPath();
+                                ctx.ellipse(0, 18, 5, 3, 0, 0, Math.PI);
+                                ctx.fill();
+                            }
+                            
+                            // Рожки (светло-коричневый цвет как у живых коров)
+                            if (limb.horns) {
+                                limb.horns.forEach(horn => {
+                                    ctx.save();
+                                    ctx.translate(horn.x, horn.y);
+                                    ctx.rotate(horn.rotation);
+                                    
+                                    ctx.strokeStyle = '#A0522D'; // Светло-коричневый цвет
+                                    ctx.lineWidth = 2;
+                                    
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, 0);
+                                    if (horn.x < 0) {
+                                        ctx.quadraticCurveTo(-2, -4, 0, -7);
+                                    } else {
+                                        ctx.quadraticCurveTo(2, -4, 0, -7);
+                                    }
+                                    ctx.stroke();
+                                    
+                                    ctx.restore();
+                                });
+                            }
+                            
+                            // Уши (исправленные - не вытягиваются)
+                            if (limb.ears) {
+                                limb.ears.forEach(ear => {
+                                    ctx.save();
+                                    ctx.translate(ear.x, ear.y);
+                                    ctx.rotate(ear.rotation);
+                                    
+                                    // Внешняя часть уха
+                                    ctx.fillStyle = limb.color;
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, 0);
+                                    ctx.quadraticCurveTo(-8, -8, 0, -15); // Фиксированные размеры
+                                    ctx.quadraticCurveTo(8, -8, 0, 0);
+                                    ctx.closePath();
+                                    ctx.fill();
+                                    ctx.strokeStyle = '#333';
+                                    ctx.lineWidth = 1;
+                                    ctx.stroke();
+                                    
+                                    // Внутренняя часть уха
+                                    ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, 0);
+                                    ctx.quadraticCurveTo(-5, -5, 0, -10); // Фиксированные размеры
+                                    ctx.quadraticCurveTo(5, -5, 0, 0);
+                                    ctx.closePath();
+                                    ctx.fill();
+                                    
+                                    ctx.restore();
+                                });
+                            }
+                        
                         } else if (limb === this.limbs[2] || limb === this.limbs[3]) {
-const wingYOffset = Math.sin(limb.wingPhase) * 15;
-const wingTipX = 50;
-const wingTipY = -30 + wingYOffset;
+                            const wingYOffset = Math.sin(limb.wingPhase) * 15;
+                            const wingTipX = 50;
+                            const wingTipY = -30 + wingYOffset;
 
-// Создаем градиент для крыла
-let wingGradient;
-if (limb === this.limbs[2]) { // Левое крыло
-    wingGradient = ctx.createLinearGradient(0, 0, -wingTipX, wingTipY);
-} else { // Правое крыло
-    wingGradient = ctx.createLinearGradient(0, 0, wingTipX, wingTipY);
-}
+                            // Создаем градиент для крыла
+                            let wingGradient;
+                            if (limb === this.limbs[2]) { // Левое крыло
+                                wingGradient = ctx.createLinearGradient(0, 0, -wingTipX, wingTipY);
+                            } else { // Правое крыло
+                                wingGradient = ctx.createLinearGradient(0, 0, wingTipX, wingTipY);
+                            }
 
-wingGradient.addColorStop(0, 'rgba(255, 100, 150, 0.8)');
-wingGradient.addColorStop(0.5, limb.color);
-wingGradient.addColorStop(1, 'rgba(150, 200, 255, 0.6)');
+                            wingGradient.addColorStop(0, 'rgba(255, 100, 150, 0.8)');
+                            wingGradient.addColorStop(0.5, limb.color);
+                            wingGradient.addColorStop(1, 'rgba(150, 200, 255, 0.6)');
 
-ctx.fillStyle = wingGradient;
-ctx.beginPath();
-if (limb === this.limbs[2]) {
-    ctx.moveTo(0, 0);
-    ctx.bezierCurveTo(-20, -10 + wingYOffset * 0.5, -40, -20 + wingYOffset, -wingTipX, wingTipY);
-    ctx.bezierCurveTo(-40, 0 + wingYOffset * 0.5, -20, 5 + wingYOffset * 0.3, 0, 0);
-} else {
-    ctx.moveTo(0, 0);
-    ctx.bezierCurveTo(20, -10 + wingYOffset * 0.5, 40, -20 + wingYOffset, wingTipX, wingTipY);
-    ctx.bezierCurveTo(40, 0 + wingYOffset * 0.5, 20, 5 + wingYOffset * 0.3, 0, 0);
-}
-ctx.closePath();
-ctx.fill();
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-ctx.lineWidth = 2;
-ctx.stroke();
+                            ctx.fillStyle = wingGradient;
+                            ctx.beginPath();
+                            if (limb === this.limbs[2]) {
+                                ctx.moveTo(0, 0);
+                                ctx.bezierCurveTo(-20, -10 + wingYOffset * 0.5, -40, -20 + wingYOffset, -wingTipX, wingTipY);
+                                ctx.bezierCurveTo(-40, 0 + wingYOffset * 0.5, -20, 5 + wingYOffset * 0.3, 0, 0);
+                            } else {
+                                ctx.moveTo(0, 0);
+                                ctx.bezierCurveTo(20, -10 + wingYOffset * 0.5, 40, -20 + wingYOffset, wingTipX, wingTipY);
+                                ctx.bezierCurveTo(40, 0 + wingYOffset * 0.5, 20, 5 + wingYOffset * 0.3, 0, 0);
+                            }
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
 
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-ctx.lineWidth = 1;
-for (let i = 1; i <= 3; i++) {
-    const featherX = limb === this.limbs[2] ? 
-        0 - (wingTipX) * i / 4 : 
-        0 + (wingTipX) * i / 4;
-    const featherY = 0 + (wingTipY) * i / 4;
-    
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.quadraticCurveTo(
-        featherX * (limb === this.limbs[2] ? 1.2 : 0.8), 
-        featherY * 0.8,
-        featherX, featherY
-    );
-    ctx.stroke();
-}
+                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                            ctx.lineWidth = 1;
+                            for (let i = 1; i <= 3; i++) {
+                                const featherX = limb === this.limbs[2] ? 
+                                    0 - (wingTipX) * i / 4 : 
+                                    0 + (wingTipX) * i / 4;
+                                const featherY = 0 + (wingTipY) * i / 4;
+                                
+                                ctx.beginPath();
+                                ctx.moveTo(0, 0);
+                                ctx.quadraticCurveTo(
+                                    featherX * (limb === this.limbs[2] ? 1.2 : 0.8), 
+                                    featherY * 0.8,
+                                    featherX, featherY
+                                );
+                                ctx.stroke();
+                            }
 
                         } else if (limb === this.limbs[1]) {
                             ctx.fillStyle = limb.color;
@@ -2091,6 +2216,7 @@ for (let i = 1; i <= 3; i++) {
             shots = [];
             explosions = [];
             missTexts = []; // Сбрасываем тексты промахов
+            clickWaves = []; // Очищаем волны кликов
             lifeBonuses = [];
             score = 0;
             lives = 3;
@@ -2258,6 +2384,7 @@ for (let i = 1; i <= 3; i++) {
             shots = [];
             explosions = [];
             missTexts = [];
+            clickWaves = []; // Очищаем волны
             lifeBonuses = [];
             planets = [];
 
@@ -2363,10 +2490,10 @@ for (let i = 1; i <= 3; i++) {
                 
                 if (inBody || inHead) {
                     explosions.push(new Explosion(x, y, '255, 100, 100'));
-if (cow.alive) { // Проверяем, что корова еще жива
-    cow.die();
-    deadCows.push(cow);
-}
+                    if (cow.alive) { // Проверяем, что корова еще жива
+                        cow.die();
+                        deadCows.push(cow);
+                    }
                     score += cowTypes[cow.type].score;
                     hits++;
                     updateHUD();
@@ -2477,7 +2604,7 @@ if (cow.alive) { // Проверяем, что корова еще жива
                 drawPlanetAtmosphere(planet);
             });
             
-            // Затем рисуем планеты слоя 1 (перед звездами)
+            // Затем планеты слоя 1 (перед звездами)
             planets.forEach(planet => {
                 if (planet.layer !== 1) return;
                 drawPlanet(planet);
@@ -2581,6 +2708,15 @@ if (cow.alive) { // Проверяем, что корова еще жива
             
             drawBackground();
             
+            // Обновляем и рисуем клик-волны
+            clickWaves.forEach((wave, index) => {
+                if (!wave.update()) {
+                    clickWaves.splice(index, 1);
+                } else {
+                    wave.draw();
+                }
+            });
+            
             // Сначала рисуем мертвых коров (они должны быть позади живых)
             deadCows.forEach(cow => {
                 cow.update();
@@ -2640,22 +2776,20 @@ if (cow.alive) { // Проверяем, что корова еще жива
             }
         }
 
-        function restartCowSpawning() {
-            if (spawnCowTimeout) {
-                clearTimeout(spawnCowTimeout);
-            }
-            spawnCow();
-        }
-
         canvas.addEventListener('pointerdown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Всегда создаем волну при клике (даже если игра не активна)
+            clickWaves.push(new ClickWave(x, y));
+            playClickSound();
+            
+            // Только если игра активна и не на паузе
             if (!gameActive || isReloading || isGameOver || isPaused) return;
             
             const currentTime = Date.now();
             if (currentTime - lastShotTime < config.shotCooldown) return;
-            
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
             
             if (ammo > 0) {
                 ammo--;
