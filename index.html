@@ -2072,6 +2072,8 @@
         }
 
         function startGame() {
+            console.log("startGame called"); // Добавим для отладки
+            
             const effect = document.getElementById('gameOverEffect');
             effect.classList.remove('active');
             
@@ -2089,6 +2091,7 @@
             
             initSounds();
             
+            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Сбрасываем массивы ПЕРЕД созданием новых объектов
             cows = [];
             deadCows = [];
             shots = [];
@@ -2108,6 +2111,7 @@
             reloadStartTime = 0;
             reloadSoundPlayed = false;
             
+            // ВАЖНО: восстанавливаем оригинальные скорости коров
             cowTypes.forEach((cowType, index) => {
                 cowType.speed = originalCowSpeeds[index];
             });
@@ -2121,10 +2125,12 @@
             
             updateAmmoDisplay();
             
-            initStars();
+            // ВАЖНО: Вызываем resizeCanvas ДО initStars
+            resizeCanvas();
+            initStars(); // Инициализируем звезды и планеты
+            
             updateHUD();
             updateLevelDisplay();
-            resizeCanvas();
             
             clearInterval(gameTimer);
             gameTimer = setInterval(() => {
@@ -2138,6 +2144,7 @@
                 }
             }, 1000);
             
+            // Запускаем спавн коров немедленно
             spawnCow();
             lastTime = performance.now();
             gameLoop();
@@ -2307,6 +2314,7 @@
             if (aliveCows.length < config.maxCows) {
                 const cow = new Cow();
                 cows.push(cow);
+                console.log("Cow spawned, total cows:", cows.length); // Для отладки
             }
             
             spawnCowTimeout = setTimeout(spawnCow, config.spawnInterval / (1 + level * 0.1));
@@ -2439,6 +2447,9 @@
         }
 
         function drawBackground() {
+            // Очищаем canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
             const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
             gradient.addColorStop(0, '#001a33');
             gradient.addColorStop(1, '#30397A');
@@ -2635,7 +2646,7 @@
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            initStars();
+            console.log("Canvas resized to:", canvas.width, "x", canvas.height); // Для отладки
         }
 
         function checkOrientation() {
@@ -2676,6 +2687,9 @@
 
         window.addEventListener('resize', function() {
             resizeCanvas();
+            if (gameActive && !isGameOver) {
+                initStars(); // Перегенерируем звезды при изменении размера
+            }
             checkOrientation();
         });
 
@@ -2768,7 +2782,11 @@
         }
 
         // Инициализируем анимацию при загрузке
-        window.addEventListener('load', initAurora);
+        window.addEventListener('load', function() {
+            initAurora();
+            resizeCanvas(); // Инициализируем размер canvas при загрузке
+            displayLeaderboard();
+        });
 
         function showHelp() {
             playClickSound();
