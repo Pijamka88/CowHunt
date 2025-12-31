@@ -980,100 +980,64 @@ this.maxHistory = 5;
 updateNyanTrail() {
     if (!this.alive || isPaused) return;
     
-    // Точка выхода шлейфа из СЕРЕДИНЫ ТЕЛА коровы
+    // Точка выхода шлейфа из тела коровы
     const trailX = this.x; // Центр тела коровы
     const trailY = this.y; // Центр тела коровы
     
     this.trailPoints.push({x: trailX, y: trailY});
     
-    // ОГРАНИЧЕНИЕ ДЛИНЫ ШЛЕЙФА - максимум 25 точек
-    if (this.trailPoints.length > 25) {
+    // ОГРАНИЧЕНИЕ ДЛИНЫ ШЛЕЙФА - максимум 20 точек
+    if (this.trailPoints.length > 20) {
         this.trailPoints.shift();
-    }
-    
-    // Также ограничиваем максимальное расстояние между точками
-    // чтобы шлейф не растягивался при быстром движении
-    if (this.trailPoints.length > 2) {
-        for (let i = 1; i < this.trailPoints.length; i++) {
-            const dx = this.trailPoints[i].x - this.trailPoints[i-1].x;
-            const dy = this.trailPoints[i].y - this.trailPoints[i-1].y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            // Если расстояние между точками слишком большое, добавляем промежуточные точки
-            if (distance > 15) {
-                const pointsToAdd = Math.floor(distance / 15);
-                for (let j = 1; j <= pointsToAdd; j++) {
-                    const t = j / (pointsToAdd + 1);
-                    const newX = this.trailPoints[i-1].x + dx * t;
-                    const newY = this.trailPoints[i-1].y + dy * t;
-                    this.trailPoints.splice(i + j - 1, 0, {x: newX, y: newY});
-                }
-                i += pointsToAdd;
-            }
-        }
-        
-        // После добавления точек, снова ограничиваем общую длину
-        if (this.trailPoints.length > 30) {
-            this.trailPoints.splice(0, this.trailPoints.length - 25);
-        }
-    }
-    
-    // Обновляем шлейф
-    if (this.trailPoints.length >= 2) {
-        this.nyanTrail = {
-            startX: this.trailPoints[0].x,
-            startY: this.trailPoints[0].y,
-            endX: this.trailPoints[this.trailPoints.length - 1].x,
-            endY: this.trailPoints[this.trailPoints.length - 1].y,
-            baseWidth: 35, // Широкая у тела
-            alpha: 0.95,
-            phase: this.rainbowPhase,
-            length: this.trailPoints.length
-        };
     }
 }
 
 drawNyanTrail() {
-    if (!this.alive || !this.nyanTrail || this.trailPoints.length < 2) return;
+    if (!this.alive || !this.trailPoints || this.trailPoints.length < 2) return;
     
     ctx.save();
     
-    // Градиент с ПОЛУПРОЗРАЧНЫМ И СУЖАЮЩИМСЯ КОНЦОМ (ШИРОКИЙ У ТЕЛА -> УЗКИЙ НА КОНЦЕ)
-    const startX = this.trailPoints[0].x;
-    const startY = this.trailPoints[0].y;
-    const endX = this.trailPoints[this.trailPoints.length - 1].x;
-    const endY = this.trailPoints[this.trailPoints.length - 1].y;
-    
-    const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
-    
-    // Плавный переход от яркого у тела к полупрозрачному на конце
-    gradient.addColorStop(0, 'hsla(200, 100%, 75%, 0.95)'); // Яркий синий у тела
-    gradient.addColorStop(0.3, 'hsla(190, 100%, 75%, 0.85)'); 
-    gradient.addColorStop(0.6, 'hsla(180, 100%, 75%, 0.7)'); 
-    gradient.addColorStop(0.8, 'hsla(170, 100%, 75%, 0.5)'); 
-    gradient.addColorStop(0.95, 'hsla(160, 100%, 75%, 0.3)'); // Почти прозрачный
-    gradient.addColorStop(1, 'hsla(160, 100%, 75%, 0.1)'); // ПОЛНОСТЬЮ ПОЛУПРОЗРАЧНЫЙ КОНЕЦ
-    
-    // Рисуем шлейф с ПЕРЕМЕННОЙ ШИРИНОЙ (ШИРОКИЙ У ТЕЛА -> УЗКИЙ НА КОНЦЕ)
     const totalPoints = this.trailPoints.length;
     
-    // Основная линия шлейфа с переменной шириной
+    // Рисуем шлейф как одну линию с переменной шириной и прозрачностью
+    ctx.beginPath();
+    
+    // Начинаем от первой точки
+    ctx.moveTo(this.trailPoints[0].x, this.trailPoints[0].y);
+    
+    // Добавляем остальные точки
+    for (let i = 1; i < totalPoints; i++) {
+        ctx.lineTo(this.trailPoints[i].x, this.trailPoints[i].y);
+    }
+    
+    // Градиент для цвета
+    const startX = this.trailPoints[0].x;
+    const startY = this.trailPoints[0].y;
+    const endX = this.trailPoints[totalPoints - 1].x;
+    const endY = this.trailPoints[totalPoints - 1].y;
+    
+    const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
+    gradient.addColorStop(0, 'hsla(200, 100%, 70%, 0.9)');  // Начало - яркий
+    gradient.addColorStop(0.7, 'hsla(190, 100%, 70%, 0.6)'); // Середина
+    gradient.addColorStop(1, 'hsla(180, 100%, 70%, 0.2)');   // Конец - прозрачный
+    
+    // Настройки линии
     ctx.strokeStyle = gradient;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.globalAlpha = 1;
     
-    // Рисуем шлейф сегментами для контроля ширины - НАОБОРОТ: широкий у тела, узкий на конце
-    for (let i = 0; i < this.trailPoints.length - 1; i++) {
+    // Шлейф: ШИРОКИЙ в начале (у тела), УЗКИЙ в конце
+    const maxWidth = 40;   // Ширина у тела
+    const minWidth = 5;    // Ширина на конце
+    
+    // Рисуем несколькими проходами для создания эффекта объема
+    
+    // 1. Внешний слой с плавным сужением
+    for (let i = 0; i < totalPoints - 1; i++) {
         const progress = i / (totalPoints - 1);
-        // НАОБОРОТ: начинаем с широкого (35px) и сужаемся к концу (3px)
-        const segmentWidth = 35 * (1 - progress * 0.9); // Ширина уменьшается на 90% к концу
-        
-        let width = segmentWidth;
-        // Для последнего сегмента делаем совсем узким
-        if (i === this.trailPoints.length - 2) {
-            width = 3; // Очень узкий конец
-        }
+        // Линейное уменьшение ширины от maxWidth до minWidth
+        const width = maxWidth * (1 - progress) + minWidth * progress;
         
         ctx.lineWidth = width;
         
@@ -1090,58 +1054,77 @@ drawNyanTrail() {
         ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
     }
     
-    // Внешнее свечение с эффектом рассеивания на конце
-    ctx.shadowColor = 'hsla(180, 100%, 70%, 0.4)';
-    ctx.shadowBlur = 25;
-    
-    // Перерисовываем для свечения (только первые 80% шлейфа, где он шире)
-    const glowLength = Math.floor(totalPoints * 0.8);
-    for (let i = 0; i < glowLength; i++) {
-        const progress = i / (glowLength - 1);
-        // НАОБОРОТ: широкое свечение в начале
-        const segmentWidth = 30 * (1 - progress * 0.8);
-        
-        ctx.lineWidth = segmentWidth;
-        
-        if (i === 0) {
-            ctx.beginPath();
-            ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
-        }
-        ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-        ctx.stroke();
-        
-        if (i < glowLength - 1) {
-            ctx.beginPath();
-            ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-        }
-    }
-    
-    // Добавляем дополнительное внутреннее свечение в начале шлейфа (у тела)
-    ctx.shadowBlur = 0;
-    ctx.beginPath();
-    ctx.moveTo(this.trailPoints[0].x, this.trailPoints[0].y);
-    
-    // Первые 3 сегмента - самое яркое свечение у тела
-    const brightLength = Math.min(3, this.trailPoints.length - 1);
-    for (let i = 0; i < brightLength; i++) {
-        const progress = i / brightLength;
-        const width = 25 * (1 - progress * 0.5);
+    // 2. Внутренний яркий слой (уже)
+    ctx.strokeStyle = 'hsla(180, 100%, 85%, 0.7)';
+    for (let i = 0; i < totalPoints - 1; i++) {
+        const progress = i / (totalPoints - 1);
+        // Внутренний слой уже в 0.6 раза
+        const width = (maxWidth * 0.6) * (1 - progress) + (minWidth * 0.8) * progress;
         
         ctx.lineWidth = width;
-        ctx.strokeStyle = 'hsla(180, 100%, 95%, 0.6)';
         
         if (i === 0) {
+            ctx.beginPath();
             ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
         }
         ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
         ctx.stroke();
         
-        if (i < brightLength - 1) {
+        if (i < totalPoints - 2) {
             ctx.beginPath();
             ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
         }
     }
     
+    // 3. Самый яркий центральный стержень
+    ctx.strokeStyle = 'hsla(180, 100%, 95%, 0.9)';
+    for (let i = 0; i < totalPoints - 1; i++) {
+        const progress = i / (totalPoints - 1);
+        // Центральный стержень еще уже
+        const width = (maxWidth * 0.3) * (1 - progress) + (minWidth * 0.5) * progress;
+        
+        ctx.lineWidth = width;
+        
+        if (i === 0) {
+            ctx.beginPath();
+            ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
+        }
+        ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
+        ctx.stroke();
+        
+        if (i < totalPoints - 2) {
+            ctx.beginPath();
+            ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
+        }
+    }
+    
+    // 4. Свечение только у начала шлейфа (у тела)
+    ctx.shadowColor = 'hsla(180, 100%, 70%, 0.6)';
+    ctx.shadowBlur = 20;
+    ctx.strokeStyle = gradient;
+    
+    // Свечение только на первых 30% шлейфа
+    const glowLength = Math.floor(totalPoints * 0.3);
+    for (let i = 0; i < glowLength && i < totalPoints - 1; i++) {
+        const progress = i / glowLength;
+        const width = maxWidth * (1 - progress * 0.3); // Почти одинаковое свечение
+        
+        ctx.lineWidth = width;
+        
+        if (i === 0) {
+            ctx.beginPath();
+            ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
+        }
+        ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
+        ctx.stroke();
+        
+        if (i < glowLength - 1 && i < totalPoints - 2) {
+            ctx.beginPath();
+            ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
+        }
+    }
+    
+    ctx.shadowBlur = 0;
     ctx.restore();
 }
 
@@ -2156,21 +2139,24 @@ ctx.globalCompositeOperation = 'source-over';
             }, 2000);
         }
 
-        function startGame() {
-            const effect = document.getElementById('gameOverEffect');
-            effect.classList.remove('active');
-            
-            gameActive = true;
-            isGameOver = false;
-            isPaused = false;
-            document.getElementById('mainMenu').style.display = 'none';
-            document.getElementById('gameOverMenu').style.display = 'none';
-            document.getElementById('reloading').style.display = 'none';
-            document.getElementById('levelUp').style.display = 'none';
-            document.getElementById('pausedOverlay').style.display = 'none';
-            
-            document.getElementById('topHUD').style.display = 'flex';
-            document.getElementById('bottomHUD').style.display = 'flex';
+function startGame() {
+    const effect = document.getElementById('gameOverEffect');
+    effect.classList.remove('active');
+    
+    gameActive = true;
+    isGameOver = false;
+    isPaused = false;
+    document.getElementById('mainMenu').style.display = 'none';
+    document.getElementById('gameOverMenu').style.display = 'none';
+    document.getElementById('reloading').style.display = 'none';
+    document.getElementById('levelUp').style.display = 'none';
+    document.getElementById('pausedOverlay').style.display = 'none';
+    
+    document.getElementById('topHUD').style.display = 'flex';
+    document.getElementById('bottomHUD').style.display = 'flex';
+    
+    // Очищаем холст при начале игры
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             initSounds();
             
@@ -2230,29 +2216,32 @@ ctx.globalCompositeOperation = 'source-over';
             checkOrientation();
         }
 
-        function returnToMainMenu() {
-            const effect = document.getElementById('gameOverEffect');
-            effect.classList.remove('active');
-            
-            gameActive = false;
-            isGameOver = false;
-            isPaused = false;
-            clearInterval(gameTimer);
-            clearInterval(levelTimer);
-            clearTimeout(reloadTimeout);
-            clearTimeout(levelUpDisplayTimeout);
-            clearTimeout(spawnCowTimeout);
-            
-            stopBackgroundMusic();
-            
-            document.getElementById('mainMenu').style.display = 'block';
-            document.getElementById('gameOverMenu').style.display = 'none';
-            document.getElementById('pausedOverlay').style.display = 'none';
-            
-            document.getElementById('topHUD').style.display = 'none';
-            document.getElementById('bottomHUD').style.display = 'none';
-            document.getElementById('reloading').style.display = 'none';
-        }
+function returnToMainMenu() {
+    const effect = document.getElementById('gameOverEffect');
+    effect.classList.remove('active');
+    
+    gameActive = false;
+    isGameOver = false;
+    isPaused = false;
+    clearInterval(gameTimer);
+    clearInterval(levelTimer);
+    clearTimeout(reloadTimeout);
+    clearTimeout(levelUpDisplayTimeout);
+    clearTimeout(spawnCowTimeout);
+    
+    stopBackgroundMusic();
+    
+    // Очищаем холст при возврате в меню
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    document.getElementById('mainMenu').style.display = 'block';
+    document.getElementById('gameOverMenu').style.display = 'none';
+    document.getElementById('pausedOverlay').style.display = 'none';
+    
+    document.getElementById('topHUD').style.display = 'none';
+    document.getElementById('bottomHUD').style.display = 'none';
+    document.getElementById('reloading').style.display = 'none';
+}
 
         function updateAmmoDisplay() {
             const ammoContainer = document.getElementById('ammoContainer');
@@ -2663,8 +2652,14 @@ function gameLoop(timestamp) {
     const deltaTime = timestamp - lastTime;
     lastTime = timestamp;
     
-    // Полупрозрачная очистка для эффекта размытия движения
-    ctx.fillStyle = 'rgba(0, 10, 30, 0.1)'; // Темно-синий с небольшой прозрачностью
+    if (gameActive && !isGameOver && !isPaused) {
+        // Во время игры - эффект размытия движения
+        ctx.fillStyle = 'rgba(0, 10, 30, 0.1)'; // Темно-синий с небольшой прозрачностью
+    } else {
+        // В меню или на паузе - обычная очистка
+        ctx.fillStyle = 'rgba(0, 10, 30, 1)'; // Полностью непрозрачный
+    }
+    
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     drawBackground();
@@ -2782,8 +2777,7 @@ function gameLoop(timestamp) {
             }
             
             function animateAurora() {
-                ctx.fillStyle = 'rgba(0, 10, 30, 0.1)';
-ctx.fillRect(0, 0, canvas.width, canvas.height);
+ctx.clearRect(0, 0, canvas.width, canvas.height);
                 time += 0.005;
                 
                 layers.forEach(layer => {
