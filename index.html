@@ -604,7 +604,7 @@
         let spawnCowTimeout;
         let reloadSoundPlayed = false;
         let clickEffects = [];
-let isInGameMode = false;
+        let isInGameMode = false;
 
         // Configuration
         const config = {
@@ -799,23 +799,23 @@ let isInGameMode = false;
         }
 
         // Initialize stars and planets
-function initStars() {
-    stars = [];
-    const colors = ['#FFD700', '#00CED1', '#FFEC8B', '#40E0D0'];
-    
-    for (let i = 0; i < config.starCount; i++) {
-        stars.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            size: Math.random() * 8 + 6,
-            alpha: Math.random() * 0.8 + 0.2,
-            speed: Math.random() * 0.2 + 0.1,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            phase: Math.random() * Math.PI * 2,
-            rotation: Math.random() * Math.PI * 2,
-            layer: Math.floor(Math.random() * 3)
-        });
-    }
+        function initStars() {
+            stars = [];
+            const colors = ['#FFD700', '#00CED1', '#FFEC8B', '#40E0D0'];
+            for (let i = 0; i < config.starCount; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 8 + 6,
+                    alpha: Math.random() * 0.8 + 0.2,
+                    speed: Math.random() * 0.2 + 0.1,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    phase: Math.random() * Math.PI * 2,
+                    rotation: Math.random() * Math.PI * 2,
+                    layer: Math.floor(Math.random() * 3)
+                });
+            }
+
             // Initialize planets with no overlap
             planets = [];
             const planetColors = ['#40E0D0', '#00CED1', '#FFD700', '#FFA500'];
@@ -889,16 +889,9 @@ function initStars() {
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
-                this.nyanTrail = null; // Один длинный сегмент
-                this.trailLength = 300; // Очень длинный шлейф
-                this.rainbowPhase = 0;
-                this.rainbowSpeed = 0.03;
-                this.trailPoints = []; // Точки для плавного шлейфа
-                this.maxTrailPoints = 20; // Максимальное количество точек
-this.wingHistory = [];
-this.maxHistory = 5;
+                this.wingHistory = [];
+                this.maxHistory = 5;
             }
-
 
             reset() {
                 this.direction = Math.random() > 0.5 ? 1 : -1;
@@ -931,9 +924,6 @@ this.maxHistory = 5;
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
-                this.nyanTrail = null;
-                this.rainbowPhase = 0;
-                this.trailPoints = [];
             }
 
             updateMovement() {
@@ -943,7 +933,6 @@ this.maxHistory = 5;
                 this.legPhase += this.legSpeed;
                 this.eyePhase += this.eyeSpeed;
                 this.tailPhase += this.tailSpeed;
-                this.rainbowPhase += this.rainbowSpeed;
                 
                 if (Math.random() < 0.005) {
                     this.tongueOut = true;
@@ -977,157 +966,6 @@ this.maxHistory = 5;
                     this.y = canvas.height - config.playAreaBottom - this.height/2;
                 }
             }
-
-updateNyanTrail() {
-    if (!this.alive || isPaused) return;
-    
-    // Точка выхода шлейфа из тела коровы
-    const trailX = this.x; // Центр тела коровы
-    const trailY = this.y; // Центр тела коровы
-    
-    this.trailPoints.push({x: trailX, y: trailY});
-    
-    // ОГРАНИЧЕНИЕ ДЛИНЫ ШЛЕЙФА - максимум 20 точек
-    if (this.trailPoints.length > 20) {
-        this.trailPoints.shift();
-    }
-}
-
-drawNyanTrail() {
-    if (!this.alive || !this.trailPoints || this.trailPoints.length < 2) return;
-    
-    ctx.save();
-    
-    const totalPoints = this.trailPoints.length;
-    
-    // Рисуем шлейф как одну линию с переменной шириной и прозрачностью
-    ctx.beginPath();
-    
-    // Начинаем от первой точки
-    ctx.moveTo(this.trailPoints[0].x, this.trailPoints[0].y);
-    
-    // Добавляем остальные точки
-    for (let i = 1; i < totalPoints; i++) {
-        ctx.lineTo(this.trailPoints[i].x, this.trailPoints[i].y);
-    }
-    
-    // Градиент для цвета
-    const startX = this.trailPoints[0].x;
-    const startY = this.trailPoints[0].y;
-    const endX = this.trailPoints[totalPoints - 1].x;
-    const endY = this.trailPoints[totalPoints - 1].y;
-    
-    const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
-    gradient.addColorStop(0, 'hsla(200, 100%, 70%, 0.9)');  // Начало - яркий
-    gradient.addColorStop(0.7, 'hsla(190, 100%, 70%, 0.6)'); // Середина
-    gradient.addColorStop(1, 'hsla(180, 100%, 70%, 0.2)');   // Конец - прозрачный
-    
-    // Настройки линии
-    ctx.strokeStyle = gradient;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.globalAlpha = 1;
-    
-    // Шлейф: ШИРОКИЙ в начале (у тела), УЗКИЙ в конце
-    const maxWidth = 40;   // Ширина у тела
-    const minWidth = 5;    // Ширина на конце
-    
-    // Рисуем несколькими проходами для создания эффекта объема
-    
-    // 1. Внешний слой с плавным сужением
-    for (let i = 0; i < totalPoints - 1; i++) {
-        const progress = i / (totalPoints - 1);
-        // Линейное уменьшение ширины от maxWidth до minWidth
-        const width = maxWidth * (1 - progress) + minWidth * progress;
-        
-        ctx.lineWidth = width;
-        
-        // Рисуем маленький сегмент
-        if (i === 0) {
-            ctx.beginPath();
-            ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
-        }
-        ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-        ctx.stroke();
-        
-        // Начинаем новый путь для следующего сегмента
-        ctx.beginPath();
-        ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-    }
-    
-    // 2. Внутренний яркий слой (уже)
-    ctx.strokeStyle = 'hsla(180, 100%, 85%, 0.7)';
-    for (let i = 0; i < totalPoints - 1; i++) {
-        const progress = i / (totalPoints - 1);
-        // Внутренний слой уже в 0.6 раза
-        const width = (maxWidth * 0.6) * (1 - progress) + (minWidth * 0.8) * progress;
-        
-        ctx.lineWidth = width;
-        
-        if (i === 0) {
-            ctx.beginPath();
-            ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
-        }
-        ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-        ctx.stroke();
-        
-        if (i < totalPoints - 2) {
-            ctx.beginPath();
-            ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-        }
-    }
-    
-    // 3. Самый яркий центральный стержень
-    ctx.strokeStyle = 'hsla(180, 100%, 95%, 0.9)';
-    for (let i = 0; i < totalPoints - 1; i++) {
-        const progress = i / (totalPoints - 1);
-        // Центральный стержень еще уже
-        const width = (maxWidth * 0.3) * (1 - progress) + (minWidth * 0.5) * progress;
-        
-        ctx.lineWidth = width;
-        
-        if (i === 0) {
-            ctx.beginPath();
-            ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
-        }
-        ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-        ctx.stroke();
-        
-        if (i < totalPoints - 2) {
-            ctx.beginPath();
-            ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-        }
-    }
-    
-    // 4. Свечение только у начала шлейфа (у тела)
-    ctx.shadowColor = 'hsla(180, 100%, 70%, 0.6)';
-    ctx.shadowBlur = 20;
-    ctx.strokeStyle = gradient;
-    
-    // Свечение только на первых 30% шлейфа
-    const glowLength = Math.floor(totalPoints * 0.3);
-    for (let i = 0; i < glowLength && i < totalPoints - 1; i++) {
-        const progress = i / glowLength;
-        const width = maxWidth * (1 - progress * 0.3); // Почти одинаковое свечение
-        
-        ctx.lineWidth = width;
-        
-        if (i === 0) {
-            ctx.beginPath();
-            ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
-        }
-        ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-        ctx.stroke();
-        
-        if (i < glowLength - 1 && i < totalPoints - 2) {
-            ctx.beginPath();
-            ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-        }
-    }
-    
-    ctx.shadowBlur = 0;
-    ctx.restore();
-}
 
             die() {
                 this.alive = false;
@@ -1243,7 +1081,6 @@ drawNyanTrail() {
                     this.updateMovement();
                     this.x += this.vx;
                     this.wingPhase += this.wingSpeed;
-                    this.updateNyanTrail();
                     
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
                         (this.direction === -1 && this.x < -this.width*2)) {
@@ -1272,8 +1109,6 @@ drawNyanTrail() {
             }
 
             draw() {
-                this.drawNyanTrail();
-                
                 ctx.save();
                 
                 if (this.alive) {
@@ -1494,143 +1329,137 @@ drawNyanTrail() {
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-// ЛЕВОЕ КРЫЛО - ЕЩЕ БЛИЖЕ К СЕРЕДИНЕ ТЕЛА
-const wingYOffset = Math.sin(this.wingPhase) * 15;
+                    // ЛЕВОЕ КРЫЛО
+                    const wingYOffset = Math.sin(this.wingPhase) * 15;
 
-// История позиций крыльев для размытия
-if (!this.wingHistory) {
-    this.wingHistory = [];
-}
-this.maxHistory = 5; // Количество кадров для размытия
+                    // История позиций крыльев для размытия
+                    this.wingHistory.unshift(wingYOffset);
+                    if (this.wingHistory.length > this.maxHistory) {
+                        this.wingHistory.pop();
+                    }
 
-// Сохраняем текущую позицию крыльев для размытия
-this.wingHistory.unshift(wingYOffset);
-if (this.wingHistory.length > this.maxHistory) {
-    this.wingHistory.pop();
-}
+                    // Отрисовываем размытые крылья (от старых к новым)
+                    for (let i = this.wingHistory.length - 1; i >= 0; i--) {
+                        const currentWingYOffset = this.wingHistory[i];
+                        const alpha = 0.2 + (i / this.wingHistory.length) * 0.4; // Прозрачность от 0.2 до 0.6
+                        
+                        // Левое крыло
+                        const leftWingTipX = 30;
+                        const leftWingTipY = -25 + currentWingYOffset;
+                        const leftWingStartX = -8;
+                        const leftWingStartY = -5;
 
-// Отрисовываем размытые крылья (от старых к новым)
-for (let i = this.wingHistory.length - 1; i >= 0; i--) {
-    const currentWingYOffset = this.wingHistory[i];
-    const alpha = 0.2 + (i / this.wingHistory.length) * 0.4; // Прозрачность от 0.2 до 0.6
-    
-    // Левое крыло
-    const leftWingTipX = 30;
-    const leftWingTipY = -25 + currentWingYOffset;
-    const leftWingStartX = -8;
-    const leftWingStartY = -5;
+                        const leftWingGradient = ctx.createLinearGradient(
+                            leftWingStartX, leftWingStartY,
+                            -leftWingTipX, leftWingTipY
+                        );
+                        leftWingGradient.addColorStop(0, `rgba(0, 255, 255, ${alpha * 0.8})`);
+                        leftWingGradient.addColorStop(0.4, `rgba(138, 43, 226, ${alpha * 0.7})`);
+                        leftWingGradient.addColorStop(0.8, `rgba(255, 69, 0, ${alpha * 0.6})`);
+                        leftWingGradient.addColorStop(1, `rgba(255, 215, 0, ${alpha * 0.5})`);
 
-    const leftWingGradient = ctx.createLinearGradient(
-        leftWingStartX, leftWingStartY,
-        -leftWingTipX, leftWingTipY
-    );
-    leftWingGradient.addColorStop(0, `rgba(0, 255, 255, ${alpha * 0.8})`);
-    leftWingGradient.addColorStop(0.4, `rgba(138, 43, 226, ${alpha * 0.7})`);
-    leftWingGradient.addColorStop(0.8, `rgba(255, 69, 0, ${alpha * 0.6})`);
-    leftWingGradient.addColorStop(1, `rgba(255, 215, 0, ${alpha * 0.5})`);
+                        ctx.fillStyle = leftWingGradient;
+                        ctx.beginPath();
+                        ctx.moveTo(leftWingStartX, leftWingStartY);
+                        ctx.bezierCurveTo(
+                            leftWingStartX - 10, leftWingStartY - 8 + currentWingYOffset * 0.5,
+                            leftWingStartX - 22, leftWingStartY - 15 + currentWingYOffset,
+                            -leftWingTipX, leftWingTipY
+                        );
+                        ctx.bezierCurveTo(
+                            leftWingStartX - 22, leftWingStartY + 5 + currentWingYOffset * 0.5,
+                            leftWingStartX - 10, leftWingStartY + 3 + currentWingYOffset * 0.3,
+                            leftWingStartX, leftWingStartY
+                        );
+                        ctx.closePath();
+                        ctx.fill();
 
-    ctx.fillStyle = leftWingGradient;
-    ctx.beginPath();
-    ctx.moveTo(leftWingStartX, leftWingStartY);
-    ctx.bezierCurveTo(
-        leftWingStartX - 10, leftWingStartY - 8 + currentWingYOffset * 0.5,
-        leftWingStartX - 22, leftWingStartY - 15 + currentWingYOffset,
-        -leftWingTipX, leftWingTipY
-    );
-    ctx.bezierCurveTo(
-        leftWingStartX - 22, leftWingStartY + 5 + currentWingYOffset * 0.5,
-        leftWingStartX - 10, leftWingStartY + 3 + currentWingYOffset * 0.3,
-        leftWingStartX, leftWingStartY
-    );
-    ctx.closePath();
-    ctx.fill();
+                        // Правое крыло
+                        ctx.globalCompositeOperation = 'destination-over';
 
-    // Правое крыло
-    ctx.globalCompositeOperation = 'destination-over';
+                        const rightWingTipX = 30;
+                        const rightWingTipY = -25 + currentWingYOffset;
+                        const rightWingStartX = 8;
+                        const rightWingStartY = -5;
 
-    const rightWingTipX = 30;
-    const rightWingTipY = -25 + currentWingYOffset;
-    const rightWingStartX = 8;
-    const rightWingStartY = -5;
+                        const rightWingGradient = ctx.createLinearGradient(
+                            rightWingStartX, rightWingStartY,
+                            rightWingTipX, rightWingTipY
+                        );
+                        rightWingGradient.addColorStop(0, `rgba(255, 215, 0, ${alpha * 0.5})`);
+                        rightWingGradient.addColorStop(0.2, `rgba(255, 69, 0, ${alpha * 0.6})`);
+                        rightWingGradient.addColorStop(0.6, `rgba(138, 43, 226, ${alpha * 0.7})`);
+                        rightWingGradient.addColorStop(1, `rgba(0, 255, 255, ${alpha * 0.8})`);
 
-    const rightWingGradient = ctx.createLinearGradient(
-        rightWingStartX, rightWingStartY,
-        rightWingTipX, rightWingTipY
-    );
-    rightWingGradient.addColorStop(0, `rgba(255, 215, 0, ${alpha * 0.5})`);
-    rightWingGradient.addColorStop(0.2, `rgba(255, 69, 0, ${alpha * 0.6})`);
-    rightWingGradient.addColorStop(0.6, `rgba(138, 43, 226, ${alpha * 0.7})`);
-    rightWingGradient.addColorStop(1, `rgba(0, 255, 255, ${alpha * 0.8})`);
+                        ctx.fillStyle = rightWingGradient;
+                        ctx.beginPath();
+                        ctx.moveTo(rightWingStartX, rightWingStartY);
+                        ctx.bezierCurveTo(
+                            rightWingStartX + 10, rightWingStartY - 8 + currentWingYOffset * 0.5,
+                            rightWingStartX + 22, rightWingStartY - 15 + currentWingYOffset,
+                            rightWingTipX, rightWingTipY
+                        );
+                        ctx.bezierCurveTo(
+                            rightWingStartX + 22, rightWingStartY + 5 + currentWingYOffset * 0.5,
+                            rightWingStartX + 10, rightWingStartY + 3 + currentWingYOffset * 0.3,
+                            rightWingStartX, rightWingStartY
+                        );
+                        ctx.closePath();
+                        ctx.fill();
 
-    ctx.fillStyle = rightWingGradient;
-    ctx.beginPath();
-    ctx.moveTo(rightWingStartX, rightWingStartY);
-    ctx.bezierCurveTo(
-        rightWingStartX + 10, rightWingStartY - 8 + currentWingYOffset * 0.5,
-        rightWingStartX + 22, rightWingStartY - 15 + currentWingYOffset,
-        rightWingTipX, rightWingTipY
-    );
-    ctx.bezierCurveTo(
-        rightWingStartX + 22, rightWingStartY + 5 + currentWingYOffset * 0.5,
-        rightWingStartX + 10, rightWingStartY + 3 + currentWingYOffset * 0.3,
-        rightWingStartX, rightWingStartY
-    );
-    ctx.closePath();
-    ctx.fill();
+                        ctx.globalCompositeOperation = 'source-over';
+                    }
 
-    ctx.globalCompositeOperation = 'source-over';
-}
+                    // Обводка для текущих крыльев
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.lineWidth = 1.5;
 
-// Обводка для текущих крыльев
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-ctx.lineWidth = 1.5;
+                    // Левое крыло (обводка)
+                    const leftWingTipX = 30;
+                    const leftWingTipY = -25 + wingYOffset;
+                    const leftWingStartX = -8;
+                    const leftWingStartY = -5;
 
-// Левое крыло (обводка)
-const leftWingTipX = 30;
-const leftWingTipY = -25 + wingYOffset;
-const leftWingStartX = -8;
-const leftWingStartY = -5;
+                    ctx.beginPath();
+                    ctx.moveTo(leftWingStartX, leftWingStartY);
+                    ctx.bezierCurveTo(
+                        leftWingStartX - 10, leftWingStartY - 8 + wingYOffset * 0.5,
+                        leftWingStartX - 22, leftWingStartY - 15 + wingYOffset,
+                        -leftWingTipX, leftWingTipY
+                    );
+                    ctx.bezierCurveTo(
+                        leftWingStartX - 22, leftWingStartY + 5 + wingYOffset * 0.5,
+                        leftWingStartX - 10, leftWingStartY + 3 + wingYOffset * 0.3,
+                        leftWingStartX, leftWingStartY
+                    );
+                    ctx.closePath();
+                    ctx.stroke();
 
-ctx.beginPath();
-ctx.moveTo(leftWingStartX, leftWingStartY);
-ctx.bezierCurveTo(
-    leftWingStartX - 10, leftWingStartY - 8 + wingYOffset * 0.5,
-    leftWingStartX - 22, leftWingStartY - 15 + wingYOffset,
-    -leftWingTipX, leftWingTipY
-);
-ctx.bezierCurveTo(
-    leftWingStartX - 22, leftWingStartY + 5 + wingYOffset * 0.5,
-    leftWingStartX - 10, leftWingStartY + 3 + wingYOffset * 0.3,
-    leftWingStartX, leftWingStartY
-);
-ctx.closePath();
-ctx.stroke();
+                    // Правое крыло (обводка)
+                    ctx.globalCompositeOperation = 'destination-over';
 
-// Правое крыло (обводка)
-ctx.globalCompositeOperation = 'destination-over';
+                    const rightWingTipX = 30;
+                    const rightWingTipY = -25 + wingYOffset;
+                    const rightWingStartX = 8;
+                    const rightWingStartY = -5;
 
-const rightWingTipX = 30;
-const rightWingTipY = -25 + wingYOffset;
-const rightWingStartX = 8;
-const rightWingStartY = -5;
+                    ctx.beginPath();
+                    ctx.moveTo(rightWingStartX, rightWingStartY);
+                    ctx.bezierCurveTo(
+                        rightWingStartX + 10, rightWingStartY - 8 + wingYOffset * 0.5,
+                        rightWingStartX + 22, rightWingStartY - 15 + wingYOffset,
+                        rightWingTipX, rightWingTipY
+                    );
+                    ctx.bezierCurveTo(
+                        rightWingStartX + 22, rightWingStartY + 5 + wingYOffset * 0.5,
+                        rightWingStartX + 10, rightWingStartY + 3 + wingYOffset * 0.3,
+                        rightWingStartX, rightWingStartY
+                    );
+                    ctx.closePath();
+                    ctx.stroke();
 
-ctx.beginPath();
-ctx.moveTo(rightWingStartX, rightWingStartY);
-ctx.bezierCurveTo(
-    rightWingStartX + 10, rightWingStartY - 8 + wingYOffset * 0.5,
-    rightWingStartX + 22, rightWingStartY - 15 + wingYOffset,
-    rightWingTipX, rightWingTipY
-);
-ctx.bezierCurveTo(
-    rightWingStartX + 22, rightWingStartY + 5 + wingYOffset * 0.5,
-    rightWingStartX + 10, rightWingStartY + 3 + wingYOffset * 0.3,
-    rightWingStartX, rightWingStartY
-);
-ctx.closePath();
-ctx.stroke();
-
-ctx.globalCompositeOperation = 'source-over';
-    
+                    ctx.globalCompositeOperation = 'source-over';
+                    
                     // Tail
                     const tailX = -this.width/2;
                     const tailY = 0;
@@ -2140,25 +1969,25 @@ ctx.globalCompositeOperation = 'source-over';
             }, 2000);
         }
 
-function startGame() {
-    const effect = document.getElementById('gameOverEffect');
-    effect.classList.remove('active');
-    
-    gameActive = true;
-    isGameOver = false;
-    isPaused = false;
- isInGameMode = true; // Добавьте эту строку
-    document.getElementById('mainMenu').style.display = 'none';
-    document.getElementById('gameOverMenu').style.display = 'none';
-    document.getElementById('reloading').style.display = 'none';
-    document.getElementById('levelUp').style.display = 'none';
-    document.getElementById('pausedOverlay').style.display = 'none';
-    
-    document.getElementById('topHUD').style.display = 'flex';
-    document.getElementById('bottomHUD').style.display = 'flex';
-    
-    // Очищаем холст при начале игры
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function startGame() {
+            const effect = document.getElementById('gameOverEffect');
+            effect.classList.remove('active');
+            
+            gameActive = true;
+            isGameOver = false;
+            isPaused = false;
+            isInGameMode = true;
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('gameOverMenu').style.display = 'none';
+            document.getElementById('reloading').style.display = 'none';
+            document.getElementById('levelUp').style.display = 'none';
+            document.getElementById('pausedOverlay').style.display = 'none';
+            
+            document.getElementById('topHUD').style.display = 'flex';
+            document.getElementById('bottomHUD').style.display = 'flex';
+            
+            // Очищаем холст при начале игры
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             initSounds();
             
@@ -2218,33 +2047,33 @@ function startGame() {
             checkOrientation();
         }
 
-function returnToMainMenu() {
-    const effect = document.getElementById('gameOverEffect');
-    effect.classList.remove('active');
-    
-    gameActive = false;
-    isGameOver = false;
-    isPaused = false;
-   isInGameMode = false; // Добавьте эту строку
-    clearInterval(gameTimer);
-    clearInterval(levelTimer);
-    clearTimeout(reloadTimeout);
-    clearTimeout(levelUpDisplayTimeout);
-    clearTimeout(spawnCowTimeout);
-    
-    stopBackgroundMusic();
-    
-    // Очищаем холст при возврате в меню
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    document.getElementById('mainMenu').style.display = 'block';
-    document.getElementById('gameOverMenu').style.display = 'none';
-    document.getElementById('pausedOverlay').style.display = 'none';
-    
-    document.getElementById('topHUD').style.display = 'none';
-    document.getElementById('bottomHUD').style.display = 'none';
-    document.getElementById('reloading').style.display = 'none';
-}
+        function returnToMainMenu() {
+            const effect = document.getElementById('gameOverEffect');
+            effect.classList.remove('active');
+            
+            gameActive = false;
+            isGameOver = false;
+            isPaused = false;
+            isInGameMode = false;
+            clearInterval(gameTimer);
+            clearInterval(levelTimer);
+            clearTimeout(reloadTimeout);
+            clearTimeout(levelUpDisplayTimeout);
+            clearTimeout(spawnCowTimeout);
+            
+            stopBackgroundMusic();
+            
+            // Очищаем холст при возврате в меню
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            document.getElementById('mainMenu').style.display = 'block';
+            document.getElementById('gameOverMenu').style.display = 'none';
+            document.getElementById('pausedOverlay').style.display = 'none';
+            
+            document.getElementById('topHUD').style.display = 'none';
+            document.getElementById('bottomHUD').style.display = 'none';
+            document.getElementById('reloading').style.display = 'none';
+        }
 
         function updateAmmoDisplay() {
             const ammoContainer = document.getElementById('ammoContainer');
@@ -2282,7 +2111,7 @@ function returnToMainMenu() {
             gameActive = false;
             isGameOver = true;
             isPaused = false;
-   isInGameMode = false; // Добавьте эту строку
+            isInGameMode = false;
             clearInterval(gameTimer);
             clearInterval(levelTimer);
             clearTimeout(reloadTimeout);
@@ -2513,95 +2342,94 @@ function returnToMainMenu() {
             ctx.restore();
         }
 
- function drawBackground() {
-    if (!isInGameMode) {
-        // Для меню - сплошной фон
-        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        gradient.addColorStop(0, '#001a33');
-        gradient.addColorStop(1, '#30397A');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    // Для игрового режима фон уже установлен в gameLoop с эффектом размытия
-    
-    const time = Date.now() / 1000;
-    eyeAnimationPhase = time * 2;
-    
-    // Обновляем звезды ТОЛЬКО в игровом режиме
-    stars.forEach(star => {
-        if (!isPaused && isInGameMode) {
-            star.rotation += 0.005;
-            star.x += star.speed;
-            if (star.x > canvas.width) {
-                star.x = 0;
-                star.y = Math.random() * canvas.height;
+        function drawBackground() {
+            if (!isInGameMode) {
+                // Для меню - сплошной фон
+                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, '#001a33');
+                gradient.addColorStop(1, '#30397A');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
+            
+            const time = Date.now() / 1000;
+            eyeAnimationPhase = time * 2;
+            
+            // Обновляем звезды ТОЛЬКО в игровом режиме
+            stars.forEach(star => {
+                if (!isPaused && isInGameMode) {
+                    star.rotation += 0.005;
+                    star.x += star.speed;
+                    if (star.x > canvas.width) {
+                        star.x = 0;
+                        star.y = Math.random() * canvas.height;
+                    }
+                }
+                
+                const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
+                
+                // Для меню используем меньшую пульсацию
+                const actualPulse = isInGameMode ? pulse : 0.9;
+                
+                draw4PointStar(
+                    star.x, 
+                    star.y, 
+                    star.size * actualPulse, 
+                    star.color, 
+                    star.rotation
+                );
+            });
+            
+            planets.forEach(planet => {
+                if (planet.layer !== 1) return;
+                drawPlanetAtmosphere(planet);
+            });
+            
+            planets.forEach(planet => {
+                if (planet.layer !== 1) return;
+                drawPlanet(planet);
+            });
+            
+            stars.forEach(star => {
+                if (star.layer !== 1) return;
+                
+                const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
+                const actualPulse = isInGameMode ? pulse : 0.9;
+                
+                draw4PointStar(
+                    star.x, 
+                    star.y, 
+                    star.size * actualPulse, 
+                    star.color, 
+                    star.rotation
+                );
+            });
+            
+            planets.forEach(planet => {
+                if (planet.layer !== 2) return;
+                drawPlanetAtmosphere(planet);
+            });
+            
+            planets.forEach(planet => {
+                if (planet.layer !== 2) return;
+                drawPlanet(planet);
+            });
+            
+            stars.forEach(star => {
+                if (star.layer !== 2) return;
+                
+                const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
+                const actualPulse = isInGameMode ? pulse : 0.9;
+                
+                draw4PointStar(
+                    star.x, 
+                    star.y, 
+                    star.size * actualPulse, 
+                    star.color, 
+                    star.rotation
+                );
+            });
         }
-        
-        const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
-        
-        // Для меню используем меньшую пульсацию
-        const actualPulse = isInGameMode ? pulse : 0.9;
-        
-        draw4PointStar(
-            star.x, 
-            star.y, 
-            star.size * actualPulse, 
-            star.color, 
-            star.rotation
-        );
-    });
-    
-    planets.forEach(planet => {
-        if (planet.layer !== 1) return;
-        drawPlanetAtmosphere(planet);
-    });
-    
-    planets.forEach(planet => {
-        if (planet.layer !== 1) return;
-        drawPlanet(planet);
-    });
-    
-    stars.forEach(star => {
-        if (star.layer !== 1) return;
-        
-        const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
-        const actualPulse = isInGameMode ? pulse : 0.9;
-        
-        draw4PointStar(
-            star.x, 
-            star.y, 
-            star.size * actualPulse, 
-            star.color, 
-            star.rotation
-        );
-    });
-    
-    planets.forEach(planet => {
-        if (planet.layer !== 2) return;
-        drawPlanetAtmosphere(planet);
-    });
-    
-    planets.forEach(planet => {
-        if (planet.layer !== 2) return;
-        drawPlanet(planet);
-    });
-    
-    stars.forEach(star => {
-        if (star.layer !== 2) return;
-        
-        const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
-        const actualPulse = isInGameMode ? pulse : 0.9;
-        
-        draw4PointStar(
-            star.x, 
-            star.y, 
-            star.size * actualPulse, 
-            star.color, 
-            star.rotation
-        );
-    });
-}
 
         function drawLifeBonuses() {
             lifeBonuses.forEach((bonus, index) => {
@@ -2640,71 +2468,71 @@ function returnToMainMenu() {
             });
         }
 
-function gameLoop(timestamp) {
-    if (!gameActive || isGameOver) return;
-    
-    const deltaTime = timestamp - lastTime;
-    lastTime = timestamp;
-    
-    if (isInGameMode) {
-        // Полупрозрачная очистка для эффекта размытия движения ТОЛЬКО в игровом режиме
-        // Более светлый цвет, чтобы градиентный фон был виден
-        ctx.fillStyle = 'rgba(0, 20, 40, 0.08)'; // Уменьшил прозрачность до 0.08
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Также рисуем базовый градиентный фон
-        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        gradient.addColorStop(0, '#001a33');
-        gradient.addColorStop(1, '#30397A');
-        ctx.globalAlpha = 0.3; // Слегка прозрачный градиент
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.globalAlpha = 1.0;
-    } else {
-        // Полная очистка для меню
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-    
-    drawBackground();
-    
-    deadCows.forEach(cow => {
-        cow.update();
-        cow.draw();
-    });
-    
-    cows.forEach(cow => {
-        cow.update();
-        cow.draw();
-    });
-    
-    drawClickEffects();
-    
-    shots.forEach((shot, index) => {
-        shot.update();
-        shot.draw();
-        if (shot.alpha <= 0) shots.splice(index, 1);
-    });
-    
-    explosions.forEach((explosion, index) => {
-        if (!explosion.update()) {
-            explosions.splice(index, 1);
-        } else {
-            explosion.draw();
+        function gameLoop(timestamp) {
+            if (!gameActive || isGameOver) return;
+            
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            if (isInGameMode) {
+                // Полупрозрачная очистка для эффекта размытия движения ТОЛЬКО в игровом режиме
+                // Более светлый цвет, чтобы градиентный фон был виден
+                ctx.fillStyle = 'rgba(0, 20, 40, 0.08)'; // Уменьшил прозрачность до 0.08
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Также рисуем базовый градиентный фон
+                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, '#001a33');
+                gradient.addColorStop(1, '#30397A');
+                ctx.globalAlpha = 0.3; // Слегка прозрачный градиент
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 1.0;
+            } else {
+                // Полная очистка для меню
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            drawBackground();
+            
+            deadCows.forEach(cow => {
+                cow.update();
+                cow.draw();
+            });
+            
+            cows.forEach(cow => {
+                cow.update();
+                cow.draw();
+            });
+            
+            drawClickEffects();
+            
+            shots.forEach((shot, index) => {
+                shot.update();
+                shot.draw();
+                if (shot.alpha <= 0) shots.splice(index, 1);
+            });
+            
+            explosions.forEach((explosion, index) => {
+                if (!explosion.update()) {
+                    explosions.splice(index, 1);
+                } else {
+                    explosion.draw();
+                }
+            });
+            
+            missTexts.forEach((missText, index) => {
+                if (!missText.update()) {
+                    missTexts.splice(index, 1);
+                } else {
+                    missText.draw();
+                }
+            });
+            
+            drawLifeBonuses();
+            
+            requestAnimationFrame(gameLoop);
         }
-    });
-    
-    missTexts.forEach((missText, index) => {
-        if (!missText.update()) {
-            missTexts.splice(index, 1);
-        } else {
-            missText.draw();
-        }
-    });
-    
-    drawLifeBonuses();
-    
-    requestAnimationFrame(gameLoop);
-}
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -2780,7 +2608,7 @@ function gameLoop(timestamp) {
             }
             
             function animateAurora() {
-ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 time += 0.005;
                 
                 layers.forEach(layer => {
