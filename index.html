@@ -888,12 +888,10 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
-this.trailPoints = []; // Точки для огненного шлейфа
-this.maxTrailPoints = 15; // Количество точек в шлейфе
                 this.rainbowPhase = 0;
                 this.rainbowSpeed = 0.03;
                 this.trailPoints = []; // Точки для плавного шлейфа
-                this.maxTrailPoints = 20; // Максимальное количество точек
+this.maxTrailPoints = 25; // Увеличил для более длинного шлейфа (было 15)
             }
 
             reset() {
@@ -977,61 +975,66 @@ this.trailPoints = [];
 updateNyanTrail() {
     if (!this.alive || isPaused) return;
     
-    // Точка выхода шлейфа из тела (между крыльями)
-    const trailX = this.x + (this.direction === 1 ? -this.width/2.5 : this.width/2.5);
-    const trailY = this.y - 5; // Немного выше центра
+    // Точка выхода шлейфа из тела (сзади между крыльями)
+    const trailX = this.x + (this.direction === 1 ? -this.width/2 - 10 : this.width/2 + 10);
+    const trailY = this.y - 3; // Немного выше центра тела
     
     this.trailPoints.push({x: trailX, y: trailY});
     
-    // Ограничиваем количество точек
-    if (this.trailPoints.length > this.maxTrailPoints) {
+    // Увеличиваем длину шлейфа (больше точек для длинного конуса)
+    if (this.trailPoints.length > 25) { // Было 15
         this.trailPoints.shift();
     }
     
-    // Обновляем параметры конусного шлейфа (обратный конус)
+    // Обновляем параметры длинного заостренного конуса
     if (this.trailPoints.length >= 2) {
         this.nyanTrail = {
-            startWidth: 8,    // Узкий у начала (у тела)
-            endWidth: 50,     // Широкий на конце
+            baseWidth: 12,    // Узкий у основания (у тела)
+            tipWidth: 1,      // Очень узкий на кончике (заостренный)
+            length: this.trailPoints.length,
             phase: this.rainbowPhase
         };
     }
 }
 
 drawNyanTrail() {
-    if (!this.alive || !this.nyanTrail || this.trailPoints.length < 3) return;
+    if (!this.alive || !this.nyanTrail || this.trailPoints.length < 4) return;
     
     ctx.save();
     
-    // Создаем обратный конусный шлейф (узкий у тела, широкий на конце)
+    // Создаем длинный заостренный конус
     ctx.beginPath();
     
-    // Верхняя линия конуса (от узкого к широкому)
+    // Верхняя линия конуса (от узкого основания к заостренному концу)
     for (let i = 0; i < this.trailPoints.length; i++) {
         const point = this.trailPoints[i];
-        const progress = i / (this.trailPoints.length - 1); // 0 у тела, 1 на конце
+        const progress = i / (this.trailPoints.length - 1); // 0 у основания, 1 на кончике
         
-        // Ширина увеличивается от тела к концу (обратный конус)
-        const width = this.nyanTrail.startWidth * (1 - progress) + this.nyanTrail.endWidth * progress;
+        // Формула для заостренного конуса: узкое основание → сужается к кончику
+        // Используем квадратичное затухание для более плавного сужения
+        const width = this.nyanTrail.baseWidth * Math.pow(1 - progress, 1.5) + 
+                      this.nyanTrail.tipWidth * progress;
         
-        // Рассчитываем нормаль (перпендикуляр) к направлению движения
+        // Рассчитываем нормаль к направлению движения
         let angle;
         if (i === 0) {
-            // Для первой точки используем угол к следующей точке
-            const nextPoint = this.trailPoints[i + 1];
+            // Для первой точки (у тела) используем общее направление
+            const nextPoint = this.trailPoints[Math.min(1, this.trailPoints.length - 1)];
             angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x);
         } else if (i === this.trailPoints.length - 1) {
-            // Для последней точки используем угол от предыдущей точки
+            // Для последней точки используем предыдущий сегмент
             const prevPoint = this.trailPoints[i - 1];
             angle = Math.atan2(point.y - prevPoint.y, point.x - prevPoint.x);
         } else {
-            // Для средней точки усредняем углы
+            // Усредняем углы предыдущего и следующего сегментов
             const prevPoint = this.trailPoints[i - 1];
             const nextPoint = this.trailPoints[i + 1];
-            angle = Math.atan2(nextPoint.y - prevPoint.y, nextPoint.x - prevPoint.x);
+            const avgX = (nextPoint.x - prevPoint.x) / 2;
+            const avgY = (nextPoint.y - prevPoint.y) / 2;
+            angle = Math.atan2(avgY, avgX);
         }
         
-        // Смещение для верхней точки конуса
+        // Перпендикулярное смещение для создания ширины
         const offsetX = -Math.sin(angle) * width / 2;
         const offsetY = Math.cos(angle) * width / 2;
         
@@ -1042,16 +1045,17 @@ drawNyanTrail() {
         }
     }
     
-    // Нижняя линия конуса (обратно от широкого конца к узкому началу)
+    // Нижняя линия конуса (обратно от кончика к основанию)
     for (let i = this.trailPoints.length - 1; i >= 0; i--) {
         const point = this.trailPoints[i];
         const progress = i / (this.trailPoints.length - 1);
-        const width = this.nyanTrail.startWidth * (1 - progress) + this.nyanTrail.endWidth * progress;
+        const width = this.nyanTrail.baseWidth * Math.pow(1 - progress, 1.5) + 
+                      this.nyanTrail.tipWidth * progress;
         
-        // Рассчитываем угол как и для верхней линии
+        // Рассчитываем угол
         let angle;
         if (i === 0) {
-            const nextPoint = this.trailPoints[i + 1];
+            const nextPoint = this.trailPoints[Math.min(1, this.trailPoints.length - 1)];
             angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x);
         } else if (i === this.trailPoints.length - 1) {
             const prevPoint = this.trailPoints[i - 1];
@@ -1059,10 +1063,12 @@ drawNyanTrail() {
         } else {
             const prevPoint = this.trailPoints[i - 1];
             const nextPoint = this.trailPoints[i + 1];
-            angle = Math.atan2(nextPoint.y - prevPoint.y, nextPoint.x - prevPoint.x);
+            const avgX = (nextPoint.x - prevPoint.x) / 2;
+            const avgY = (nextPoint.y - prevPoint.y) / 2;
+            angle = Math.atan2(avgY, avgX);
         }
         
-        // Смещение для нижней точки конуса (противоположное верхней)
+        // Противоположное смещение для нижней линии
         const offsetX = Math.sin(angle) * width / 2;
         const offsetY = -Math.cos(angle) * width / 2;
         
@@ -1071,7 +1077,7 @@ drawNyanTrail() {
     
     ctx.closePath();
     
-    // Градиент для обратного конуса (яркий у тела, прозрачный на конце)
+    // Градиент для длинного заостренного конуса
     const firstPoint = this.trailPoints[0];
     const lastPoint = this.trailPoints[this.trailPoints.length - 1];
     const gradient = ctx.createLinearGradient(
@@ -1079,80 +1085,86 @@ drawNyanTrail() {
         lastPoint.x, lastPoint.y
     );
     
-    // Сине-бирюзовый градиент - яркий у тела, прозрачный на конце
-    gradient.addColorStop(0, 'hsla(210, 100%, 70%, 0.95)');  // Яркий синий у тела
-    gradient.addColorStop(0.5, 'hsla(190, 100%, 70%, 0.7)');  // Бирюзовый в середине
-    gradient.addColorStop(1, 'hsla(170, 100%, 70%, 0.4)');    // Прозрачный на конце
+    // Интенсивный градиент от яркого к прозрачному
+    gradient.addColorStop(0, 'hsla(200, 100%, 75%, 0.9)');   // Яркий синий у основания
+    gradient.addColorStop(0.3, 'hsla(190, 100%, 70%, 0.7)');  // Бирюзовый
+    gradient.addColorStop(0.6, 'hsla(180, 100%, 65%, 0.5)');  // Светло-бирюзовый
+    gradient.addColorStop(1, 'hsla(170, 100%, 60%, 0.2)');    // Почти прозрачный на кончике
     
+    // Основное заполнение конуса
     ctx.fillStyle = gradient;
+    ctx.globalAlpha = 0.85;
     ctx.fill();
     
-    // Внешнее свечение
-    ctx.shadowColor = 'hsla(190, 100%, 70%, 0.6)';
-    ctx.shadowBlur = 25;
+    // Яркое свечение вокруг конуса
+    ctx.shadowColor = 'hsla(190, 100%, 70%, 0.7)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
     ctx.fill();
     
-    // Внутренняя подсветка (для объема)
+    // Внутренний светящийся стержень (для объема)
     ctx.shadowBlur = 0;
-    ctx.globalAlpha = 0.4;
-    ctx.fillStyle = 'hsla(190, 100%, 90%, 0.6)';
+    ctx.globalAlpha = 0.5;
     
-    // Рисуем внутренний обратный конус (уже)
+    // Рисуем внутренний стержень
     ctx.beginPath();
     for (let i = 0; i < this.trailPoints.length; i++) {
         const point = this.trailPoints[i];
-        const progress = i / (this.trailPoints.length - 1);
-        const innerWidth = (this.nyanTrail.startWidth * 0.7) * (1 - progress) + (this.nyanTrail.endWidth * 0.8) * progress;
-        
-        let angle;
-        if (i === 0) {
-            const nextPoint = this.trailPoints[i + 1];
-            angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x);
-        } else if (i === this.trailPoints.length - 1) {
-            const prevPoint = this.trailPoints[i - 1];
-            angle = Math.atan2(point.y - prevPoint.y, point.x - prevPoint.x);
-        } else {
-            const prevPoint = this.trailPoints[i - 1];
-            const nextPoint = this.trailPoints[i + 1];
-            angle = Math.atan2(nextPoint.y - prevPoint.y, nextPoint.x - prevPoint.x);
-        }
-        
-        const offsetX = -Math.sin(angle) * innerWidth / 2;
-        const offsetY = Math.cos(angle) * innerWidth / 2;
         
         if (i === 0) {
-            ctx.moveTo(point.x + offsetX, point.y + offsetY);
+            ctx.moveTo(point.x, point.y);
         } else {
-            ctx.lineTo(point.x + offsetX, point.y + offsetY);
+            // Для плавной кривой используем quadraticCurveTo
+            if (i === 1) {
+                const prevPoint = this.trailPoints[i - 1];
+                const controlX = (prevPoint.x + point.x) / 2;
+                const controlY = (prevPoint.y + point.y) / 2;
+                ctx.quadraticCurveTo(controlX, controlY, point.x, point.y);
+            } else {
+                ctx.lineTo(point.x, point.y);
+            }
         }
     }
     
-    for (let i = this.trailPoints.length - 1; i >= 0; i--) {
-        const point = this.trailPoints[i];
-        const progress = i / (this.trailPoints.length - 1);
-        const innerWidth = (this.nyanTrail.startWidth * 0.7) * (1 - progress) + (this.nyanTrail.endWidth * 0.8) * progress;
-        
-        let angle;
-        if (i === 0) {
-            const nextPoint = this.trailPoints[i + 1];
-            angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x);
-        } else if (i === this.trailPoints.length - 1) {
-            const prevPoint = this.trailPoints[i - 1];
-            angle = Math.atan2(point.y - prevPoint.y, point.x - prevPoint.x);
-        } else {
-            const prevPoint = this.trailPoints[i - 1];
-            const nextPoint = this.trailPoints[i + 1];
-            angle = Math.atan2(nextPoint.y - prevPoint.y, nextPoint.x - prevPoint.x);
-        }
-        
-        const offsetX = Math.sin(angle) * innerWidth / 2;
-        const offsetY = -Math.cos(angle) * innerWidth / 2;
-        
-        ctx.lineTo(point.x + offsetX, point.y + offsetY);
-    }
+    // Градиент для внутреннего стержня
+    const innerGradient = ctx.createLinearGradient(
+        firstPoint.x, firstPoint.y,
+        lastPoint.x, lastPoint.y
+    );
+    innerGradient.addColorStop(0, 'hsla(190, 100%, 90%, 0.8)');
+    innerGradient.addColorStop(1, 'hsla(180, 100%, 85%, 0.3)');
     
-    ctx.closePath();
-    ctx.fill();
+    ctx.strokeStyle = innerGradient;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    
+    // Тонкое свечение вдоль центральной линии
+    ctx.shadowColor = 'hsla(190, 100%, 80%, 0.6)';
+    ctx.shadowBlur = 10;
+    ctx.stroke();
+    
+    // Энергетические частицы в шлейфе
+    if (Math.random() < 0.3) {
+        const randomIndex = Math.floor(Math.random() * this.trailPoints.length);
+        const particlePoint = this.trailPoints[randomIndex];
+        const particleProgress = randomIndex / this.trailPoints.length;
+        
+        // Размер частицы уменьшается к концу шлейфа
+        const particleSize = 2 + 3 * (1 - particleProgress);
+        
+        ctx.beginPath();
+        ctx.arc(particlePoint.x, particlePoint.y, particleSize, 0, Math.PI * 2);
+        ctx.fillStyle = 'hsla(190, 100%, 90%, 0.8)';
+        ctx.fill();
+        
+        // Свечение частицы
+        ctx.shadowColor = 'hsla(190, 100%, 80%, 0.9)';
+        ctx.shadowBlur = 8;
+        ctx.fill();
+    }
     
     ctx.restore();
 }
