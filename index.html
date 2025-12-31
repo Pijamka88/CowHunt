@@ -988,11 +988,11 @@ updateNyanTrail() {
         this.trailPoints.shift();
     }
     
-    // Обновляем параметры конусного шлейфа
+    // Обновляем параметры конусного шлейфа (обратный конус)
     if (this.trailPoints.length >= 2) {
         this.nyanTrail = {
-            baseWidth: 40, // Ширина у основания
-            tipWidth: 3,   // Ширина на кончике
+            startWidth: 8,    // Узкий у начала (у тела)
+            endWidth: 50,     // Широкий на конце
             phase: this.rainbowPhase
         };
     }
@@ -1003,16 +1003,16 @@ drawNyanTrail() {
     
     ctx.save();
     
-    // Создаем конусный шлейф
+    // Создаем обратный конусный шлейф (узкий у тела, широкий на конце)
     ctx.beginPath();
     
-    // Верхняя линия конуса (от широкого к узкому)
+    // Верхняя линия конуса (от узкого к широкому)
     for (let i = 0; i < this.trailPoints.length; i++) {
         const point = this.trailPoints[i];
-        const progress = i / (this.trailPoints.length - 1); // 0 у основания, 1 на кончике
+        const progress = i / (this.trailPoints.length - 1); // 0 у тела, 1 на конце
         
-        // Ширина уменьшается от основания к кончику
-        const width = this.nyanTrail.baseWidth * (1 - progress) + this.nyanTrail.tipWidth * progress;
+        // Ширина увеличивается от тела к концу (обратный конус)
+        const width = this.nyanTrail.startWidth * (1 - progress) + this.nyanTrail.endWidth * progress;
         
         // Рассчитываем нормаль (перпендикуляр) к направлению движения
         let angle;
@@ -1042,11 +1042,11 @@ drawNyanTrail() {
         }
     }
     
-    // Нижняя линия конуса (обратно от кончика к основанию)
+    // Нижняя линия конуса (обратно от широкого конца к узкому началу)
     for (let i = this.trailPoints.length - 1; i >= 0; i--) {
         const point = this.trailPoints[i];
         const progress = i / (this.trailPoints.length - 1);
-        const width = this.nyanTrail.baseWidth * (1 - progress) + this.nyanTrail.tipWidth * progress;
+        const width = this.nyanTrail.startWidth * (1 - progress) + this.nyanTrail.endWidth * progress;
         
         // Рассчитываем угол как и для верхней линии
         let angle;
@@ -1071,7 +1071,7 @@ drawNyanTrail() {
     
     ctx.closePath();
     
-    // Градиент для конуса
+    // Градиент для обратного конуса (яркий у тела, прозрачный на конце)
     const firstPoint = this.trailPoints[0];
     const lastPoint = this.trailPoints[this.trailPoints.length - 1];
     const gradient = ctx.createLinearGradient(
@@ -1079,30 +1079,30 @@ drawNyanTrail() {
         lastPoint.x, lastPoint.y
     );
     
-    // Сине-бирюзовый градиент
-    gradient.addColorStop(0, 'hsla(210, 100%, 65%, 0.9)');  // Яркий синий у основания
-    gradient.addColorStop(0.5, 'hsla(190, 100%, 65%, 0.7)'); // Бирюзовый
-    gradient.addColorStop(1, 'hsla(170, 100%, 65%, 0.4)');   // Светло-бирюзовый на конце
+    // Сине-бирюзовый градиент - яркий у тела, прозрачный на конце
+    gradient.addColorStop(0, 'hsla(210, 100%, 70%, 0.95)');  // Яркий синий у тела
+    gradient.addColorStop(0.5, 'hsla(190, 100%, 70%, 0.7)');  // Бирюзовый в середине
+    gradient.addColorStop(1, 'hsla(170, 100%, 70%, 0.4)');    // Прозрачный на конце
     
     ctx.fillStyle = gradient;
     ctx.fill();
     
     // Внешнее свечение
-    ctx.shadowColor = 'hsla(190, 100%, 65%, 0.5)';
-    ctx.shadowBlur = 20;
+    ctx.shadowColor = 'hsla(190, 100%, 70%, 0.6)';
+    ctx.shadowBlur = 25;
     ctx.fill();
     
-    // Внутренняя подсветка
+    // Внутренняя подсветка (для объема)
     ctx.shadowBlur = 0;
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = 'hsla(190, 100%, 85%, 0.5)';
+    ctx.globalAlpha = 0.4;
+    ctx.fillStyle = 'hsla(190, 100%, 90%, 0.6)';
     
-    // Рисуем внутренний конус (уже)
+    // Рисуем внутренний обратный конус (уже)
     ctx.beginPath();
     for (let i = 0; i < this.trailPoints.length; i++) {
         const point = this.trailPoints[i];
         const progress = i / (this.trailPoints.length - 1);
-        const width = (this.nyanTrail.baseWidth * 0.6) * (1 - progress) + (this.nyanTrail.tipWidth * 2) * progress;
+        const innerWidth = (this.nyanTrail.startWidth * 0.7) * (1 - progress) + (this.nyanTrail.endWidth * 0.8) * progress;
         
         let angle;
         if (i === 0) {
@@ -1117,8 +1117,8 @@ drawNyanTrail() {
             angle = Math.atan2(nextPoint.y - prevPoint.y, nextPoint.x - prevPoint.x);
         }
         
-        const offsetX = -Math.sin(angle) * width / 2;
-        const offsetY = Math.cos(angle) * width / 2;
+        const offsetX = -Math.sin(angle) * innerWidth / 2;
+        const offsetY = Math.cos(angle) * innerWidth / 2;
         
         if (i === 0) {
             ctx.moveTo(point.x + offsetX, point.y + offsetY);
@@ -1130,7 +1130,7 @@ drawNyanTrail() {
     for (let i = this.trailPoints.length - 1; i >= 0; i--) {
         const point = this.trailPoints[i];
         const progress = i / (this.trailPoints.length - 1);
-        const width = (this.nyanTrail.baseWidth * 0.6) * (1 - progress) + (this.nyanTrail.tipWidth * 2) * progress;
+        const innerWidth = (this.nyanTrail.startWidth * 0.7) * (1 - progress) + (this.nyanTrail.endWidth * 0.8) * progress;
         
         let angle;
         if (i === 0) {
@@ -1145,8 +1145,8 @@ drawNyanTrail() {
             angle = Math.atan2(nextPoint.y - prevPoint.y, nextPoint.x - prevPoint.x);
         }
         
-        const offsetX = Math.sin(angle) * width / 2;
-        const offsetY = -Math.cos(angle) * width / 2;
+        const offsetX = Math.sin(angle) * innerWidth / 2;
+        const offsetY = -Math.cos(angle) * innerWidth / 2;
         
         ctx.lineTo(point.x + offsetX, point.y + offsetY);
     }
@@ -1156,7 +1156,6 @@ drawNyanTrail() {
     
     ctx.restore();
 }
-
             die() {
                 this.alive = false;
                 this.deathAnimation = 1;
