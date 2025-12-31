@@ -891,6 +891,8 @@
                 this.alpha = 1;
                 this.wingHistory = [];
                 this.maxHistory = 5;
+                this.floatPhase = Math.random() * Math.PI * 2;
+                this.floatSpeed = Math.random() * 0.03 + 0.02;
             }
 
             reset() {
@@ -924,6 +926,8 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
+                this.floatPhase = Math.random() * Math.PI * 2;
+                this.floatSpeed = Math.random() * 0.03 + 0.02;
             }
 
             updateMovement() {
@@ -933,6 +937,11 @@
                 this.legPhase += this.legSpeed;
                 this.eyePhase += this.eyeSpeed;
                 this.tailPhase += this.tailSpeed;
+                this.wingPhase += this.wingSpeed;
+                this.floatPhase += this.floatSpeed;
+                
+                // Плавное изменение высоты полета
+                this.y += Math.sin(this.floatPhase) * 0.5;
                 
                 if (Math.random() < 0.005) {
                     this.tongueOut = true;
@@ -1013,7 +1022,9 @@
                         rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.08,
                         color: cowTypes[this.type].wingColor,
                         wingPhase: this.wingPhase,
-                        wingSpeed: this.wingSpeed * 0.7
+                        wingSpeed: this.wingSpeed * 0.7,
+                        wingHistory: [],
+                        maxHistory: 3
                     },
                     { // Правое крыло
                         x: this.x + 5, y: this.y - 5,
@@ -1021,7 +1032,9 @@
                         rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.08,
                         color: cowTypes[this.type].wingColor,
                         wingPhase: this.wingPhase,
-                        wingSpeed: this.wingSpeed * 0.7
+                        wingSpeed: this.wingSpeed * 0.7,
+                        wingHistory: [],
+                        maxHistory: 3
                     },
                     { // Нос
                         x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2), y: this.y + 8,
@@ -1080,7 +1093,6 @@
                 if (this.alive && !isPaused) {
                     this.updateMovement();
                     this.x += this.vx;
-                    this.wingPhase += this.wingSpeed;
                     
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
                         (this.direction === -1 && this.x < -this.width*2)) {
@@ -1106,6 +1118,136 @@
                         }
                     });
                 }
+            }
+
+            drawWings(currentWingYOffset) {
+                // История позиций крыльев для размытия
+                this.wingHistory.unshift(currentWingYOffset);
+                if (this.wingHistory.length > this.maxHistory) {
+                    this.wingHistory.pop();
+                }
+                
+                // Отрисовываем размытые крылья (от старых к новым)
+                for (let i = this.wingHistory.length - 1; i >= 0; i--) {
+                    const wingYOffset = this.wingHistory[i];
+                    const alpha = 0.2 + (i / this.wingHistory.length) * 0.4; // Прозрачность от 0.2 до 0.6
+                    
+                    // Левое крыло
+                    const leftWingTipX = 50;
+                    const leftWingTipY = -30 + wingYOffset;
+                    const leftWingStartX = -5;
+                    const leftWingStartY = -5;
+                    
+                    const leftWingGradient = ctx.createLinearGradient(
+                        leftWingStartX, leftWingStartY,
+                        -leftWingTipX, leftWingTipY
+                    );
+                    leftWingGradient.addColorStop(0, `rgba(0, 255, 255, ${alpha * 0.8})`);
+                    leftWingGradient.addColorStop(0.4, `rgba(138, 43, 226, ${alpha * 0.7})`);
+                    leftWingGradient.addColorStop(0.8, `rgba(255, 69, 0, ${alpha * 0.6})`);
+                    leftWingGradient.addColorStop(1, `rgba(255, 215, 0, ${alpha * 0.5})`);
+                    
+                    ctx.fillStyle = leftWingGradient;
+                    ctx.beginPath();
+                    ctx.moveTo(leftWingStartX, leftWingStartY);
+                    ctx.bezierCurveTo(
+                        leftWingStartX - 20, leftWingStartY - 10 + wingYOffset * 0.5,
+                        leftWingStartX - 40, leftWingStartY - 20 + wingYOffset,
+                        -leftWingTipX, leftWingTipY
+                    );
+                    ctx.bezierCurveTo(
+                        leftWingStartX - 40, leftWingStartY + wingYOffset * 0.5,
+                        leftWingStartX - 20, leftWingStartY + 5 + wingYOffset * 0.3,
+                        leftWingStartX, leftWingStartY
+                    );
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Правое крыло
+                    ctx.globalCompositeOperation = 'destination-over';
+                    
+                    const rightWingTipX = 50;
+                    const rightWingTipY = -30 + wingYOffset;
+                    const rightWingStartX = 5;
+                    const rightWingStartY = -5;
+                    
+                    const rightWingGradient = ctx.createLinearGradient(
+                        rightWingStartX, rightWingStartY,
+                        rightWingTipX, rightWingTipY
+                    );
+                    rightWingGradient.addColorStop(0, `rgba(255, 215, 0, ${alpha * 0.5})`);
+                    rightWingGradient.addColorStop(0.2, `rgba(255, 69, 0, ${alpha * 0.6})`);
+                    rightWingGradient.addColorStop(0.6, `rgba(138, 43, 226, ${alpha * 0.7})`);
+                    rightWingGradient.addColorStop(1, `rgba(0, 255, 255, ${alpha * 0.8})`);
+                    
+                    ctx.fillStyle = rightWingGradient;
+                    ctx.beginPath();
+                    ctx.moveTo(rightWingStartX, rightWingStartY);
+                    ctx.bezierCurveTo(
+                        rightWingStartX + 20, rightWingStartY - 10 + wingYOffset * 0.5,
+                        rightWingStartX + 40, rightWingStartY - 20 + wingYOffset,
+                        rightWingTipX, rightWingTipY
+                    );
+                    ctx.bezierCurveTo(
+                        rightWingStartX + 40, rightWingStartY + wingYOffset * 0.5,
+                        rightWingStartX + 20, rightWingStartY + 5 + wingYOffset * 0.3,
+                        rightWingStartX, rightWingStartY
+                    );
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.globalCompositeOperation = 'source-over';
+                }
+                
+                // Обводка для текущих крыльев
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.lineWidth = 1.5;
+                
+                // Левое крыло (обводка)
+                const leftWingTipX = 50;
+                const leftWingTipY = -30 + currentWingYOffset;
+                const leftWingStartX = -5;
+                const leftWingStartY = -5;
+                
+                ctx.beginPath();
+                ctx.moveTo(leftWingStartX, leftWingStartY);
+                ctx.bezierCurveTo(
+                    leftWingStartX - 20, leftWingStartY - 10 + currentWingYOffset * 0.5,
+                    leftWingStartX - 40, leftWingStartY - 20 + currentWingYOffset,
+                    -leftWingTipX, leftWingTipY
+                );
+                ctx.bezierCurveTo(
+                    leftWingStartX - 40, leftWingStartY + currentWingYOffset * 0.5,
+                    leftWingStartX - 20, leftWingStartY + 5 + currentWingYOffset * 0.3,
+                    leftWingStartX, leftWingStartY
+                );
+                ctx.closePath();
+                ctx.stroke();
+                
+                // Правое крыло (обводка)
+                ctx.globalCompositeOperation = 'destination-over';
+                
+                const rightWingTipX = 50;
+                const rightWingTipY = -30 + currentWingYOffset;
+                const rightWingStartX = 5;
+                const rightWingStartY = -5;
+                
+                ctx.beginPath();
+                ctx.moveTo(rightWingStartX, rightWingStartY);
+                ctx.bezierCurveTo(
+                    rightWingStartX + 20, rightWingStartY - 10 + currentWingYOffset * 0.5,
+                    rightWingStartX + 40, rightWingStartY - 20 + currentWingYOffset,
+                    rightWingTipX, rightWingTipY
+                );
+                ctx.bezierCurveTo(
+                    rightWingStartX + 40, rightWingStartY + currentWingYOffset * 0.5,
+                    rightWingStartX + 20, rightWingStartY + 5 + currentWingYOffset * 0.3,
+                    rightWingStartX, rightWingStartY
+                );
+                ctx.closePath();
+                ctx.stroke();
+                
+                ctx.globalCompositeOperation = 'source-over';
             }
 
             draw() {
@@ -1329,136 +1471,9 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // ЛЕВОЕ КРЫЛО
-                    const wingYOffset = Math.sin(this.wingPhase) * 15;
-
-                    // История позиций крыльев для размытия
-                    this.wingHistory.unshift(wingYOffset);
-                    if (this.wingHistory.length > this.maxHistory) {
-                        this.wingHistory.pop();
-                    }
-
-                    // Отрисовываем размытые крылья (от старых к новым)
-                    for (let i = this.wingHistory.length - 1; i >= 0; i--) {
-                        const currentWingYOffset = this.wingHistory[i];
-                        const alpha = 0.2 + (i / this.wingHistory.length) * 0.4; // Прозрачность от 0.2 до 0.6
-                        
-                        // Левое крыло
-                        const leftWingTipX = 30;
-                        const leftWingTipY = -25 + currentWingYOffset;
-                        const leftWingStartX = -8;
-                        const leftWingStartY = -5;
-
-                        const leftWingGradient = ctx.createLinearGradient(
-                            leftWingStartX, leftWingStartY,
-                            -leftWingTipX, leftWingTipY
-                        );
-                        leftWingGradient.addColorStop(0, `rgba(0, 255, 255, ${alpha * 0.8})`);
-                        leftWingGradient.addColorStop(0.4, `rgba(138, 43, 226, ${alpha * 0.7})`);
-                        leftWingGradient.addColorStop(0.8, `rgba(255, 69, 0, ${alpha * 0.6})`);
-                        leftWingGradient.addColorStop(1, `rgba(255, 215, 0, ${alpha * 0.5})`);
-
-                        ctx.fillStyle = leftWingGradient;
-                        ctx.beginPath();
-                        ctx.moveTo(leftWingStartX, leftWingStartY);
-                        ctx.bezierCurveTo(
-                            leftWingStartX - 10, leftWingStartY - 8 + currentWingYOffset * 0.5,
-                            leftWingStartX - 22, leftWingStartY - 15 + currentWingYOffset,
-                            -leftWingTipX, leftWingTipY
-                        );
-                        ctx.bezierCurveTo(
-                            leftWingStartX - 22, leftWingStartY + 5 + currentWingYOffset * 0.5,
-                            leftWingStartX - 10, leftWingStartY + 3 + currentWingYOffset * 0.3,
-                            leftWingStartX, leftWingStartY
-                        );
-                        ctx.closePath();
-                        ctx.fill();
-
-                        // Правое крыло
-                        ctx.globalCompositeOperation = 'destination-over';
-
-                        const rightWingTipX = 30;
-                        const rightWingTipY = -25 + currentWingYOffset;
-                        const rightWingStartX = 8;
-                        const rightWingStartY = -5;
-
-                        const rightWingGradient = ctx.createLinearGradient(
-                            rightWingStartX, rightWingStartY,
-                            rightWingTipX, rightWingTipY
-                        );
-                        rightWingGradient.addColorStop(0, `rgba(255, 215, 0, ${alpha * 0.5})`);
-                        rightWingGradient.addColorStop(0.2, `rgba(255, 69, 0, ${alpha * 0.6})`);
-                        rightWingGradient.addColorStop(0.6, `rgba(138, 43, 226, ${alpha * 0.7})`);
-                        rightWingGradient.addColorStop(1, `rgba(0, 255, 255, ${alpha * 0.8})`);
-
-                        ctx.fillStyle = rightWingGradient;
-                        ctx.beginPath();
-                        ctx.moveTo(rightWingStartX, rightWingStartY);
-                        ctx.bezierCurveTo(
-                            rightWingStartX + 10, rightWingStartY - 8 + currentWingYOffset * 0.5,
-                            rightWingStartX + 22, rightWingStartY - 15 + currentWingYOffset,
-                            rightWingTipX, rightWingTipY
-                        );
-                        ctx.bezierCurveTo(
-                            rightWingStartX + 22, rightWingStartY + 5 + currentWingYOffset * 0.5,
-                            rightWingStartX + 10, rightWingStartY + 3 + currentWingYOffset * 0.3,
-                            rightWingStartX, rightWingStartY
-                        );
-                        ctx.closePath();
-                        ctx.fill();
-
-                        ctx.globalCompositeOperation = 'source-over';
-                    }
-
-                    // Обводка для текущих крыльев
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-                    ctx.lineWidth = 1.5;
-
-                    // Левое крыло (обводка)
-                    const leftWingTipX = 30;
-                    const leftWingTipY = -25 + wingYOffset;
-                    const leftWingStartX = -8;
-                    const leftWingStartY = -5;
-
-                    ctx.beginPath();
-                    ctx.moveTo(leftWingStartX, leftWingStartY);
-                    ctx.bezierCurveTo(
-                        leftWingStartX - 10, leftWingStartY - 8 + wingYOffset * 0.5,
-                        leftWingStartX - 22, leftWingStartY - 15 + wingYOffset,
-                        -leftWingTipX, leftWingTipY
-                    );
-                    ctx.bezierCurveTo(
-                        leftWingStartX - 22, leftWingStartY + 5 + wingYOffset * 0.5,
-                        leftWingStartX - 10, leftWingStartY + 3 + wingYOffset * 0.3,
-                        leftWingStartX, leftWingStartY
-                    );
-                    ctx.closePath();
-                    ctx.stroke();
-
-                    // Правое крыло (обводка)
-                    ctx.globalCompositeOperation = 'destination-over';
-
-                    const rightWingTipX = 30;
-                    const rightWingTipY = -25 + wingYOffset;
-                    const rightWingStartX = 8;
-                    const rightWingStartY = -5;
-
-                    ctx.beginPath();
-                    ctx.moveTo(rightWingStartX, rightWingStartY);
-                    ctx.bezierCurveTo(
-                        rightWingStartX + 10, rightWingStartY - 8 + wingYOffset * 0.5,
-                        rightWingStartX + 22, rightWingStartY - 15 + wingYOffset,
-                        rightWingTipX, rightWingTipY
-                    );
-                    ctx.bezierCurveTo(
-                        rightWingStartX + 22, rightWingStartY + 5 + wingYOffset * 0.5,
-                        rightWingStartX + 10, rightWingStartY + 3 + wingYOffset * 0.3,
-                        rightWingStartX, rightWingStartY
-                    );
-                    ctx.closePath();
-                    ctx.stroke();
-
-                    ctx.globalCompositeOperation = 'source-over';
+                    // Крылья с улучшенной анимацией и размытием
+                    const currentWingYOffset = Math.sin(this.wingPhase) * 15;
+                    this.drawWings(currentWingYOffset);
                     
                     // Tail
                     const tailX = -this.width/2;
@@ -1621,40 +1636,83 @@
                                 });
                             }
                         } else if (limb === this.limbs[2] || limb === this.limbs[3]) {
-                            // Крылья с движением даже у мертвых коров
-                            const wingYOffset = Math.sin(limb.wingPhase) * 20;
-                            const wingTipX = 35;
-                            const wingTipY = -30 + wingYOffset;
+                            // Крылья с размытием движения для мертвых коров
+                            const currentWingYOffset = Math.sin(limb.wingPhase) * 20;
                             
-                            let wingGradient;
-                            if (limb === this.limbs[2]) {
-                                wingGradient = ctx.createLinearGradient(0, 0, -wingTipX, wingTipY);
-                            } else {
-                                wingGradient = ctx.createLinearGradient(0, 0, wingTipX, wingTipY);
+                            // История позиций крыльев для размытия
+                            if (!limb.wingHistory) limb.wingHistory = [];
+                            limb.wingHistory.unshift(currentWingYOffset);
+                            if (limb.wingHistory.length > limb.maxHistory) {
+                                limb.wingHistory.pop();
                             }
                             
-                            wingGradient.addColorStop(0, 'rgba(100, 200, 255, 0.9)');
-                            wingGradient.addColorStop(0.3, 'rgba(200, 100, 255, 0.8)');
-                            wingGradient.addColorStop(0.6, 'rgba(255, 100, 200, 0.7)');
-                            wingGradient.addColorStop(1, 'rgba(100, 255, 200, 0.6)');
-                            
-                            ctx.fillStyle = wingGradient;
-                            ctx.beginPath();
-                            if (limb === this.limbs[2]) {
-                                ctx.moveTo(0, 0);
-                                ctx.bezierCurveTo(-15, -12 + wingYOffset * 0.5, -30, -20 + wingYOffset, -wingTipX, wingTipY);
-                                ctx.bezierCurveTo(-30, 0 + wingYOffset * 0.5, -15, 5 + wingYOffset * 0.3, 0, 0);
-                            } else {
-                                ctx.moveTo(0, 0);
-                                ctx.bezierCurveTo(15, -12 + wingYOffset * 0.5, 30, -20 + wingYOffset, wingTipX, wingTipY);
-                                ctx.bezierCurveTo(30, 0 + wingYOffset * 0.5, 15, 5 + wingYOffset * 0.3, 0, 0);
+                            // Отрисовываем размытые крылья (от старых к новым)
+                            for (let i = limb.wingHistory.length - 1; i >= 0; i--) {
+                                const wingYOffset = limb.wingHistory[i];
+                                const alpha = 0.15 + (i / limb.wingHistory.length) * 0.3;
+                                
+                                if (limb === this.limbs[2]) {
+                                    // Левое крыло
+                                    const leftWingGradient = ctx.createLinearGradient(
+                                        -5, -5,
+                                        -50, -30 + wingYOffset
+                                    );
+                                    leftWingGradient.addColorStop(0, `rgba(0, 255, 255, ${alpha * 0.8})`);
+                                    leftWingGradient.addColorStop(0.4, `rgba(138, 43, 226, ${alpha * 0.7})`);
+                                    leftWingGradient.addColorStop(0.8, `rgba(255, 69, 0, ${alpha * 0.6})`);
+                                    leftWingGradient.addColorStop(1, `rgba(255, 215, 0, ${alpha * 0.5})`);
+                                    
+                                    ctx.fillStyle = leftWingGradient;
+                                    ctx.beginPath();
+                                    ctx.moveTo(-5, -5);
+                                    ctx.bezierCurveTo(-20, -10 + wingYOffset * 0.5, -40, -20 + wingYOffset, -50, -30 + wingYOffset);
+                                    ctx.bezierCurveTo(-40, 0 + wingYOffset * 0.5, -20, 5 + wingYOffset * 0.3, -5, -5);
+                                    ctx.fill();
+                                } else {
+                                    // Правое крыло
+                                    ctx.globalCompositeOperation = 'destination-over';
+                                    
+                                    const rightWingGradient = ctx.createLinearGradient(
+                                        5, -5,
+                                        50, -30 + wingYOffset
+                                    );
+                                    rightWingGradient.addColorStop(0, `rgba(255, 215, 0, ${alpha * 0.5})`);
+                                    rightWingGradient.addColorStop(0.2, `rgba(255, 69, 0, ${alpha * 0.6})`);
+                                    rightWingGradient.addColorStop(0.6, `rgba(138, 43, 226, ${alpha * 0.7})`);
+                                    rightWingGradient.addColorStop(1, `rgba(0, 255, 255, ${alpha * 0.8})`);
+                                    
+                                    ctx.fillStyle = rightWingGradient;
+                                    ctx.beginPath();
+                                    ctx.moveTo(5, -5);
+                                    ctx.bezierCurveTo(20, -10 + wingYOffset * 0.5, 40, -20 + wingYOffset, 50, -30 + wingYOffset);
+                                    ctx.bezierCurveTo(40, 0 + wingYOffset * 0.5, 20, 5 + wingYOffset * 0.3, 5, -5);
+                                    ctx.fill();
+                                    
+                                    ctx.globalCompositeOperation = 'source-over';
+                                }
                             }
-                            ctx.closePath();
-                            ctx.fill();
                             
-                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-                            ctx.lineWidth = 2;
-                            ctx.stroke();
+                            // Обводка для текущих крыльев
+                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                            ctx.lineWidth = 1;
+                            
+                            if (limb === this.limbs[2]) {
+                                // Левое крыло (обводка)
+                                ctx.beginPath();
+                                ctx.moveTo(-5, -5);
+                                ctx.bezierCurveTo(-20, -10 + currentWingYOffset * 0.5, -40, -20 + currentWingYOffset, -50, -30 + currentWingYOffset);
+                                ctx.bezierCurveTo(-40, 0 + currentWingYOffset * 0.5, -20, 5 + currentWingYOffset * 0.3, -5, -5);
+                                ctx.stroke();
+                            } else {
+                                // Правое крыло (обводка)
+                                ctx.globalCompositeOperation = 'destination-over';
+                                ctx.beginPath();
+                                ctx.moveTo(5, -5);
+                                ctx.bezierCurveTo(20, -10 + currentWingYOffset * 0.5, 40, -20 + currentWingYOffset, 50, -30 + currentWingYOffset);
+                                ctx.bezierCurveTo(40, 0 + currentWingYOffset * 0.5, 20, 5 + currentWingYOffset * 0.3, 5, -5);
+                                ctx.stroke();
+                                ctx.globalCompositeOperation = 'source-over';
+                            }
                             
                             // Обновляем фазу крыла
                             if (limb.wingSpeed !== undefined) {
