@@ -980,64 +980,121 @@ this.maxHistory = 5;
 updateNyanTrail() {
     if (!this.alive || isPaused) return;
     
-    // Точка выхода шлейфа из тела коровы
+    // Точка выхода шлейфа из СЕРЕДИНЫ ТЕЛА коровы
     const trailX = this.x; // Центр тела коровы
     const trailY = this.y; // Центр тела коровы
     
     this.trailPoints.push({x: trailX, y: trailY});
     
-    // ОГРАНИЧЕНИЕ ДЛИНЫ ШЛЕЙФА - максимум 20 точек
-    if (this.trailPoints.length > 20) {
+    // ОГРАНИЧЕНИЕ ДЛИНЫ ШЛЕЙФА - максимум 25 точек
+    if (this.trailPoints.length > 25) {
         this.trailPoints.shift();
+    }
+    
+    // Также ограничиваем максимальное расстояние между точками
+    // чтобы шлейф не растягивался при быстром движении
+    if (this.trailPoints.length > 2) {
+        for (let i = 1; i < this.trailPoints.length; i++) {
+            const dx = this.trailPoints[i].x - this.trailPoints[i-1].x;
+            const dy = this.trailPoints[i].y - this.trailPoints[i-1].y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Если расстояние между точками слишком большое, добавляем промежуточные точки
+            if (distance > 15) {
+                const pointsToAdd = Math.floor(distance / 15);
+                for (let j = 1; j <= pointsToAdd; j++) {
+                    const t = j / (pointsToAdd + 1);
+                    const newX = this.trailPoints[i-1].x + dx * t;
+                    const newY = this.trailPoints[i-1].y + dy * t;
+                    this.trailPoints.splice(i + j - 1, 0, {x: newX, y: newY});
+                }
+                i += pointsToAdd;
+            }
+        }
+        
+        // После добавления точек, снова ограничиваем общую длину
+        if (this.trailPoints.length > 30) {
+            this.trailPoints.splice(0, this.trailPoints.length - 25);
+        }
+    }
+    
+    // Обновляем шлейф
+    if (this.trailPoints.length >= 2) {
+        this.nyanTrail = {
+            startX: this.trailPoints[0].x,
+            startY: this.trailPoints[0].y,
+            endX: this.trailPoints[this.trailPoints.length - 1].x,
+            endY: this.trailPoints[this.trailPoints.length - 1].y,
+            width: 28, // Фиксированная ширина в начале
+            alpha: 0.95,
+            phase: this.rainbowPhase,
+            length: this.trailPoints.length
+        };
     }
 }
 
 drawNyanTrail() {
-    if (!this.alive || !this.trailPoints || this.trailPoints.length < 2) return;
+    if (!this.alive || !this.nyanTrail || this.trailPoints.length < 2) return;
     
     ctx.save();
     
-    const totalPoints = this.trailPoints.length;
-    
-    // Рисуем шлейф как одну линию с переменной шириной и прозрачностью
+    // Рисуем плавную линию через все точки с ПЕРЕМЕННОЙ ШИРИНОЙ
     ctx.beginPath();
-    
-    // Начинаем от первой точки
     ctx.moveTo(this.trailPoints[0].x, this.trailPoints[0].y);
     
-    // Добавляем остальные точки
-    for (let i = 1; i < totalPoints; i++) {
-        ctx.lineTo(this.trailPoints[i].x, this.trailPoints[i].y);
+    // Используем кривую через контрольные точки для плавности
+    for (let i = 1; i < this.trailPoints.length - 2; i++) {
+        const xc = (this.trailPoints[i].x + this.trailPoints[i + 1].x) / 2;
+        const yc = (this.trailPoints[i].y + this.trailPoints[i + 1].y) / 2;
+        ctx.quadraticCurveTo(this.trailPoints[i].x, this.trailPoints[i].y, xc, yc);
     }
     
-    // Градиент для цвета
+    // Последний сегмент
+    if (this.trailPoints.length >= 2) {
+        const lastIndex = this.trailPoints.length - 1;
+        ctx.quadraticCurveTo(
+            this.trailPoints[lastIndex - 1].x,
+            this.trailPoints[lastIndex - 1].y,
+            this.trailPoints[lastIndex].x,
+            this.trailPoints[lastIndex].y
+        );
+    }
+    
+    // Градиент с ПОЛУПРОЗРАЧНЫМ И СУЖАЮЩИМСЯ КОНЦОМ
     const startX = this.trailPoints[0].x;
     const startY = this.trailPoints[0].y;
-    const endX = this.trailPoints[totalPoints - 1].x;
-    const endY = this.trailPoints[totalPoints - 1].y;
+    const endX = this.trailPoints[this.trailPoints.length - 1].x;
+    const endY = this.trailPoints[this.trailPoints.length - 1].y;
     
     const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
-    gradient.addColorStop(0, 'hsla(200, 100%, 70%, 0.9)');  // Начало - яркий
-    gradient.addColorStop(0.7, 'hsla(190, 100%, 70%, 0.6)'); // Середина
-    gradient.addColorStop(1, 'hsla(180, 100%, 70%, 0.2)');   // Конец - прозрачный
     
-    // Настройки линии
+    // Плавный переход от яркого у тела к полупрозрачному на конце
+    gradient.addColorStop(0, 'hsla(200, 100%, 75%, 0.95)'); // Яркий синий у тела
+    gradient.addColorStop(0.3, 'hsla(190, 100%, 75%, 0.85)'); 
+    gradient.addColorStop(0.6, 'hsla(180, 100%, 75%, 0.7)'); 
+    gradient.addColorStop(0.8, 'hsla(170, 100%, 75%, 0.5)'); 
+    gradient.addColorStop(0.95, 'hsla(160, 100%, 75%, 0.3)'); // Почти прозрачный
+    gradient.addColorStop(1, 'hsla(160, 100%, 75%, 0.1)'); // ПОЛНОСТЬЮ ПОЛУПРОЗРАЧНЫЙ КОНЕЦ
+    
+    // Рисуем шлейф с ПЕРЕМЕННОЙ ШИРИНОЙ (сужаемся к концу)
+    const totalPoints = this.trailPoints.length;
+    
+    // Основная линия шлейфа с переменной шириной
     ctx.strokeStyle = gradient;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.globalAlpha = 1;
     
-    // Шлейф: ШИРОКИЙ в начале (у тела), УЗКИЙ в конце
-    const maxWidth = 40;   // Ширина у тела
-    const minWidth = 5;    // Ширина на конце
-    
-    // Рисуем несколькими проходами для создания эффекта объема
-    
-    // 1. Внешний слой с плавным сужением
-    for (let i = 0; i < totalPoints - 1; i++) {
+    // Рисуем шлейф сегментами для контроля ширины
+    for (let i = 0; i < this.trailPoints.length - 1; i++) {
         const progress = i / (totalPoints - 1);
-        // Линейное уменьшение ширины от maxWidth до minWidth
-        const width = maxWidth * (1 - progress) + minWidth * progress;
+        const segmentWidth = 28 * (1 - progress * 0.7); // Ширина уменьшается на 70% к концу
+        
+        // Для последнего сегмента делаем еще уже
+        let width = segmentWidth;
+        if (i === this.trailPoints.length - 2) {
+            width = 5; // Очень узкий конец
+        }
         
         ctx.lineWidth = width;
         
@@ -1054,62 +1111,17 @@ drawNyanTrail() {
         ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
     }
     
-    // 2. Внутренний яркий слой (уже)
-    ctx.strokeStyle = 'hsla(180, 100%, 85%, 0.7)';
-    for (let i = 0; i < totalPoints - 1; i++) {
-        const progress = i / (totalPoints - 1);
-        // Внутренний слой уже в 0.6 раза
-        const width = (maxWidth * 0.6) * (1 - progress) + (minWidth * 0.8) * progress;
-        
-        ctx.lineWidth = width;
-        
-        if (i === 0) {
-            ctx.beginPath();
-            ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
-        }
-        ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-        ctx.stroke();
-        
-        if (i < totalPoints - 2) {
-            ctx.beginPath();
-            ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-        }
-    }
-    
-    // 3. Самый яркий центральный стержень
-    ctx.strokeStyle = 'hsla(180, 100%, 95%, 0.9)';
-    for (let i = 0; i < totalPoints - 1; i++) {
-        const progress = i / (totalPoints - 1);
-        // Центральный стержень еще уже
-        const width = (maxWidth * 0.3) * (1 - progress) + (minWidth * 0.5) * progress;
-        
-        ctx.lineWidth = width;
-        
-        if (i === 0) {
-            ctx.beginPath();
-            ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
-        }
-        ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-        ctx.stroke();
-        
-        if (i < totalPoints - 2) {
-            ctx.beginPath();
-            ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-        }
-    }
-    
-    // 4. Свечение только у начала шлейфа (у тела)
-    ctx.shadowColor = 'hsla(180, 100%, 70%, 0.6)';
+    // Внешнее свечение с эффектом рассеивания на конце
+    ctx.shadowColor = 'hsla(180, 100%, 70%, 0.4)';
     ctx.shadowBlur = 20;
-    ctx.strokeStyle = gradient;
     
-    // Свечение только на первых 30% шлейфа
-    const glowLength = Math.floor(totalPoints * 0.3);
-    for (let i = 0; i < glowLength && i < totalPoints - 1; i++) {
-        const progress = i / glowLength;
-        const width = maxWidth * (1 - progress * 0.3); // Почти одинаковое свечение
+    // Перерисовываем для свечения (только первые 70% шлейфа)
+    const glowLength = Math.floor(totalPoints * 0.7);
+    for (let i = 0; i < glowLength; i++) {
+        const progress = i / (glowLength - 1);
+        const segmentWidth = 25 * (1 - progress * 0.6);
         
-        ctx.lineWidth = width;
+        ctx.lineWidth = segmentWidth;
         
         if (i === 0) {
             ctx.beginPath();
@@ -1118,7 +1130,7 @@ drawNyanTrail() {
         ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
         ctx.stroke();
         
-        if (i < glowLength - 1 && i < totalPoints - 2) {
+        if (i < glowLength - 1) {
             ctx.beginPath();
             ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
         }
@@ -2509,105 +2521,106 @@ function returnToMainMenu() {
             ctx.restore();
         }
 
-        function drawBackground() {
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#001a33');
-            gradient.addColorStop(1, '#30397A');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            const time = Date.now() / 1000;
-            eyeAnimationPhase = time * 2;
-            
-            stars.forEach(star => {
-                if (star.layer !== 0) return;
-                
-                const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
-                
-                if (!isPaused) {
-                    star.rotation += 0.005;
-                    star.x += star.speed;
-                    if (star.x > canvas.width) {
-                        star.x = 0;
-                        star.y = Math.random() * canvas.height;
-                    }
-                }
-                
-                draw4PointStar(
-                    star.x, 
-                    star.y, 
-                    star.size * pulse, 
-                    star.color, 
-                    star.rotation
-                );
-            });
-            
-            planets.forEach(planet => {
-                if (planet.layer !== 1) return;
-                drawPlanetAtmosphere(planet);
-            });
-            
-            planets.forEach(planet => {
-                if (planet.layer !== 1) return;
-                drawPlanet(planet);
-            });
-            
-            stars.forEach(star => {
-                if (star.layer !== 1) return;
-                
-                const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
-                
-                if (!isPaused) {
-                    star.rotation += 0.005;
-                    star.x += star.speed;
-                    if (star.x > canvas.width) {
-                        star.x = 0;
-                        star.y = Math.random() * canvas.height;
-                    }
-                }
-                
-                draw4PointStar(
-                    star.x, 
-                    star.y, 
-                    star.size * pulse, 
-                    star.color, 
-                    star.rotation
-                );
-            });
-            
-            planets.forEach(planet => {
-                if (planet.layer !== 2) return;
-                drawPlanetAtmosphere(planet);
-            });
-            
-            planets.forEach(planet => {
-                if (planet.layer !== 2) return;
-                drawPlanet(planet);
-            });
-            
-            stars.forEach(star => {
-                if (star.layer !== 2) return;
-                
-                const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
-                
-                if (!isPaused) {
-                    star.rotation += 0.005;
-                    star.x += star.speed;
-                    if (star.x > canvas.width) {
-                        star.x = 0;
-                        star.y = Math.random() * canvas.height;
-                    }
-                }
-                
-                draw4PointStar(
-                    star.x, 
-                    star.y, 
-                    star.size * pulse, 
-                    star.color, 
-                    star.rotation
-                );
-            });
+ function drawBackground() {
+    // Не рисуем сплошной фон, так как у нас уже есть эффект размытия
+    // const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    // gradient.addColorStop(0, '#001a33');
+    // gradient.addColorStop(1, '#30397A');
+    // ctx.fillStyle = gradient;
+    // ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const time = Date.now() / 1000;
+    eyeAnimationPhase = time * 2;
+    
+    stars.forEach(star => {
+        if (star.layer !== 0) return;
+        
+        const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
+        
+        if (!isPaused) {
+            star.rotation += 0.005;
+            star.x += star.speed;
+            if (star.x > canvas.width) {
+                star.x = 0;
+                star.y = Math.random() * canvas.height;
+            }
         }
+        
+        draw4PointStar(
+            star.x, 
+            star.y, 
+            star.size * pulse, 
+            star.color, 
+            star.rotation
+        );
+    });
+    
+    planets.forEach(planet => {
+        if (planet.layer !== 1) return;
+        drawPlanetAtmosphere(planet);
+    });
+    
+    planets.forEach(planet => {
+        if (planet.layer !== 1) return;
+        drawPlanet(planet);
+    });
+    
+    stars.forEach(star => {
+        if (star.layer !== 1) return;
+        
+        const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
+        
+        if (!isPaused) {
+            star.rotation += 0.005;
+            star.x += star.speed;
+            if (star.x > canvas.width) {
+                star.x = 0;
+                star.y = Math.random() * canvas.height;
+            }
+        }
+        
+        draw4PointStar(
+            star.x, 
+            star.y, 
+            star.size * pulse, 
+            star.color, 
+            star.rotation
+        );
+    });
+    
+    planets.forEach(planet => {
+        if (planet.layer !== 2) return;
+        drawPlanetAtmosphere(planet);
+    });
+    
+    planets.forEach(planet => {
+        if (planet.layer !== 2) return;
+        drawPlanet(planet);
+    });
+    
+    stars.forEach(star => {
+        if (star.layer !== 2) return;
+        
+        const pulse = Math.sin(time * 2 + star.phase) * 0.2 + 0.8;
+        
+        if (!isPaused) {
+            star.rotation += 0.005;
+            star.x += star.speed;
+            if (star.x > canvas.width) {
+                star.x = 0;
+                star.y = Math.random() * canvas.height;
+            }
+        }
+        
+        draw4PointStar(
+            star.x, 
+            star.y, 
+            star.size * pulse, 
+            star.color, 
+            star.rotation
+        );
+    });
+}
 
         function drawLifeBonuses() {
             lifeBonuses.forEach((bonus, index) => {
@@ -2653,8 +2666,8 @@ function gameLoop(timestamp) {
     lastTime = timestamp;
     
     if (gameActive && !isGameOver && !isPaused) {
-        // Во время игры - эффект размытия движения
-        ctx.fillStyle = 'rgba(0, 10, 30, 0.1)'; // Темно-синий с небольшой прозрачностью
+        // Во время игры - эффект размытия движения (более темный цвет)
+        ctx.fillStyle = 'rgba(0, 5, 15, 0.15)'; // Более темный синий с прозрачностью
     } else {
         // В меню или на паузе - обычная очистка
         ctx.fillStyle = 'rgba(0, 10, 30, 1)'; // Полностью непрозрачный
@@ -2702,7 +2715,6 @@ function gameLoop(timestamp) {
     
     requestAnimationFrame(gameLoop);
 }
-
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
