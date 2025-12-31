@@ -889,11 +889,11 @@
                 this.tongueTimer = 0;
                 this.alpha = 1;
         this.nyanTrail = null;
-        this.trailLength = 250; // Длина шлейфа
+        this.trailLength = 400; // Еще более длинный шлейф
         this.rainbowPhase = 0;
         this.rainbowSpeed = 0.03;
-        this.trailPoints = [];
-        this.maxTrailPoints = 15; // Меньше точек для более плавного конуса
+        this.trailPoints = []; // Точки для плавного шлейфа
+        this.maxTrailPoints = 25; // Больше точек для более плавного конуса
             }
 
             reset() {
@@ -974,177 +974,121 @@
                 }
             }
 
-    updateNyanTrail() {
-        if (!this.alive || isPaused) return;
-        
-        // Добавляем точку в начало тела коровы (центр)
-        const trailX = this.x;
-        const trailY = this.y;
-        
-        this.trailPoints.unshift({x: trailX, y: trailY});
-        
-        // Ограничиваем количество точек
-        if (this.trailPoints.length > this.maxTrailPoints) {
-            this.trailPoints.pop();
-        }
-        
-        // Обновляем шлейф как конус
-        if (this.trailPoints.length >= 2) {
-            this.nyanTrail = {
-                points: [...this.trailPoints],
-                phase: this.rainbowPhase,
-                alpha: 0.7
-            };
-        }
+updateNyanTrail() {
+    if (!this.alive || isPaused) return;
+    
+    // Добавляем текущую позицию коровы в массив точек
+    const trailX = this.x + (this.direction === 1 ? -this.width/2 : this.width/2);
+    const trailY = this.y;
+    
+    this.trailPoints.push({x: trailX, y: trailY});
+    
+    // Ограничиваем количество точек
+    if (this.trailPoints.length > this.maxTrailPoints) {
+        this.trailPoints.shift();
     }
+}
 
-    drawNyanTrail() {
-        if (!this.alive || !this.nyanTrail || this.trailPoints.length < 2) return;
+drawNyanTrail() {
+    if (!this.alive || this.trailPoints.length < 2) return;
+    
+    ctx.save();
+    
+    // Рисуем конусообразный шлейф
+    for (let i = 0; i < this.trailPoints.length - 1; i++) {
+        const currentPoint = this.trailPoints[i];
+        const nextPoint = this.trailPoints[i + 1];
         
-        ctx.save();
+        // Коэффициент для градиента прозрачности и ширины
+        const progress = i / this.trailPoints.length;
+        const alpha = 0.8 * (1 - progress * 0.7); // Уменьшаем прозрачность к концу
+        const width = 35 * (1 - progress * 0.8); // Уменьшаем ширину к концу (конус)
         
-        // Рисуем конусный шлейф
-        const points = this.nyanTrail.points;
+        // Градиент цвета от яркого синего к бирюзовому
+        const hue = 200 - (progress * 40); // От 200 (синий) до 160 (бирюзовый)
         
-        // Создаем путь для конуса
+        // Рисуем сегмент шлейфа
         ctx.beginPath();
-        
-        // Начинаем с задней точки (самой старой)
-        ctx.moveTo(points[points.length - 1].x, points[points.length - 1].y);
-        
-        // Рисуем одну сторону конуса
-        for (let i = points.length - 2; i >= 0; i--) {
-            // Сужаемся к корове
-            const progress = i / (points.length - 1);
-            const offset = 20 * (1 - progress); // Начальная ширина 20, сужаемся до 0
-            
-            // Перпендикулярный вектор к направлению движения
-            const dirX = i > 0 ? points[i].x - points[i+1].x : points[i].x - points[Math.min(i+1, points.length-1)].x;
-            const dirY = i > 0 ? points[i].y - points[i+1].y : points[i].y - points[Math.min(i+1, points.length-1)].y;
-            
-            // Нормализуем вектор направления
-            const length = Math.sqrt(dirX * dirX + dirY * dirY);
-            if (length > 0) {
-                const normalX = -dirY / length;
-                const normalY = dirX / length;
-                
-                const sideX = points[i].x + normalX * offset;
-                const sideY = points[i].y + normalY * offset;
-                
-                ctx.lineTo(sideX, sideY);
-            }
-        }
-        
-        // Теперь рисуем другую сторону конуса (возвращаемся к началу)
-        for (let i = 0; i < points.length; i++) {
-            const progress = i / (points.length - 1);
-            const offset = 20 * (1 - progress);
-            
-            const dirX = i > 0 ? points[i].x - points[i-1].x : points[Math.min(i+1, points.length-1)].x - points[i].x;
-            const dirY = i > 0 ? points[i].y - points[i-1].y : points[Math.min(i+1, points.length-1)].y - points[i].y;
-            
-            const length = Math.sqrt(dirX * dirX + dirY * dirY);
-            if (length > 0) {
-                const normalX = dirY / length;
-                const normalY = -dirX / length;
-                
-                const sideX = points[i].x + normalX * offset;
-                const sideY = points[i].y + normalY * offset;
-                
-                ctx.lineTo(sideX, sideY);
-            }
-        }
-        
-        // Замыкаем конус
+        ctx.moveTo(currentPoint.x, currentPoint.y - width/2);
+        ctx.lineTo(nextPoint.x, nextPoint.y - width/2);
+        ctx.lineTo(nextPoint.x, nextPoint.y + width/2);
+        ctx.lineTo(currentPoint.x, currentPoint.y + width/2);
         ctx.closePath();
         
-        // Градиент для конуса (от яркого в начале к прозрачному в конце)
+        // Градиентная заливка
         const gradient = ctx.createLinearGradient(
-            points[0].x, points[0].y,
-            points[points.length - 1].x, points[points.length - 1].y
+            currentPoint.x, currentPoint.y - width/2,
+            currentPoint.x, currentPoint.y + width/2
         );
+        gradient.addColorStop(0, `hsla(${hue}, 100%, 70%, ${alpha * 0.7})`);
+        gradient.addColorStop(0.5, `hsla(${hue - 20}, 100%, 75%, ${alpha * 0.9})`);
+        gradient.addColorStop(1, `hsla(${hue - 40}, 100%, 80%, ${alpha * 0.7})`);
         
-        // Яркие сине-бирюзовые цвета с градиентом
-        gradient.addColorStop(0, 'hsla(200, 100%, 70%, 0.9)'); // Яркий синий у коровы
-        gradient.addColorStop(0.3, 'hsla(190, 100%, 65%, 0.7)'); // Бирюзовый
-        gradient.addColorStop(0.6, 'hsla(180, 100%, 60%, 0.5)'); // Средний бирюзовый
-        gradient.addColorStop(1, 'hsla(170, 100%, 55%, 0.2)'); // Почти прозрачный в конце
-        
-        // Заполняем конус
         ctx.fillStyle = gradient;
-        ctx.globalAlpha = this.nyanTrail.alpha;
         ctx.fill();
         
-        // Добавляем свечение
-        ctx.shadowColor = 'hsla(180, 100%, 70%, 0.4)';
-        ctx.shadowBlur = 15;
+        // Свечение
+        ctx.shadowColor = `hsla(${hue}, 100%, 70%, ${alpha * 0.5})`;
+        ctx.shadowBlur = 15 * (1 - progress * 0.5);
         ctx.fill();
         
-        // Внутреннее свечение (более яркое)
+        // Внутреннее свечение (более яркая центральная линия)
         ctx.beginPath();
-        ctx.moveTo(points[points.length - 1].x, points[points.length - 1].y);
-        
-        // Рисуем внутреннюю часть конуса (уже)
-        for (let i = points.length - 2; i >= 0; i--) {
-            const progress = i / (points.length - 1);
-            const offset = 12 * (1 - progress); // Уже, чем внешний конус
-            
-            const dirX = i > 0 ? points[i].x - points[i+1].x : points[i].x - points[Math.min(i+1, points.length-1)].x;
-            const dirY = i > 0 ? points[i].y - points[i+1].y : points[i].y - points[Math.min(i+1, points.length-1)].y;
-            
-            const length = Math.sqrt(dirX * dirX + dirY * dirY);
-            if (length > 0) {
-                const normalX = -dirY / length;
-                const normalY = dirX / length;
-                
-                const sideX = points[i].x + normalX * offset;
-                const sideY = points[i].y + normalY * offset;
-                
-                ctx.lineTo(sideX, sideY);
-            }
-        }
-        
-        for (let i = 0; i < points.length; i++) {
-            const progress = i / (points.length - 1);
-            const offset = 12 * (1 - progress);
-            
-            const dirX = i > 0 ? points[i].x - points[i-1].x : points[Math.min(i+1, points.length-1)].x - points[i].x;
-            const dirY = i > 0 ? points[i].y - points[i-1].y : points[Math.min(i+1, points.length-1)].y - points[i].y;
-            
-            const length = Math.sqrt(dirX * dirX + dirY * dirY);
-            if (length > 0) {
-                const normalX = dirY / length;
-                const normalY = -dirX / length;
-                
-                const sideX = points[i].x + normalX * offset;
-                const sideY = points[i].y + normalY * offset;
-                
-                ctx.lineTo(sideX, sideY);
-            }
-        }
-        
+        ctx.moveTo(currentPoint.x, currentPoint.y - width/4);
+        ctx.lineTo(nextPoint.x, nextPoint.y - width/4);
+        ctx.lineTo(nextPoint.x, nextPoint.y + width/4);
+        ctx.lineTo(currentPoint.x, currentPoint.y + width/4);
         ctx.closePath();
         
-        // Внутренний градиент (более яркий)
-        const innerGradient = ctx.createLinearGradient(
-            points[0].x, points[0].y,
-            points[points.length - 1].x, points[points.length - 1].y
+        ctx.fillStyle = `hsla(${hue - 10}, 100%, 90%, ${alpha * 0.6})`;
+        ctx.fill();
+    }
+    
+    // Рисуем последний сегмент (самый близкий к корове) особенно ярко
+    if (this.trailPoints.length > 1) {
+        const firstPoint = this.trailPoints[0];
+        const secondPoint = this.trailPoints[1];
+        const startWidth = 35;
+        
+        // Яркое основание конуса
+        ctx.beginPath();
+        ctx.moveTo(firstPoint.x, firstPoint.y - startWidth/2);
+        ctx.lineTo(secondPoint.x, secondPoint.y - startWidth/2);
+        ctx.lineTo(secondPoint.x, secondPoint.y + startWidth/2);
+        ctx.lineTo(firstPoint.x, firstPoint.y + startWidth/2);
+        ctx.closePath();
+        
+        const startGradient = ctx.createLinearGradient(
+            firstPoint.x, firstPoint.y - startWidth/2,
+            firstPoint.x, firstPoint.y + startWidth/2
         );
+        startGradient.addColorStop(0, 'hsla(200, 100%, 80%, 0.9)');
+        startGradient.addColorStop(0.5, 'hsla(190, 100%, 85%, 1.0)');
+        startGradient.addColorStop(1, 'hsla(180, 100%, 80%, 0.9)');
         
-        innerGradient.addColorStop(0, 'hsla(180, 100%, 80%, 0.8)'); // Очень яркий
-        innerGradient.addColorStop(0.5, 'hsla(170, 100%, 75%, 0.5)');
-        innerGradient.addColorStop(1, 'hsla(160, 100%, 70%, 0.2)');
-        
-        ctx.fillStyle = innerGradient;
-        ctx.shadowColor = 'hsla(180, 100%, 80%, 0.3)';
-        ctx.shadowBlur = 10;
+        ctx.fillStyle = startGradient;
         ctx.fill();
         
-        // Убираем тень
-        ctx.shadowBlur = 0;
+        // Яркое свечение у основания
+        ctx.shadowColor = 'hsla(180, 100%, 70%, 0.8)';
+        ctx.shadowBlur = 20;
+        ctx.fill();
         
-        ctx.restore();
+        // Центральная яркая линия
+        ctx.beginPath();
+        ctx.moveTo(firstPoint.x, firstPoint.y - startWidth/4);
+        ctx.lineTo(secondPoint.x, secondPoint.y - startWidth/4);
+        ctx.lineTo(secondPoint.x, secondPoint.y + startWidth/4);
+        ctx.lineTo(firstPoint.x, firstPoint.y + startWidth/4);
+        ctx.closePath();
+        
+        ctx.fillStyle = 'hsla(180, 100%, 95%, 0.8)';
+        ctx.fill();
     }
+    
+    ctx.shadowBlur = 0;
+    ctx.restore();
+}
             die() {
                 this.alive = false;
                 this.deathAnimation = 1;
