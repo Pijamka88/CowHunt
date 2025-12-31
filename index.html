@@ -888,23 +888,10 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
-                this.cosmicTrails = [];
-                this.spawnTimer = 0;
-                this.spawnInterval = 5;
-                this.trailLength = 15;
+                this.nyanTrail = []; // Изменено: шлейф как у Nyan Cat
+                this.trailLength = 10; // Длина шлейфа
                 this.rainbowPhase = 0;
                 this.rainbowSpeed = 0.03;
-                this.wingTrails = [];
-                this.wingTrailTimer = 0;
-                this.wingTrailInterval = 2;
-                this.lastWingPhase = 0;
-                this.wingTrailIntensity = 0;
-                this.wingDisintegration = {
-                    active: false,
-                    progress: 0,
-                    particles: [],
-                    speed: 0.03
-                };
             }
 
             reset() {
@@ -938,13 +925,8 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
-                this.cosmicTrails = [];
-                this.spawnTimer = 0;
+                this.nyanTrail = [];
                 this.rainbowPhase = 0;
-                this.wingTrails = [];
-                this.wingTrailTimer = 0;
-                this.lastWingPhase = 0;
-                this.wingTrailIntensity = 0;
             }
 
             updateMovement() {
@@ -989,314 +971,76 @@
                 }
             }
 
-            updateCosmicTrail() {
+            updateNyanTrail() {
                 if (!this.alive || isPaused) return;
                 
-                this.spawnTimer++;
+                // Добавляем новую точку в шлейф
+                const trailX = this.x + (this.direction === 1 ? -this.width/2 - 10 : this.width/2 + 10);
+                const trailY = this.y + (Math.random() - 0.5) * 8;
                 
-                // Создаем новый сегмент радужного шлейфа (как у Nyan Cat)
-                if (this.spawnTimer >= this.spawnInterval) {
-                    // Цвета радуги в сине-бирюзовых тонах
-                    const colors = [
-                        '#00b4d8', // яркий бирюзовый
-                        '#48cae4', // голубой
-                        '#90e0ef', // светлый голубой
-                        '#ade8f4', // очень светлый голубой
-                        '#0077b6', // темный синий
-                        '#0096c7', // синий
-                        '#00b4d8', // бирюзовый
-                        '#48cae4'  // голубой
-                    ];
-                    
-                    // Позиция шлейфа - ближе к телу
-                    const trailX = this.x + (this.direction === 1 ? -this.width/3 : this.width/3);
-                    const trailY = this.y;
-                    
-                    this.cosmicTrails.push({
-                        x: trailX,
-                        y: trailY,
-                        width: 35, // Ширина полосы
-                        height: 25, // Высота полосы
-                        color: colors[Math.floor(Math.random() * colors.length)],
-                        life: 1.0,
-                        speed: Math.random() * 0.5 + 0.8,
-                        rotation: 0,
-                        phase: Math.random() * Math.PI * 2,
-                        waveHeight: Math.random() * 15 + 10,
-                        waveSpeed: Math.random() * 0.1 + 0.05,
-                        alpha: 0.9 + Math.random() * 0.1,
-                        trailIndex: this.cosmicTrails.length
-                    });
-                    
-                    this.spawnTimer = 0;
-                    
-                    // Ограничиваем длину шлейфа
-                    if (this.cosmicTrails.length > this.trailLength) {
-                        this.cosmicTrails.shift();
-                    }
+                this.nyanTrail.push({
+                    x: trailX,
+                    y: trailY,
+                    width: 15 + Math.random() * 10, // Ширина полосы
+                    height: 6 + Math.random() * 4, // Высота полосы
+                    life: 1.0,
+                    alpha: 0.8 + Math.random() * 0.2,
+                    // Сине-бирюзовые тона
+                    color: `rgba(${Math.floor(100 + Math.random() * 100)}, 
+                                 ${Math.floor(200 + Math.random() * 55)}, 
+                                 ${Math.floor(255)}, `
+                });
+                
+                // Ограничиваем длину шлейфа
+                if (this.nyanTrail.length > this.trailLength) {
+                    this.nyanTrail.shift();
                 }
                 
-                // Обновляем существующие сегменты шлейфа
-                for (let i = this.cosmicTrails.length - 1; i >= 0; i--) {
-                    const trail = this.cosmicTrails[i];
+                // Обновляем существующие части шлейфа
+                for (let i = this.nyanTrail.length - 1; i >= 0; i--) {
+                    const segment = this.nyanTrail[i];
                     
-                    // Движение шлейфа
-                    if (this.direction === 1) {
-                        trail.x -= trail.speed * 2;
-                    } else {
-                        trail.x += trail.speed * 2;
-                    }
-                    
-                    // Волнообразное движение
-                    trail.phase += trail.waveSpeed;
-                    trail.y = this.y + Math.sin(trail.phase + trail.trailIndex * 0.5) * trail.waveHeight;
-                    
-                    // Уменьшаем жизнь
-                    trail.life -= 0.015;
-                    
-                    // Меняем прозрачность и размер
-                    trail.alpha = trail.life * 0.8;
-                    trail.width *= 0.98;
-                    trail.height *= 0.98;
+                    // Уменьшаем жизнь и прозрачность
+                    segment.life -= 0.05;
+                    segment.alpha = segment.life;
+                    segment.width *= 0.95;
+                    segment.height *= 0.95;
                     
                     // Удаляем старые сегменты
-                    if (trail.life <= 0 || trail.width < 5) {
-                        this.cosmicTrails.splice(i, 1);
+                    if (segment.life <= 0 || segment.width < 2) {
+                        this.nyanTrail.splice(i, 1);
                     }
                 }
             }
 
-            drawCosmicTrail() {
-                if (!this.alive || this.cosmicTrails.length === 0) return;
+            drawNyanTrail() {
+                if (!this.alive || this.nyanTrail.length === 0) return;
                 
-                // Рисуем шлейф как непрерывную полосу (стиль Nyan Cat)
-                for (let i = 0; i < this.cosmicTrails.length; i++) {
-                    const trail = this.cosmicTrails[i];
+                // Рисуем шлейф в стиле Nyan Cat
+                for (let i = 0; i < this.nyanTrail.length; i++) {
+                    const segment = this.nyanTrail[i];
+                    const alpha = (i / this.nyanTrail.length) * segment.alpha;
                     
                     ctx.save();
-                    ctx.translate(trail.x, trail.y);
-                    ctx.globalAlpha = trail.alpha;
                     
-                    // Плавный градиент для каждого сегмента
-                    const gradient = ctx.createLinearGradient(
-                        0, -trail.height/2,
-                        0, trail.height/2
-                    );
-                    gradient.addColorStop(0, trail.color);
-                    gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.8)');
-                    gradient.addColorStop(1, trail.color);
+                    // Цвета от синего к бирюзовому
+                    const hue = 200 + (i / this.nyanTrail.length) * 60; // От 200 (синий) до 260 (бирюзовый)
+                    ctx.fillStyle = `hsla(${hue}, 80%, 60%, ${alpha * 0.7})`;
                     
-                    ctx.fillStyle = gradient;
-                    
-                    // Скругленный прямоугольник для сегмента шлейфа
+                    // Рисуем прямоугольник с закругленными краями
                     ctx.beginPath();
                     ctx.roundRect(
-                        -trail.width/2,
-                        -trail.height/2,
-                        trail.width,
-                        trail.height,
-                        10
+                        segment.x - segment.width/2,
+                        segment.y - segment.height/2,
+                        segment.width,
+                        segment.height,
+                        3
                     );
                     ctx.fill();
                     
-                    // Обводка для контраста
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                    
-                    // Эффект свечения
-                    ctx.shadowColor = trail.color;
-                    ctx.shadowBlur = 15;
-                    ctx.shadowOffsetX = 0;
-                    ctx.shadowOffsetY = 0;
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                    
-                    ctx.restore();
-                }
-                
-                // Соединяем сегменты плавными линиями
-                if (this.cosmicTrails.length > 1) {
-                    ctx.save();
-                    ctx.globalAlpha = 0.6;
-                    ctx.strokeStyle = 'rgba(0, 180, 216, 0.5)';
-                    ctx.lineWidth = 3;
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(this.cosmicTrails[0].x, this.cosmicTrails[0].y);
-                    
-                    for (let i = 1; i < this.cosmicTrails.length; i++) {
-                        ctx.lineTo(this.cosmicTrails[i].x, this.cosmicTrails[i].y);
-                    }
-                    
-                    ctx.stroke();
-                    ctx.restore();
-                }
-            }
-
-            updateWingTrails() {
-                if (!this.alive || isPaused) return;
-                
-                const wingSpeed = Math.abs(Math.sin(this.wingPhase) - Math.sin(this.lastWingPhase));
-                this.lastWingPhase = this.wingPhase;
-                this.wingTrailIntensity = Math.min(1, wingSpeed * 5);
-                
-                this.wingTrailTimer++;
-                
-                if (this.wingTrailTimer >= this.wingTrailInterval && this.wingTrailIntensity > 0.6) {
-                    this.createDisintegrationParticles();
-                    this.wingTrailTimer = 0;
-                }
-                
-                if (this.wingDisintegration.active) {
-                    this.updateDisintegration();
-                }
-                
-                if (this.wingTrailIntensity > 0.3) {
-                    this.createSimpleTrailParticles();
-                }
-                
-                for (let i = this.wingTrails.length - 1; i >= 0; i--) {
-                    const particle = this.wingTrails[i];
-                    particle.x += particle.speedX;
-                    particle.y += particle.speedY;
-                    particle.life -= 0.05;
-                    particle.alpha *= 0.95;
-                    particle.size *= 0.92;
-                    
-                    if (particle.life <= 0 || particle.alpha < 0.1) {
-                        this.wingTrails.splice(i, 1);
-                    }
-                }
-            }
-
-            createDisintegrationParticles() {
-                const wingYOffset = Math.sin(this.wingPhase) * 20;
-                const colors = [
-                    'rgba(255, 215, 0, 0.9)',
-                    'rgba(255, 69, 0, 0.8)',
-                    'rgba(138, 43, 226, 0.7)',
-                    'rgba(0, 191, 255, 0.6)'
-                ];
-                
-                for (let i = 0; i < 8; i++) {
-                    const angle = (i / 8) * Math.PI * 2;
-                    const radius = 20 + Math.random() * 15;
-                    
-                    this.wingDisintegration.particles.push({
-                        x: this.x - 25 + Math.cos(angle) * radius,
-                        y: this.y - 20 + wingYOffset + Math.sin(angle) * radius,
-                        startX: this.x - 25,
-                        startY: this.y - 20 + wingYOffset,
-                        targetX: this.x - 25 + Math.cos(angle) * (radius + 50),
-                        targetY: this.y - 20 + wingYOffset + Math.sin(angle) * (radius + 50),
-                        size: 8 + Math.random() * 6,
-                        color: colors[Math.floor(Math.random() * colors.length)],
-                        life: 1.0,
-                        speed: 0.8 + Math.random() * 0.5,
-                        rotation: Math.random() * Math.PI * 2,
-                        rotationSpeed: (Math.random() - 0.5) * 0.2,
-                        type: 'disintegration'
-                    });
-                }
-                
-                for (let i = 0; i < 8; i++) {
-                    const angle = (i / 8) * Math.PI * 2;
-                    const radius = 20 + Math.random() * 15;
-                    
-                    this.wingDisintegration.particles.push({
-                        x: this.x + 25 + Math.cos(angle) * radius,
-                        y: this.y - 20 + wingYOffset + Math.sin(angle) * radius,
-                        startX: this.x + 25,
-                        startY: this.y - 20 + wingYOffset,
-                        targetX: this.x + 25 + Math.cos(angle) * (radius + 50),
-                        targetY: this.y - 20 + wingYOffset + Math.sin(angle) * (radius + 50),
-                        size: 8 + Math.random() * 6,
-                        color: colors[Math.floor(Math.random() * colors.length)],
-                        life: 1.0,
-                        speed: 0.8 + Math.random() * 0.5,
-                        rotation: Math.random() * Math.PI * 2,
-                        rotationSpeed: (Math.random() - 0.5) * 0.2,
-                        type: 'disintegration'
-                    });
-                }
-                
-                this.wingDisintegration.active = true;
-            }
-
-            updateDisintegration() {
-                this.wingDisintegration.progress += this.wingDisintegration.speed;
-                
-                for (let i = this.wingDisintegration.particles.length - 1; i >= 0; i--) {
-                    const particle = this.wingDisintegration.particles[i];
-                    
-                    const progress = Math.min(1, this.wingDisintegration.progress * particle.speed);
-                    particle.x = particle.startX + (particle.targetX - particle.startX) * progress;
-                    particle.y = particle.startY + (particle.targetY - particle.startY) * progress;
-                    
-                    particle.rotation += particle.rotationSpeed;
-                    particle.life -= 0.02;
-                    particle.size *= 0.96;
-                    
-                    if (particle.life <= 0 || particle.size < 1) {
-                        this.wingDisintegration.particles.splice(i, 1);
-                    }
-                }
-                
-                if (this.wingDisintegration.particles.length === 0) {
-                    this.wingDisintegration.active = false;
-                    this.wingDisintegration.progress = 0;
-                }
-            }
-
-            createSimpleTrailParticles() {
-                const wingYOffset = Math.sin(this.wingPhase) * 20;
-                
-                const leftParticle = {
-                    x: this.x - 25,
-                    y: this.y - 20 + wingYOffset,
-                    size: 4 + Math.random() * 3,
-                    color: 'rgba(100, 200, 255, 0.7)',
-                    life: 0.6 + Math.random() * 0.4,
-                    speedX: (Math.random() - 0.5) * 1.2,
-                    speedY: Math.random() * 0.3 + 0.1,
-                    rotation: Math.random() * Math.PI * 2
-                };
-                
-                const rightParticle = {
-                    x: this.x + 25,
-                    y: this.y - 20 + wingYOffset,
-                    size: 4 + Math.random() * 3,
-                    color: 'rgba(100, 200, 255, 0.7)',
-                    life: 0.6 + Math.random() * 0.4,
-                    speedX: (Math.random() - 0.5) * 1.2,
-                    speedY: Math.random() * 0.3 + 0.1,
-                    rotation: Math.random() * Math.PI * 2
-                };
-                
-                this.wingTrails.push(leftParticle, rightParticle);
-            }
-
-            drawWingTrails() {
-                if (!this.alive || this.wingTrails.length === 0) return;
-                
-                for (let i = 0; i < this.wingTrails.length; i++) {
-                    const particle = this.wingTrails[i];
-                    
-                    ctx.save();
-                    ctx.translate(particle.x, particle.y);
-                    ctx.rotate(particle.rotation);
-                    ctx.globalAlpha = particle.alpha * particle.life;
-                    
-                    ctx.fillStyle = particle.color;
-                    ctx.beginPath();
-                    ctx.arc(0, 0, particle.size, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    ctx.shadowColor = particle.color;
-                    ctx.shadowBlur = 5;
+                    // Легкое свечение
+                    ctx.shadowColor = `hsla(${hue}, 80%, 60%, ${alpha * 0.3})`;
+                    ctx.shadowBlur = 8;
                     ctx.fill();
                     ctx.shadowBlur = 0;
                     
@@ -1313,8 +1057,10 @@
                 this.deathAnimationProgress = 0;
                 this.alpha = 1;
                 
+                // Воспроизводим звук смерти немедленно
                 playSound(deathSound, 'death');
                 
+                // Создаем части тела для анимации смерти
                 this.limbs = [
                     { // Голова с рожками и ушами
                         x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2),
@@ -1418,8 +1164,7 @@
                     this.updateMovement();
                     this.x += this.vx;
                     this.wingPhase += this.wingSpeed;
-                    this.updateCosmicTrail();
-                    this.updateWingTrails();
+                    this.updateNyanTrail(); // Обновляем шлейф Nyan Cat
                     
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
                         (this.direction === -1 && this.x < -this.width*2)) {
@@ -1433,6 +1178,7 @@
                         limb.y += limb.vy;
                         limb.rotation += limb.rotationSpeed;
                         
+                        // Обновление движения крыльев для мертвых коров
                         if (limb.wingPhase !== undefined && limb.wingSpeed !== undefined) {
                             limb.wingPhase += limb.wingSpeed;
                         }
@@ -1448,9 +1194,9 @@
             }
 
             draw() {
-                // Рисуем шлейф ПОД коровой
-                this.drawCosmicTrail();
-                this.drawWingTrails();
+                // Рисуем шлейф Nyan Cat ПОД коровой
+                this.drawNyanTrail();
+                
                 ctx.save();
                 
                 if (this.alive) {
@@ -1603,13 +1349,15 @@
                         ctx.stroke();
                     }      
                     
-                    // Eyebrows
+                    // Eyebrows (опущенные на 1px)
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 1.5;
+                    // Левая бровь
                     ctx.beginPath();
                     ctx.moveTo(headX - 8, -eyeYOffset - 7);
                     ctx.lineTo(headX - 3, -eyeYOffset - 7);
                     ctx.stroke();
+                    // Правая бровь
                     ctx.beginPath();
                     ctx.moveTo(headX + 3, -eyeYOffset - 7);
                     ctx.lineTo(headX + 8, -eyeYOffset - 7);
@@ -1640,10 +1388,11 @@
                         ctx.fill();
                     }
                     
-                    // Horns
+                    // Horns (светло-коричневый цвет)
                     ctx.strokeStyle = '#A0522D';
                     ctx.lineWidth = 2;
 
+                    // Left horn (изогнутый)
                     ctx.save();
                     ctx.translate(headX - 4, -this.headRadius + 2);
                     ctx.rotate(-0.3);
@@ -1653,6 +1402,7 @@
                     ctx.stroke();
                     ctx.restore();
 
+                    // Right horn (изогнутый)
                     ctx.save();
                     ctx.translate(headX + 4, -this.headRadius + 2);
                     ctx.rotate(0.3);
@@ -1662,7 +1412,7 @@
                     ctx.stroke();
                     ctx.restore();   
                     
-                    // Helmet
+                    // Helmet - увеличен на 1px
                     ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
                     ctx.beginPath();
                     ctx.arc(headX, 0, this.headRadius * 1.5 + 1, 0, Math.PI * 2);
@@ -1671,15 +1421,15 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // КРЫЛЬЯ БЛИЖЕ К ГОЛОВЕ (изменены позиции)
+                    // ЛЕВОЕ КРЫЛО - ПЕРЕДВИНУТО БЛИЖЕ К ГОЛОВЕ (изменили с -25 на -20, с 50 на 40)
                     const wingYOffset = Math.sin(this.wingPhase) * 20;
-                    const wingTipX = 35; // Уменьшили с 50 до 35 (ближе к голове)
-                    const wingTipY = -30 + wingYOffset; // Подняли выше
+                    const leftWingTipX = 40; // Уменьшили с 50 до 40
+                    const leftWingTipY = -35 + wingYOffset;
 
-                    // ЛЕВОЕ КРЫЛО (ближе к голове)
+                    // Градиент для левого крыла
                     const leftWingGradient = ctx.createLinearGradient(
-                        -5, -10, // Начало ближе к телу
-                        -wingTipX, wingTipY
+                        -20, -10, // Изменили с -10 на -20 (ближе к голове)
+                        -leftWingTipX, leftWingTipY
                     );
                     leftWingGradient.addColorStop(0, 'rgba(100, 200, 255, 0.9)');
                     leftWingGradient.addColorStop(0.3, 'rgba(200, 100, 255, 0.8)');
@@ -1688,22 +1438,26 @@
 
                     ctx.fillStyle = leftWingGradient;
                     ctx.beginPath();
-                    ctx.moveTo(-5, -10); // Начинаем ближе к телу
-                    ctx.bezierCurveTo(-20, -15 + wingYOffset * 0.5, -30, -25 + wingYOffset, -wingTipX, wingTipY);
-                    ctx.bezierCurveTo(-30, 5 + wingYOffset * 0.5, -20, 10 + wingYOffset * 0.3, -5, -10);
+                    ctx.moveTo(-20, -10); // Изменили с -10 на -20
+                    ctx.bezierCurveTo(-20, -15 + wingYOffset * 0.5, -35, -25 + wingYOffset, -leftWingTipX, leftWingTipY);
+                    ctx.bezierCurveTo(-35, 5 + wingYOffset * 0.5, -20, 10 + wingYOffset * 0.3, -20, -10);
                     ctx.closePath();
                     ctx.fill();
 
+                    // Обводка крыла
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // ПРАВОЕ КРЫЛО (ближе к голове)
+                    // ПРАВОЕ КРЫЛО - ПЕРЕДВИНУТО БЛИЖЕ К ГОЛОВЕ
                     ctx.globalCompositeOperation = 'destination-over';
 
+                    const rightWingTipX = 40; // Уменьшили с 50 до 40
+                    const rightWingTipY = -35 + wingYOffset;
+
                     const rightWingGradient = ctx.createLinearGradient(
-                        5, -10, // Начало ближе к телу
-                        wingTipX, wingTipY
+                        20, -10, // Изменили с 10 на 20 (ближе к голове)
+                        rightWingTipX, rightWingTipY
                     );
                     rightWingGradient.addColorStop(0, 'rgba(100, 200, 255, 0.9)');
                     rightWingGradient.addColorStop(0.3, 'rgba(200, 100, 255, 0.8)');
@@ -1712,20 +1466,19 @@
 
                     ctx.fillStyle = rightWingGradient;
                     ctx.beginPath();
-                    ctx.moveTo(5, -10); // Начинаем ближе к телу
-                    ctx.bezierCurveTo(20, -15 + wingYOffset * 0.5, 30, -25 + wingYOffset, wingTipX, wingTipY);
-                    ctx.bezierCurveTo(30, 5 + wingYOffset * 0.5, 20, 10 + wingYOffset * 0.3, 5, -10);
+                    ctx.moveTo(20, -10); // Изменили с 10 на 20
+                    ctx.bezierCurveTo(20, -15 + wingYOffset * 0.5, 35, -25 + wingYOffset, rightWingTipX, rightWingTipY);
+                    ctx.bezierCurveTo(35, 5 + wingYOffset * 0.5, 20, 10 + wingYOffset * 0.3, 20, -10);
                     ctx.closePath();
                     ctx.fill();
 
+                    // Обводка крыла
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
                     ctx.globalCompositeOperation = 'source-over';
-
-                    this.drawDisintegrationParticles();
-                    
+    
                     // Tail
                     const tailX = -this.width/2;
                     const tailY = 0;
@@ -1783,6 +1536,7 @@
                             ctx.lineWidth = 1;
                             ctx.stroke();
                             
+                            // Мертвые глаза (крестики)
                             ctx.strokeStyle = '#333';
                             ctx.lineWidth = 1;
                             ctx.beginPath();
@@ -1796,6 +1550,7 @@
                             ctx.lineTo(3, -5);
                             ctx.stroke();
                             
+                            // Нос
                             ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
                             ctx.beginPath();
                             ctx.ellipse(0, 10, 12, 9, 0, 0, Math.PI * 2);
@@ -1804,6 +1559,7 @@
                             ctx.lineWidth = 1;
                             ctx.stroke();
                             
+                            // Ноздри
                             ctx.fillStyle = '#333';
                             ctx.beginPath();
                             ctx.ellipse(-4, 10, 1.5, 2.5, 0, 0, Math.PI * 2);
@@ -1812,6 +1568,7 @@
                             ctx.ellipse(4, 10, 1.5, 2.5, 0, 0, Math.PI * 2);
                             ctx.fill();
                             
+                            // Брови
                             ctx.strokeStyle = '#333';
                             ctx.lineWidth = 1.5;
                             ctx.beginPath();
@@ -1830,6 +1587,7 @@
                                 ctx.fill();
                             }
                             
+                            // Рожки
                             if (limb.horns) {
                                 limb.horns.forEach(horn => {
                                     ctx.save();
@@ -1852,6 +1610,7 @@
                                 });
                             }
                             
+                            // Уши
                             if (limb.ears) {
                                 limb.ears.forEach(ear => {
                                     ctx.save();
@@ -1881,10 +1640,10 @@
                                 });
                             }
                         } else if (limb === this.limbs[2] || limb === this.limbs[3]) {
-                            // Крылья мертвых коров
+                            // Крылья с движением даже у мертвых коров (также приближены)
                             const wingYOffset = Math.sin(limb.wingPhase) * 20;
-                            const wingTipX = 35;
-                            const wingTipY = -30 + wingYOffset;
+                            const wingTipX = 40; // Уменьшили как у живых
+                            const wingTipY = -35 + wingYOffset;
                             
                             let wingGradient;
                             if (limb === this.limbs[2]) {
@@ -1902,12 +1661,12 @@
                             ctx.beginPath();
                             if (limb === this.limbs[2]) {
                                 ctx.moveTo(0, 0);
-                                ctx.bezierCurveTo(-20, -15 + wingYOffset * 0.5, -30, -25 + wingYOffset, -wingTipX, wingTipY);
-                                ctx.bezierCurveTo(-30, 5 + wingYOffset * 0.5, -20, 10 + wingYOffset * 0.3, 0, 0);
+                                ctx.bezierCurveTo(-20, -15 + wingYOffset * 0.5, -35, -25 + wingYOffset, -wingTipX, wingTipY);
+                                ctx.bezierCurveTo(-35, 5 + wingYOffset * 0.5, -20, 10 + wingYOffset * 0.3, 0, 0);
                             } else {
                                 ctx.moveTo(0, 0);
-                                ctx.bezierCurveTo(20, -15 + wingYOffset * 0.5, 30, -25 + wingYOffset, wingTipX, wingTipY);
-                                ctx.bezierCurveTo(30, 5 + wingYOffset * 0.5, 20, 10 + wingYOffset * 0.3, 0, 0);
+                                ctx.bezierCurveTo(20, -15 + wingYOffset * 0.5, 35, -25 + wingYOffset, wingTipX, wingTipY);
+                                ctx.bezierCurveTo(35, 5 + wingYOffset * 0.5, 20, 10 + wingYOffset * 0.3, 0, 0);
                             }
                             ctx.closePath();
                             ctx.fill();
@@ -1916,6 +1675,7 @@
                             ctx.lineWidth = 2;
                             ctx.stroke();
                             
+                            // Обновляем фазу крыла
                             if (limb.wingSpeed !== undefined) {
                                 limb.wingPhase += limb.wingSpeed;
                             }
@@ -1992,57 +1752,21 @@
                 
                 ctx.restore();
             }
-
-            drawDisintegrationParticles() {
-                if (!this.wingDisintegration.active || this.wingDisintegration.particles.length === 0) return;
-                
-                this.wingDisintegration.particles.forEach(particle => {
-                    ctx.save();
-                    ctx.translate(particle.x, particle.y);
-                    ctx.rotate(particle.rotation);
-                    ctx.globalAlpha = particle.life;
-                    
-                    ctx.fillStyle = particle.color;
-                    ctx.beginPath();
-                    
-                    const size = particle.size;
-                    ctx.moveTo(0, -size);
-                    ctx.lineTo(-size * 0.866, size * 0.5);
-                    ctx.lineTo(size * 0.866, size * 0.5);
-                    ctx.closePath();
-                    ctx.fill();
-                    
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-                    ctx.beginPath();
-                    ctx.moveTo(0, -size * 0.6);
-                    ctx.lineTo(-size * 0.52, size * 0.3);
-                    ctx.lineTo(size * 0.52, size * 0.3);
-                    ctx.closePath();
-                    ctx.fill();
-                    
-                    ctx.shadowColor = particle.color;
-                    ctx.shadowBlur = 10;
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                    
-                    ctx.restore();
-                });
-            }
         } // КОНЕЦ КЛАССА Cow
 
-        // Новый класс для эффекта при клике - один яркий цвет в стиле игры
+        // Новый класс для эффекта при клике (один цвет, более видно)
         class ClickEffect {
             constructor(x, y) {
                 this.x = x;
                 this.y = y;
-                this.radius = 3;
-                this.maxRadius = 25;
-                this.alpha = 0.8;
+                this.radius = 2;
+                this.maxRadius = 25; // Немного больше
+                this.alpha = 0.8; // Более видно
                 this.life = 1.0;
                 this.createdTime = Date.now();
-                // Один яркий цвет в стиле космоса - синий с фиолетовым оттенком
-                this.color = 'rgba(51, 153, 255, 0.9)'; // Яркий синий
-                this.innerColor = 'rgba(200, 100, 255, 0.7)'; // Фиолетовый для внутреннего кольца
+                // Один яркий цвет в стиле игры
+                this.color = 'rgba(51, 153, 255, 0.8)'; // Яркий синий
+                this.glowColor = 'rgba(100, 200, 255, 0.6)'; // Свечение
             }
 
             update() {
@@ -2053,9 +1777,9 @@
                 
                 if (this.life <= 0) return false;
                 
-                // Плавное расширение
+                // Быстрое расширение
                 this.radius += 1.5;
-                this.alpha = this.life * 0.8;
+                this.alpha = this.life * 0.8; // Более видно
                 
                 return true;
             }
@@ -2063,43 +1787,34 @@
             draw() {
                 ctx.save();
                 
-                // Внешнее кольцо - яркое и четкое
-                ctx.globalAlpha = this.alpha * 0.9;
+                // Внешнее свечение
+                ctx.shadowColor = this.glowColor;
+                ctx.shadowBlur = 15;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+                
+                // Основное кольцо
+                ctx.globalAlpha = this.alpha;
                 ctx.strokeStyle = this.color;
-                ctx.lineWidth = 3;
+                ctx.lineWidth = 3; // Толще
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 ctx.stroke();
                 
-                // Среднее кольцо - фиолетовое
-                ctx.globalAlpha = this.alpha * 0.7;
-                ctx.strokeStyle = this.innerColor;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius * 0.75, 0, Math.PI * 2);
-                ctx.stroke();
-                
-                // Внутреннее кольцо - белое
-                ctx.globalAlpha = this.alpha * 0.8;
+                // Внутреннее кольцо
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
                 ctx.lineWidth = 1.5;
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius * 0.5, 0, Math.PI * 2);
+                ctx.arc(this.x, this.y, this.radius * 0.6, 0, Math.PI * 2);
                 ctx.stroke();
                 
-                // Яркая центральная точка
+                // Центральная точка
                 ctx.fillStyle = 'rgba(255, 255, 255, 1)';
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Эффект свечения
-                ctx.shadowColor = this.color;
-                ctx.shadowBlur = 15;
-                ctx.shadowOffsetX = 0;
-                ctx.shadowOffsetY = 0;
-                ctx.fill();
-                ctx.stroke();
+                // Убираем тень
                 ctx.shadowBlur = 0;
                 
                 ctx.restore();
@@ -2190,6 +1905,7 @@
                 this.life = config.missTextDuration - elapsed;
                 this.alpha = this.life / config.missTextDuration;
                 
+                // Поднимаем текст вверх
                 this.y -= 1;
                 
                 return this.life > 0;
@@ -2535,7 +2251,7 @@
             
             let hitDetected = false;
 
-            // Создаем эффект клика (яркий, один цвет)
+            // Создаем эффект клика (обновленный)
             clickEffects.push(new ClickEffect(x, y));
 
             // Проверяем попадание в бонус жизни
@@ -2659,6 +2375,7 @@
             const time = Date.now() / 1000;
             eyeAnimationPhase = time * 2;
             
+            // Сначала рисуем звезды заднего слоя (layer 0)
             stars.forEach(star => {
                 if (star.layer !== 0) return;
                 
@@ -2682,16 +2399,19 @@
                 );
             });
             
+            // Затем рисуем атмосферы планет слоя 1
             planets.forEach(planet => {
                 if (planet.layer !== 1) return;
                 drawPlanetAtmosphere(planet);
             });
             
+            // Затем планеты слоя 1
             planets.forEach(planet => {
                 if (planet.layer !== 1) return;
                 drawPlanet(planet);
             });
             
+            // Затем звезды среднего слоя (layer 1)
             stars.forEach(star => {
                 if (star.layer !== 1) return;
                 
@@ -2715,16 +2435,19 @@
                 );
             });
             
+            // Затем рисуем атмосферы планет слоя 2
             planets.forEach(planet => {
                 if (planet.layer !== 2) return;
                 drawPlanetAtmosphere(planet);
             });
             
+            // Затем планеты слоя 2
             planets.forEach(planet => {
                 if (planet.layer !== 2) return;
                 drawPlanet(planet);
             });
             
+            // И наконец звезды переднего слоя (layer 2)
             stars.forEach(star => {
                 if (star.layer !== 2) return;
                 
@@ -2794,16 +2517,19 @@
             
             drawBackground();
             
+            // Сначала рисуем мертвых коров
             deadCows.forEach(cow => {
                 cow.update();
                 cow.draw();
             });
             
+            // Затем живых коров
             cows.forEach(cow => {
                 cow.update();
                 cow.draw();
             });
             
+            // Эффекты от кликов
             drawClickEffects();
             
             shots.forEach((shot, index) => {
@@ -2884,6 +2610,7 @@
             setTimeout(checkOrientation, 100);
         });
         
+        // Анимация северного сияния
         function initAurora() {
             const aurora = document.getElementById('auroraBackground');
             const canvas = document.createElement('canvas');
@@ -2967,6 +2694,7 @@
             animateAurora();
         }
 
+        // Инициализируем анимацию при загрузке
         window.addEventListener('load', initAurora);
 
         function showHelp() {
@@ -2991,9 +2719,11 @@
             setTimeout(() => { window.location.href = "index2.html"; }, 500);
         }
 
+        // Инициализация звуков при первом взаимодействии
         document.addEventListener('click', initSounds);
         document.addEventListener('touchstart', initSounds);
 
+        // Инициализация таблицы лидеров при загрузке
         displayLeaderboard();
     </script>
 </body>
