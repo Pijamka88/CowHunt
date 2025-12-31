@@ -974,7 +974,7 @@
                 }
             }
 
-  updateNyanTrail() {
+updateNyanTrail() {
     if (!this.alive || isPaused) return;
     
     // Точка выхода шлейфа из СЕРЕДИНЫ ТЕЛА коровы
@@ -983,24 +983,22 @@
     
     this.trailPoints.push({x: trailX, y: trailY});
     
-    // Ограничиваем количество точек
-    if (this.trailPoints.length > this.maxTrailPoints) {
+    // УВЕЛИЧИЛ количество точек для более длинного шлейфа
+    if (this.trailPoints.length > 40) { // Было 20
         this.trailPoints.shift();
     }
     
     // Обновляем шлейф как один длинный сегмент
     if (this.trailPoints.length >= 2) {
-        const startPoint = this.trailPoints[0];
-        const endPoint = this.trailPoints[this.trailPoints.length - 1];
-        
         this.nyanTrail = {
-            startX: startPoint.x,
-            startY: startPoint.y,
-            endX: endPoint.x,
-            endY: endPoint.y,
-            width: 25 + Math.sin(this.rainbowPhase * 2) * 3, // Пульсирующая ширина
-            alpha: 0.9,
-            phase: this.rainbowPhase
+            startX: this.trailPoints[0].x,
+            startY: this.trailPoints[0].y,
+            endX: this.trailPoints[this.trailPoints.length - 1].x,
+            endY: this.trailPoints[this.trailPoints.length - 1].y,
+            width: 30 + Math.sin(this.rainbowPhase * 2) * 4, // Чуть шире
+            alpha: 0.95,
+            phase: this.rainbowPhase,
+            length: this.trailPoints.length
         };
     }
 }
@@ -1032,41 +1030,84 @@ drawNyanTrail() {
         );
     }
     
-    // Градиент по длине шлейфа (от синего к бирюзовому)
-    const gradient = ctx.createLinearGradient(
-        this.trailPoints[0].x, this.trailPoints[0].y,
-        this.trailPoints[this.trailPoints.length - 1].x,
-        this.trailPoints[this.trailPoints.length - 1].y
-    );
+    // Градиент с ПОЛУПРОЗРАЧНЫМ КОНЦОМ
+    const startX = this.trailPoints[0].x;
+    const startY = this.trailPoints[0].y;
+    const endX = this.trailPoints[this.trailPoints.length - 1].x;
+    const endY = this.trailPoints[this.trailPoints.length - 1].y;
     
-    // Яркие сине-бирюзовые цвета
-    gradient.addColorStop(0, 'hsla(200, 100%, 70%, 0.9)'); // Яркий синий в начале (у тела)
-    gradient.addColorStop(0.5, 'hsla(180, 100%, 70%, 0.8)'); // Бирюзовый в середине
-    gradient.addColorStop(1, 'hsla(160, 100%, 70%, 0.6)'); // Светло-бирюзовый в конце
+    const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
     
+    // Плавный переход от яркого у тела к полупрозрачному на конце
+    gradient.addColorStop(0, 'hsla(200, 100%, 75%, 0.95)'); // Яркий синий у тела
+    gradient.addColorStop(0.4, 'hsla(190, 100%, 75%, 0.8)'); // Бирюзовый в середине
+    gradient.addColorStop(0.7, 'hsla(180, 100%, 75%, 0.6)'); // Начинаем затухать
+    gradient.addColorStop(0.85, 'hsla(170, 100%, 75%, 0.4)'); // Почти прозрачный
+    gradient.addColorStop(1, 'hsla(160, 100%, 75%, 0.2)'); // ПОЛНОСТЬЮ ПОЛУПРОЗРАЧНЫЙ КОНЕЦ
+    
+    // Основная линия шлейфа
     ctx.strokeStyle = gradient;
     ctx.lineWidth = this.nyanTrail.width;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.globalAlpha = this.nyanTrail.alpha;
+    ctx.globalAlpha = 1;
     ctx.stroke();
     
-    // Внутреннее свечение
-    ctx.strokeStyle = 'hsla(180, 100%, 90%, 0.6)';
-    ctx.lineWidth = this.nyanTrail.width * 0.6;
+    // Внутреннее свечение (также с градиентом)
+    const innerGradient = ctx.createLinearGradient(startX, startY, endX, endY);
+    innerGradient.addColorStop(0, 'hsla(180, 100%, 95%, 0.7)');
+    innerGradient.addColorStop(0.7, 'hsla(170, 100%, 95%, 0.3)');
+    innerGradient.addColorStop(1, 'hsla(160, 100%, 95%, 0.1)');
+    
+    ctx.strokeStyle = innerGradient;
+    ctx.lineWidth = this.nyanTrail.width * 0.5;
     ctx.stroke();
     
-    // Внешнее свечение
+    // Внешнее свечение с эффектом рассеивания на конце
     ctx.shadowColor = 'hsla(180, 100%, 70%, 0.5)';
-    ctx.shadowBlur = 20;
+    ctx.shadowBlur = 25;
     ctx.strokeStyle = gradient;
     ctx.lineWidth = this.nyanTrail.width;
     ctx.stroke();
     
+    // Дополнительный эффект рассеивания на самом конце шлейфа
+    if (this.trailPoints.length > 10) {
+        const lastPoint = this.trailPoints[this.trailPoints.length - 1];
+        const secondLastPoint = this.trailPoints[this.trailPoints.length - 2];
+        
+        // Рассчитываем направление конца шлейфа
+        const dx = lastPoint.x - secondLastPoint.x;
+        const dy = lastPoint.y - secondLastPoint.y;
+        const angle = Math.atan2(dy, dx);
+        
+        // Рисуем эффект рассеивания на конце
+        ctx.save();
+        ctx.translate(lastPoint.x, lastPoint.y);
+        ctx.rotate(angle);
+        
+        // Полупрозрачные частицы на конце
+        for (let i = 0; i < 3; i++) {
+            const particleAlpha = 0.15 - (i * 0.05);
+            const particleSize = 8 - (i * 2);
+            const particleOffset = 5 + (i * 8);
+            
+            ctx.beginPath();
+            ctx.arc(particleOffset, 0, particleSize, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(160, 100%, 75%, ${particleAlpha})`;
+            ctx.fill();
+            
+            // Очень слабое свечение частиц
+            ctx.shadowColor = `hsla(160, 100%, 75%, ${particleAlpha * 0.5})`;
+            ctx.shadowBlur = 10;
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+    
     ctx.shadowBlur = 0;
     ctx.restore();
-}
-
+} 
             die() {
                 this.alive = false;
                 this.deathAnimation = 1;
