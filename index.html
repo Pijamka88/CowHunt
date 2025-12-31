@@ -888,8 +888,8 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
-                this.nyanTrail = []; // Изменено: шлейф как у Nyan Cat
-                this.trailLength = 10; // Длина шлейфа
+                this.nyanTrail = [];
+                this.trailLength = 20; // Увеличенная длина шлейфа
                 this.rainbowPhase = 0;
                 this.rainbowSpeed = 0.03;
             }
@@ -974,21 +974,20 @@
             updateNyanTrail() {
                 if (!this.alive || isPaused) return;
                 
-                // Добавляем новую точку в шлейф
-                const trailX = this.x + (this.direction === 1 ? -this.width/2 - 10 : this.width/2 + 10);
-                const trailY = this.y + (Math.random() - 0.5) * 8;
+                // Добавляем новую точку в шлейф каждый кадр
+                const trailX = this.x + (this.direction === 1 ? -this.width/2 - 15 : this.width/2 + 15);
+                const trailY = this.y + (Math.random() - 0.5) * 10;
                 
+                // Большие и яркие сегменты
                 this.nyanTrail.push({
                     x: trailX,
                     y: trailY,
-                    width: 15 + Math.random() * 10, // Ширина полосы
-                    height: 6 + Math.random() * 4, // Высота полосы
+                    width: 25 + Math.random() * 15, // Больше
+                    height: 10 + Math.random() * 6, // Больше
                     life: 1.0,
-                    alpha: 0.8 + Math.random() * 0.2,
-                    // Сине-бирюзовые тона
-                    color: `rgba(${Math.floor(100 + Math.random() * 100)}, 
-                                 ${Math.floor(200 + Math.random() * 55)}, 
-                                 ${Math.floor(255)}, `
+                    alpha: 0.9 + Math.random() * 0.1, // Ярче
+                    colorIndex: Math.floor(this.nyanTrail.length % 4),
+                    pulse: Math.sin(this.rainbowPhase * 3) * 0.3 + 0.7
                 });
                 
                 // Ограничиваем длину шлейфа
@@ -1001,13 +1000,17 @@
                     const segment = this.nyanTrail[i];
                     
                     // Уменьшаем жизнь и прозрачность
-                    segment.life -= 0.05;
-                    segment.alpha = segment.life;
-                    segment.width *= 0.95;
-                    segment.height *= 0.95;
+                    segment.life -= 0.04;
+                    segment.alpha = segment.life * 0.8;
+                    segment.width *= 0.97;
+                    segment.height *= 0.97;
+                    
+                    // Легкое движение
+                    segment.x += (Math.random() - 0.5) * 0.5;
+                    segment.y += (Math.random() - 0.5) * 0.5;
                     
                     // Удаляем старые сегменты
-                    if (segment.life <= 0 || segment.width < 2) {
+                    if (segment.life <= 0 || segment.width < 3) {
                         this.nyanTrail.splice(i, 1);
                     }
                 }
@@ -1019,31 +1022,51 @@
                 // Рисуем шлейф в стиле Nyan Cat
                 for (let i = 0; i < this.nyanTrail.length; i++) {
                     const segment = this.nyanTrail[i];
-                    const alpha = (i / this.nyanTrail.length) * segment.alpha;
+                    const trailAlpha = (i / this.nyanTrail.length) * segment.alpha;
                     
                     ctx.save();
                     
-                    // Цвета от синего к бирюзовому
-                    const hue = 200 + (i / this.nyanTrail.length) * 60; // От 200 (синий) до 260 (бирюзовый)
-                    ctx.fillStyle = `hsla(${hue}, 80%, 60%, ${alpha * 0.7})`;
+                    // Цвета радуги в сине-бирюзовых тонах
+                    const colors = [
+                        'hsla(200, 90%, 60%, ', // Синий
+                        'hsla(190, 90%, 65%, ', // Бирюзовый
+                        'hsla(180, 90%, 70%, ', // Яркий бирюзовый
+                        'hsla(170, 90%, 75%, '  // Светло-бирюзовый
+                    ];
                     
-                    // Рисуем прямоугольник с закругленными краями
+                    const colorIndex = segment.colorIndex % colors.length;
+                    const finalAlpha = trailAlpha * segment.pulse;
+                    
+                    // Основной прямоугольник
+                    ctx.fillStyle = colors[colorIndex] + finalAlpha + ')';
                     ctx.beginPath();
                     ctx.roundRect(
                         segment.x - segment.width/2,
                         segment.y - segment.height/2,
                         segment.width,
                         segment.height,
+                        5
+                    );
+                    ctx.fill();
+                    
+                    // Свечение
+                    ctx.shadowColor = colors[colorIndex].replace('hsla(', 'hsla(').replace(', ', ', 100%, ');
+                    ctx.shadowBlur = 15 * finalAlpha;
+                    ctx.fill();
+                    
+                    // Внутренний свет
+                    ctx.fillStyle = 'rgba(255, 255, 255, ' + (finalAlpha * 0.3) + ')';
+                    ctx.beginPath();
+                    ctx.roundRect(
+                        segment.x - segment.width/4,
+                        segment.y - segment.height/4,
+                        segment.width/2,
+                        segment.height/2,
                         3
                     );
                     ctx.fill();
                     
-                    // Легкое свечение
-                    ctx.shadowColor = `hsla(${hue}, 80%, 60%, ${alpha * 0.3})`;
-                    ctx.shadowBlur = 8;
-                    ctx.fill();
                     ctx.shadowBlur = 0;
-                    
                     ctx.restore();
                 }
             }
@@ -1164,7 +1187,7 @@
                     this.updateMovement();
                     this.x += this.vx;
                     this.wingPhase += this.wingSpeed;
-                    this.updateNyanTrail(); // Обновляем шлейф Nyan Cat
+                    this.updateNyanTrail();
                     
                     if ((this.direction === 1 && this.x > canvas.width + this.width*2) || 
                         (this.direction === -1 && this.x < -this.width*2)) {
@@ -1421,14 +1444,14 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // ЛЕВОЕ КРЫЛО - ПЕРЕДВИНУТО БЛИЖЕ К ГОЛОВЕ (изменили с -25 на -20, с 50 на 40)
+                    // ЛЕВОЕ КРЫЛО - ЕЩЕ БЛИЖЕ К ГОЛОВЕ И УЖЕ
                     const wingYOffset = Math.sin(this.wingPhase) * 20;
-                    const leftWingTipX = 40; // Уменьшили с 50 до 40
-                    const leftWingTipY = -35 + wingYOffset;
+                    const leftWingTipX = 35; // Уменьшили еще больше (было 40)
+                    const leftWingTipY = -30 + wingYOffset; // Подняли выше
 
                     // Градиент для левого крыла
                     const leftWingGradient = ctx.createLinearGradient(
-                        -20, -10, // Изменили с -10 на -20 (ближе к голове)
+                        -15, -8, // ЕЩЕ БЛИЖЕ К ГОЛОВЕ (было -20)
                         -leftWingTipX, leftWingTipY
                     );
                     leftWingGradient.addColorStop(0, 'rgba(100, 200, 255, 0.9)');
@@ -1438,9 +1461,10 @@
 
                     ctx.fillStyle = leftWingGradient;
                     ctx.beginPath();
-                    ctx.moveTo(-20, -10); // Изменили с -10 на -20
-                    ctx.bezierCurveTo(-20, -15 + wingYOffset * 0.5, -35, -25 + wingYOffset, -leftWingTipX, leftWingTipY);
-                    ctx.bezierCurveTo(-35, 5 + wingYOffset * 0.5, -20, 10 + wingYOffset * 0.3, -20, -10);
+                    ctx.moveTo(-15, -8); // ЕЩЕ БЛИЖЕ К ГОЛОВЕ
+                    // Уже и компактнее
+                    ctx.bezierCurveTo(-18, -12 + wingYOffset * 0.5, -30, -20 + wingYOffset, -leftWingTipX, leftWingTipY);
+                    ctx.bezierCurveTo(-30, 0 + wingYOffset * 0.5, -18, 5 + wingYOffset * 0.3, -15, -8);
                     ctx.closePath();
                     ctx.fill();
 
@@ -1449,14 +1473,14 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // ПРАВОЕ КРЫЛО - ПЕРЕДВИНУТО БЛИЖЕ К ГОЛОВЕ
+                    // ПРАВОЕ КРЫЛО - ЕЩЕ БЛИЖЕ К ГОЛОВЕ И УЖЕ
                     ctx.globalCompositeOperation = 'destination-over';
 
-                    const rightWingTipX = 40; // Уменьшили с 50 до 40
-                    const rightWingTipY = -35 + wingYOffset;
+                    const rightWingTipX = 35; // Уменьшили еще больше
+                    const rightWingTipY = -30 + wingYOffset; // Подняли выше
 
                     const rightWingGradient = ctx.createLinearGradient(
-                        20, -10, // Изменили с 10 на 20 (ближе к голове)
+                        15, -8, // ЕЩЕ БЛИЖЕ К ГОЛОВЕ (было 20)
                         rightWingTipX, rightWingTipY
                     );
                     rightWingGradient.addColorStop(0, 'rgba(100, 200, 255, 0.9)');
@@ -1466,9 +1490,10 @@
 
                     ctx.fillStyle = rightWingGradient;
                     ctx.beginPath();
-                    ctx.moveTo(20, -10); // Изменили с 10 на 20
-                    ctx.bezierCurveTo(20, -15 + wingYOffset * 0.5, 35, -25 + wingYOffset, rightWingTipX, rightWingTipY);
-                    ctx.bezierCurveTo(35, 5 + wingYOffset * 0.5, 20, 10 + wingYOffset * 0.3, 20, -10);
+                    ctx.moveTo(15, -8); // ЕЩЕ БЛИЖЕ К ГОЛОВЕ
+                    // Уже и компактнее
+                    ctx.bezierCurveTo(18, -12 + wingYOffset * 0.5, 30, -20 + wingYOffset, rightWingTipX, rightWingTipY);
+                    ctx.bezierCurveTo(30, 0 + wingYOffset * 0.5, 18, 5 + wingYOffset * 0.3, 15, -8);
                     ctx.closePath();
                     ctx.fill();
 
@@ -1642,8 +1667,8 @@
                         } else if (limb === this.limbs[2] || limb === this.limbs[3]) {
                             // Крылья с движением даже у мертвых коров (также приближены)
                             const wingYOffset = Math.sin(limb.wingPhase) * 20;
-                            const wingTipX = 40; // Уменьшили как у живых
-                            const wingTipY = -35 + wingYOffset;
+                            const wingTipX = 35; // Уменьшили как у живых
+                            const wingTipY = -30 + wingYOffset;
                             
                             let wingGradient;
                             if (limb === this.limbs[2]) {
@@ -1661,12 +1686,12 @@
                             ctx.beginPath();
                             if (limb === this.limbs[2]) {
                                 ctx.moveTo(0, 0);
-                                ctx.bezierCurveTo(-20, -15 + wingYOffset * 0.5, -35, -25 + wingYOffset, -wingTipX, wingTipY);
-                                ctx.bezierCurveTo(-35, 5 + wingYOffset * 0.5, -20, 10 + wingYOffset * 0.3, 0, 0);
+                                ctx.bezierCurveTo(-15, -12 + wingYOffset * 0.5, -30, -20 + wingYOffset, -wingTipX, wingTipY);
+                                ctx.bezierCurveTo(-30, 0 + wingYOffset * 0.5, -15, 5 + wingYOffset * 0.3, 0, 0);
                             } else {
                                 ctx.moveTo(0, 0);
-                                ctx.bezierCurveTo(20, -15 + wingYOffset * 0.5, 35, -25 + wingYOffset, wingTipX, wingTipY);
-                                ctx.bezierCurveTo(35, 5 + wingYOffset * 0.5, 20, 10 + wingYOffset * 0.3, 0, 0);
+                                ctx.bezierCurveTo(15, -12 + wingYOffset * 0.5, 30, -20 + wingYOffset, wingTipX, wingTipY);
+                                ctx.bezierCurveTo(30, 0 + wingYOffset * 0.5, 15, 5 + wingYOffset * 0.3, 0, 0);
                             }
                             ctx.closePath();
                             ctx.fill();
@@ -1760,13 +1785,12 @@
                 this.x = x;
                 this.y = y;
                 this.radius = 2;
-                this.maxRadius = 25; // Немного больше
-                this.alpha = 0.8; // Более видно
+                this.maxRadius = 25;
+                this.alpha = 0.8;
                 this.life = 1.0;
                 this.createdTime = Date.now();
-                // Один яркий цвет в стиле игры
-                this.color = 'rgba(51, 153, 255, 0.8)'; // Яркий синий
-                this.glowColor = 'rgba(100, 200, 255, 0.6)'; // Свечение
+                this.color = 'rgba(51, 153, 255, 0.8)';
+                this.glowColor = 'rgba(100, 200, 255, 0.6)';
             }
 
             update() {
@@ -1777,9 +1801,8 @@
                 
                 if (this.life <= 0) return false;
                 
-                // Быстрое расширение
                 this.radius += 1.5;
-                this.alpha = this.life * 0.8; // Более видно
+                this.alpha = this.life * 0.8;
                 
                 return true;
             }
@@ -1787,36 +1810,30 @@
             draw() {
                 ctx.save();
                 
-                // Внешнее свечение
                 ctx.shadowColor = this.glowColor;
                 ctx.shadowBlur = 15;
                 ctx.shadowOffsetX = 0;
                 ctx.shadowOffsetY = 0;
                 
-                // Основное кольцо
                 ctx.globalAlpha = this.alpha;
                 ctx.strokeStyle = this.color;
-                ctx.lineWidth = 3; // Толще
+                ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 ctx.stroke();
                 
-                // Внутреннее кольцо
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
                 ctx.lineWidth = 1.5;
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius * 0.6, 0, Math.PI * 2);
                 ctx.stroke();
                 
-                // Центральная точка
                 ctx.fillStyle = 'rgba(255, 255, 255, 1)';
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Убираем тень
                 ctx.shadowBlur = 0;
-                
                 ctx.restore();
             }
         }
@@ -1905,7 +1922,6 @@
                 this.life = config.missTextDuration - elapsed;
                 this.alpha = this.life / config.missTextDuration;
                 
-                // Поднимаем текст вверх
                 this.y -= 1;
                 
                 return this.life > 0;
@@ -2251,10 +2267,8 @@
             
             let hitDetected = false;
 
-            // Создаем эффект клика (обновленный)
             clickEffects.push(new ClickEffect(x, y));
 
-            // Проверяем попадание в бонус жизни
             for (let i = 0; i < lifeBonuses.length; i++) {
                 const bonus = lifeBonuses[i];
                 if (bonus.collected) continue;
@@ -2274,7 +2288,6 @@
                 }
             }
 
-            // Проверяем попадание в корову
             for (let i = 0; i < cows.length; i++) {
                 const cow = cows[i];
                 if (!cow.alive) continue;
@@ -2375,7 +2388,6 @@
             const time = Date.now() / 1000;
             eyeAnimationPhase = time * 2;
             
-            // Сначала рисуем звезды заднего слоя (layer 0)
             stars.forEach(star => {
                 if (star.layer !== 0) return;
                 
@@ -2399,19 +2411,16 @@
                 );
             });
             
-            // Затем рисуем атмосферы планет слоя 1
             planets.forEach(planet => {
                 if (planet.layer !== 1) return;
                 drawPlanetAtmosphere(planet);
             });
             
-            // Затем планеты слоя 1
             planets.forEach(planet => {
                 if (planet.layer !== 1) return;
                 drawPlanet(planet);
             });
             
-            // Затем звезды среднего слоя (layer 1)
             stars.forEach(star => {
                 if (star.layer !== 1) return;
                 
@@ -2435,19 +2444,16 @@
                 );
             });
             
-            // Затем рисуем атмосферы планет слоя 2
             planets.forEach(planet => {
                 if (planet.layer !== 2) return;
                 drawPlanetAtmosphere(planet);
             });
             
-            // Затем планеты слоя 2
             planets.forEach(planet => {
                 if (planet.layer !== 2) return;
                 drawPlanet(planet);
             });
             
-            // И наконец звезды переднего слоя (layer 2)
             stars.forEach(star => {
                 if (star.layer !== 2) return;
                 
@@ -2517,19 +2523,16 @@
             
             drawBackground();
             
-            // Сначала рисуем мертвых коров
             deadCows.forEach(cow => {
                 cow.update();
                 cow.draw();
             });
             
-            // Затем живых коров
             cows.forEach(cow => {
                 cow.update();
                 cow.draw();
             });
             
-            // Эффекты от кликов
             drawClickEffects();
             
             shots.forEach((shot, index) => {
@@ -2610,7 +2613,6 @@
             setTimeout(checkOrientation, 100);
         });
         
-        // Анимация северного сияния
         function initAurora() {
             const aurora = document.getElementById('auroraBackground');
             const canvas = document.createElement('canvas');
@@ -2694,7 +2696,6 @@
             animateAurora();
         }
 
-        // Инициализируем анимацию при загрузке
         window.addEventListener('load', initAurora);
 
         function showHelp() {
@@ -2719,11 +2720,9 @@
             setTimeout(() => { window.location.href = "index2.html"; }, 500);
         }
 
-        // Инициализация звуков при первом взаимодействии
         document.addEventListener('click', initSounds);
         document.addEventListener('touchstart', initSounds);
 
-        // Инициализация таблицы лидеров при загрузке
         displayLeaderboard();
     </script>
 </body>
