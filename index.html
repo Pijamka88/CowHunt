@@ -983,19 +983,46 @@ updateNyanTrail() {
     
     this.trailPoints.push({x: trailX, y: trailY});
     
-    // УВЕЛИЧИЛ количество точек для более длинного шлейфа
-    if (this.trailPoints.length > 40) { // Было 20
+    // ОГРАНИЧЕНИЕ ДЛИНЫ ШЛЕЙФА - максимум 25 точек
+    if (this.trailPoints.length > 25) {
         this.trailPoints.shift();
     }
     
-    // Обновляем шлейф как один длинный сегмент
+    // Также ограничиваем максимальное расстояние между точками
+    // чтобы шлейф не растягивался при быстром движении
+    if (this.trailPoints.length > 2) {
+        for (let i = 1; i < this.trailPoints.length; i++) {
+            const dx = this.trailPoints[i].x - this.trailPoints[i-1].x;
+            const dy = this.trailPoints[i].y - this.trailPoints[i-1].y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Если расстояние между точками слишком большое, добавляем промежуточные точки
+            if (distance > 15) {
+                const pointsToAdd = Math.floor(distance / 15);
+                for (let j = 1; j <= pointsToAdd; j++) {
+                    const t = j / (pointsToAdd + 1);
+                    const newX = this.trailPoints[i-1].x + dx * t;
+                    const newY = this.trailPoints[i-1].y + dy * t;
+                    this.trailPoints.splice(i + j - 1, 0, {x: newX, y: newY});
+                }
+                i += pointsToAdd;
+            }
+        }
+        
+        // После добавления точек, снова ограничиваем общую длину
+        if (this.trailPoints.length > 30) {
+            this.trailPoints.splice(0, this.trailPoints.length - 25);
+        }
+    }
+    
+    // Обновляем шлейф
     if (this.trailPoints.length >= 2) {
         this.nyanTrail = {
             startX: this.trailPoints[0].x,
             startY: this.trailPoints[0].y,
             endX: this.trailPoints[this.trailPoints.length - 1].x,
             endY: this.trailPoints[this.trailPoints.length - 1].y,
-            width: 30 + Math.sin(this.rainbowPhase * 2) * 4, // Чуть шире
+            width: 28, // Фиксированная ширина в начале
             alpha: 0.95,
             phase: this.rainbowPhase,
             length: this.trailPoints.length
@@ -1008,7 +1035,7 @@ drawNyanTrail() {
     
     ctx.save();
     
-    // Рисуем плавную линию через все точки (начинаем от тела коровы)
+    // Рисуем плавную линию через все точки с ПЕРЕМЕННОЙ ШИРИНОЙ
     ctx.beginPath();
     ctx.moveTo(this.trailPoints[0].x, this.trailPoints[0].y);
     
@@ -1030,7 +1057,7 @@ drawNyanTrail() {
         );
     }
     
-    // Градиент с ПОЛУПРОЗРАЧНЫМ КОНЦОМ
+    // Градиент с ПОЛУПРОЗРАЧНЫМ И СУЖАЮЩИМСЯ КОНЦОМ
     const startX = this.trailPoints[0].x;
     const startY = this.trailPoints[0].y;
     const endX = this.trailPoints[this.trailPoints.length - 1].x;
@@ -1040,74 +1067,75 @@ drawNyanTrail() {
     
     // Плавный переход от яркого у тела к полупрозрачному на конце
     gradient.addColorStop(0, 'hsla(200, 100%, 75%, 0.95)'); // Яркий синий у тела
-    gradient.addColorStop(0.4, 'hsla(190, 100%, 75%, 0.8)'); // Бирюзовый в середине
-    gradient.addColorStop(0.7, 'hsla(180, 100%, 75%, 0.6)'); // Начинаем затухать
-    gradient.addColorStop(0.85, 'hsla(170, 100%, 75%, 0.4)'); // Почти прозрачный
-    gradient.addColorStop(1, 'hsla(160, 100%, 75%, 0.2)'); // ПОЛНОСТЬЮ ПОЛУПРОЗРАЧНЫЙ КОНЕЦ
+    gradient.addColorStop(0.3, 'hsla(190, 100%, 75%, 0.85)'); 
+    gradient.addColorStop(0.6, 'hsla(180, 100%, 75%, 0.7)'); 
+    gradient.addColorStop(0.8, 'hsla(170, 100%, 75%, 0.5)'); 
+    gradient.addColorStop(0.95, 'hsla(160, 100%, 75%, 0.3)'); // Почти прозрачный
+    gradient.addColorStop(1, 'hsla(160, 100%, 75%, 0.1)'); // ПОЛНОСТЬЮ ПОЛУПРОЗРАЧНЫЙ КОНЕЦ
     
-    // Основная линия шлейфа
+    // Рисуем шлейф с ПЕРЕМЕННОЙ ШИРИНОЙ (сужаемся к концу)
+    const totalPoints = this.trailPoints.length;
+    
+    // Основная линия шлейфа с переменной шириной
     ctx.strokeStyle = gradient;
-    ctx.lineWidth = this.nyanTrail.width;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.globalAlpha = 1;
-    ctx.stroke();
     
-    // Внутреннее свечение (также с градиентом)
-    const innerGradient = ctx.createLinearGradient(startX, startY, endX, endY);
-    innerGradient.addColorStop(0, 'hsla(180, 100%, 95%, 0.7)');
-    innerGradient.addColorStop(0.7, 'hsla(170, 100%, 95%, 0.3)');
-    innerGradient.addColorStop(1, 'hsla(160, 100%, 95%, 0.1)');
-    
-    ctx.strokeStyle = innerGradient;
-    ctx.lineWidth = this.nyanTrail.width * 0.5;
-    ctx.stroke();
-    
-    // Внешнее свечение с эффектом рассеивания на конце
-    ctx.shadowColor = 'hsla(180, 100%, 70%, 0.5)';
-    ctx.shadowBlur = 25;
-    ctx.strokeStyle = gradient;
-    ctx.lineWidth = this.nyanTrail.width;
-    ctx.stroke();
-    
-    // Дополнительный эффект рассеивания на самом конце шлейфа
-    if (this.trailPoints.length > 10) {
-        const lastPoint = this.trailPoints[this.trailPoints.length - 1];
-        const secondLastPoint = this.trailPoints[this.trailPoints.length - 2];
+    // Рисуем шлейф сегментами для контроля ширины
+    for (let i = 0; i < this.trailPoints.length - 1; i++) {
+        const progress = i / (totalPoints - 1);
+        const segmentWidth = 28 * (1 - progress * 0.7); // Ширина уменьшается на 70% к концу
         
-        // Рассчитываем направление конца шлейфа
-        const dx = lastPoint.x - secondLastPoint.x;
-        const dy = lastPoint.y - secondLastPoint.y;
-        const angle = Math.atan2(dy, dx);
-        
-        // Рисуем эффект рассеивания на конце
-        ctx.save();
-        ctx.translate(lastPoint.x, lastPoint.y);
-        ctx.rotate(angle);
-        
-        // Полупрозрачные частицы на конце
-        for (let i = 0; i < 3; i++) {
-            const particleAlpha = 0.15 - (i * 0.05);
-            const particleSize = 8 - (i * 2);
-            const particleOffset = 5 + (i * 8);
-            
-            ctx.beginPath();
-            ctx.arc(particleOffset, 0, particleSize, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(160, 100%, 75%, ${particleAlpha})`;
-            ctx.fill();
-            
-            // Очень слабое свечение частиц
-            ctx.shadowColor = `hsla(160, 100%, 75%, ${particleAlpha * 0.5})`;
-            ctx.shadowBlur = 10;
-            ctx.fill();
+        // Для последнего сегмента делаем еще уже
+        let width = segmentWidth;
+        if (i === this.trailPoints.length - 2) {
+            width = 5; // Очень узкий конец
         }
         
-        ctx.restore();
+        ctx.lineWidth = width;
+        
+        // Рисуем маленький сегмент
+        if (i === 0) {
+            ctx.beginPath();
+            ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
+        }
+        ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
+        ctx.stroke();
+        
+        // Начинаем новый путь для следующего сегмента
+        ctx.beginPath();
+        ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
+    }
+    
+    // Внешнее свечение с эффектом рассеивания на конце
+    ctx.shadowColor = 'hsla(180, 100%, 70%, 0.4)';
+    ctx.shadowBlur = 20;
+    
+    // Перерисовываем для свечения (только первые 70% шлейфа)
+    const glowLength = Math.floor(totalPoints * 0.7);
+    for (let i = 0; i < glowLength; i++) {
+        const progress = i / (glowLength - 1);
+        const segmentWidth = 25 * (1 - progress * 0.6);
+        
+        ctx.lineWidth = segmentWidth;
+        
+        if (i === 0) {
+            ctx.beginPath();
+            ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
+        }
+        ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
+        ctx.stroke();
+        
+        if (i < glowLength - 1) {
+            ctx.beginPath();
+            ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
+        }
     }
     
     ctx.shadowBlur = 0;
     ctx.restore();
-} 
+}
             die() {
                 this.alive = false;
                 this.deathAnimation = 1;
@@ -1473,60 +1501,89 @@ drawNyanTrail() {
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // ЛЕВОЕ КРЫЛО
-                    const wingYOffset = Math.sin(this.wingPhase) * 20;
-                    const leftWingTipX = 35;
-                    const leftWingTipY = -30 + wingYOffset;
+// ЛЕВОЕ КРЫЛО - ЕЩЕ БЛИЖЕ К СЕРЕДИНЕ ТЕЛА
+const wingYOffset = Math.sin(this.wingPhase) * 20;
+const leftWingTipX = 30; // Еще ближе (было 35)
+const leftWingTipY = -25 + wingYOffset; // Выше (было -30)
 
-                    const leftWingGradient = ctx.createLinearGradient(
-                        -15, -8,
-                        -leftWingTipX, leftWingTipY
-                    );
-                    leftWingGradient.addColorStop(0, 'rgba(100, 200, 255, 0.9)');
-                    leftWingGradient.addColorStop(0.3, 'rgba(200, 100, 255, 0.8)');
-                    leftWingGradient.addColorStop(0.6, 'rgba(255, 100, 200, 0.7)');
-                    leftWingGradient.addColorStop(1, 'rgba(100, 255, 200, 0.6)');
+// Начальная точка крыла ближе к середине тела
+const leftWingStartX = -8; // Ближе к центру (было -15)
+const leftWingStartY = -5; // Выше (было -8)
 
-                    ctx.fillStyle = leftWingGradient;
-                    ctx.beginPath();
-                    ctx.moveTo(-15, -8);
-                    ctx.bezierCurveTo(-18, -12 + wingYOffset * 0.5, -30, -20 + wingYOffset, -leftWingTipX, leftWingTipY);
-                    ctx.bezierCurveTo(-30, 0 + wingYOffset * 0.5, -18, 5 + wingYOffset * 0.3, -15, -8);
-                    ctx.closePath();
-                    ctx.fill();
+// Градиент для левого крыла
+const leftWingGradient = ctx.createLinearGradient(
+    leftWingStartX, leftWingStartY,
+    -leftWingTipX, leftWingTipY
+);
+leftWingGradient.addColorStop(0, 'rgba(100, 200, 255, 0.9)');
+leftWingGradient.addColorStop(0.3, 'rgba(200, 100, 255, 0.8)');
+leftWingGradient.addColorStop(0.6, 'rgba(255, 100, 200, 0.7)');
+leftWingGradient.addColorStop(1, 'rgba(100, 255, 200, 0.6)');
 
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
+ctx.fillStyle = leftWingGradient;
+ctx.beginPath();
+ctx.moveTo(leftWingStartX, leftWingStartY);
+// Более компактное и близкое к телу крыло
+ctx.bezierCurveTo(
+    leftWingStartX - 10, leftWingStartY - 8 + wingYOffset * 0.5,
+    leftWingStartX - 22, leftWingStartY - 15 + wingYOffset,
+    -leftWingTipX, leftWingTipY
+);
+ctx.bezierCurveTo(
+    leftWingStartX - 22, leftWingStartY + 5 + wingYOffset * 0.5,
+    leftWingStartX - 10, leftWingStartY + 3 + wingYOffset * 0.3,
+    leftWingStartX, leftWingStartY
+);
+ctx.closePath();
+ctx.fill();
 
-                    // ПРАВОЕ КРЫЛО
-                    ctx.globalCompositeOperation = 'destination-over';
+// Обводка крыла
+ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+ctx.lineWidth = 2;
+ctx.stroke();
 
-                    const rightWingTipX = 35;
-                    const rightWingTipY = -30 + wingYOffset;
+// ПРАВОЕ КРЫЛО - ЕЩЕ БЛИЖЕ К СЕРЕДИНЕ ТЕЛА
+ctx.globalCompositeOperation = 'destination-over';
 
-                    const rightWingGradient = ctx.createLinearGradient(
-                        15, -8,
-                        rightWingTipX, rightWingTipY
-                    );
-                    rightWingGradient.addColorStop(0, 'rgba(100, 200, 255, 0.9)');
-                    rightWingGradient.addColorStop(0.3, 'rgba(200, 100, 255, 0.8)');
-                    rightWingGradient.addColorStop(0.6, 'rgba(255, 100, 200, 0.7)');
-                    rightWingGradient.addColorStop(1, 'rgba(100, 255, 200, 0.6)');
+const rightWingTipX = 30; // Еще ближе
+const rightWingTipY = -25 + wingYOffset; // Выше
 
-                    ctx.fillStyle = rightWingGradient;
-                    ctx.beginPath();
-                    ctx.moveTo(15, -8);
-                    ctx.bezierCurveTo(18, -12 + wingYOffset * 0.5, 30, -20 + wingYOffset, rightWingTipX, rightWingTipY);
-                    ctx.bezierCurveTo(30, 0 + wingYOffset * 0.5, 18, 5 + wingYOffset * 0.3, 15, -8);
-                    ctx.closePath();
-                    ctx.fill();
+// Начальная точка правого крыла
+const rightWingStartX = 8; // Ближе к центру (было 15)
+const rightWingStartY = -5; // Выше (было -8)
 
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
+const rightWingGradient = ctx.createLinearGradient(
+    rightWingStartX, rightWingStartY,
+    rightWingTipX, rightWingTipY
+);
+rightWingGradient.addColorStop(0, 'rgba(100, 200, 255, 0.9)');
+rightWingGradient.addColorStop(0.3, 'rgba(200, 100, 255, 0.8)');
+rightWingGradient.addColorStop(0.6, 'rgba(255, 100, 200, 0.7)');
+rightWingGradient.addColorStop(1, 'rgba(100, 255, 200, 0.6)');
 
-                    ctx.globalCompositeOperation = 'source-over';
+ctx.fillStyle = rightWingGradient;
+ctx.beginPath();
+ctx.moveTo(rightWingStartX, rightWingStartY);
+// Более компактное и близкое к телу крыло
+ctx.bezierCurveTo(
+    rightWingStartX + 10, rightWingStartY - 8 + wingYOffset * 0.5,
+    rightWingStartX + 22, rightWingStartY - 15 + wingYOffset,
+    rightWingTipX, rightWingTipY
+);
+ctx.bezierCurveTo(
+    rightWingStartX + 22, rightWingStartY + 5 + wingYOffset * 0.5,
+    rightWingStartX + 10, rightWingStartY + 3 + wingYOffset * 0.3,
+    rightWingStartX, rightWingStartY
+);
+ctx.closePath();
+ctx.fill();
+
+// Обводка крыла
+ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+ctx.lineWidth = 2;
+ctx.stroke();
+
+ctx.globalCompositeOperation = 'source-over';
     
                     // Tail
                     const tailX = -this.width/2;
