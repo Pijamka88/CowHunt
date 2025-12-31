@@ -894,7 +894,10 @@
                 this.rainbowSpeed = 0.03;
                 this.trailPoints = []; // Точки для плавного шлейфа
                 this.maxTrailPoints = 20; // Максимальное количество точек
+this.wingHistory = [];
+this.maxHistory = 5;
             }
+
 
             reset() {
                 this.direction = Math.random() > 0.5 ? 1 : -1;
@@ -1508,28 +1511,104 @@ drawNyanTrail() {
                     ctx.stroke();
 
 // ЛЕВОЕ КРЫЛО - ЕЩЕ БЛИЖЕ К СЕРЕДИНЕ ТЕЛА
-const wingYOffset = Math.sin(this.wingPhase) * 20;
-const leftWingTipX = 30; // Еще ближе (было 35)
-const leftWingTipY = -25 + wingYOffset; // Выше (было -30)
+const wingYOffset = Math.sin(this.wingPhase) * 15;
 
-// Начальная точка крыла ближе к середине тела
-const leftWingStartX = -8; // Ближе к центру (было -15)
-const leftWingStartY = -5; // Выше (было -8)
+// История позиций крыльев для размытия
+if (!this.wingHistory) {
+    this.wingHistory = [];
+}
+this.maxHistory = 5; // Количество кадров для размытия
 
-// Градиент для левого крыла
-const leftWingGradient = ctx.createLinearGradient(
-    leftWingStartX, leftWingStartY,
-    -leftWingTipX, leftWingTipY
-);
-leftWingGradient.addColorStop(0, 'rgba(100, 200, 255, 0.9)');
-leftWingGradient.addColorStop(0.3, 'rgba(200, 100, 255, 0.8)');
-leftWingGradient.addColorStop(0.6, 'rgba(255, 100, 200, 0.7)');
-leftWingGradient.addColorStop(1, 'rgba(100, 255, 200, 0.6)');
+// Сохраняем текущую позицию крыльев для размытия
+this.wingHistory.unshift(wingYOffset);
+if (this.wingHistory.length > this.maxHistory) {
+    this.wingHistory.pop();
+}
 
-ctx.fillStyle = leftWingGradient;
+// Отрисовываем размытые крылья (от старых к новым)
+for (let i = this.wingHistory.length - 1; i >= 0; i--) {
+    const currentWingYOffset = this.wingHistory[i];
+    const alpha = 0.2 + (i / this.wingHistory.length) * 0.4; // Прозрачность от 0.2 до 0.6
+    
+    // Левое крыло
+    const leftWingTipX = 30;
+    const leftWingTipY = -25 + currentWingYOffset;
+    const leftWingStartX = -8;
+    const leftWingStartY = -5;
+
+    const leftWingGradient = ctx.createLinearGradient(
+        leftWingStartX, leftWingStartY,
+        -leftWingTipX, leftWingTipY
+    );
+    leftWingGradient.addColorStop(0, `rgba(0, 255, 255, ${alpha * 0.8})`);
+    leftWingGradient.addColorStop(0.4, `rgba(138, 43, 226, ${alpha * 0.7})`);
+    leftWingGradient.addColorStop(0.8, `rgba(255, 69, 0, ${alpha * 0.6})`);
+    leftWingGradient.addColorStop(1, `rgba(255, 215, 0, ${alpha * 0.5})`);
+
+    ctx.fillStyle = leftWingGradient;
+    ctx.beginPath();
+    ctx.moveTo(leftWingStartX, leftWingStartY);
+    ctx.bezierCurveTo(
+        leftWingStartX - 10, leftWingStartY - 8 + currentWingYOffset * 0.5,
+        leftWingStartX - 22, leftWingStartY - 15 + currentWingYOffset,
+        -leftWingTipX, leftWingTipY
+    );
+    ctx.bezierCurveTo(
+        leftWingStartX - 22, leftWingStartY + 5 + currentWingYOffset * 0.5,
+        leftWingStartX - 10, leftWingStartY + 3 + currentWingYOffset * 0.3,
+        leftWingStartX, leftWingStartY
+    );
+    ctx.closePath();
+    ctx.fill();
+
+    // Правое крыло
+    ctx.globalCompositeOperation = 'destination-over';
+
+    const rightWingTipX = 30;
+    const rightWingTipY = -25 + currentWingYOffset;
+    const rightWingStartX = 8;
+    const rightWingStartY = -5;
+
+    const rightWingGradient = ctx.createLinearGradient(
+        rightWingStartX, rightWingStartY,
+        rightWingTipX, rightWingTipY
+    );
+    rightWingGradient.addColorStop(0, `rgba(255, 215, 0, ${alpha * 0.5})`);
+    rightWingGradient.addColorStop(0.2, `rgba(255, 69, 0, ${alpha * 0.6})`);
+    rightWingGradient.addColorStop(0.6, `rgba(138, 43, 226, ${alpha * 0.7})`);
+    rightWingGradient.addColorStop(1, `rgba(0, 255, 255, ${alpha * 0.8})`);
+
+    ctx.fillStyle = rightWingGradient;
+    ctx.beginPath();
+    ctx.moveTo(rightWingStartX, rightWingStartY);
+    ctx.bezierCurveTo(
+        rightWingStartX + 10, rightWingStartY - 8 + currentWingYOffset * 0.5,
+        rightWingStartX + 22, rightWingStartY - 15 + currentWingYOffset,
+        rightWingTipX, rightWingTipY
+    );
+    ctx.bezierCurveTo(
+        rightWingStartX + 22, rightWingStartY + 5 + currentWingYOffset * 0.5,
+        rightWingStartX + 10, rightWingStartY + 3 + currentWingYOffset * 0.3,
+        rightWingStartX, rightWingStartY
+    );
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.globalCompositeOperation = 'source-over';
+}
+
+// Обводка для текущих крыльев
+ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+ctx.lineWidth = 1.5;
+
+// Левое крыло (обводка)
+const leftWingTipX = 30;
+const leftWingTipY = -25 + wingYOffset;
+const leftWingStartX = -8;
+const leftWingStartY = -5;
+
 ctx.beginPath();
 ctx.moveTo(leftWingStartX, leftWingStartY);
-// Более компактное и близкое к телу крыло
 ctx.bezierCurveTo(
     leftWingStartX - 10, leftWingStartY - 8 + wingYOffset * 0.5,
     leftWingStartX - 22, leftWingStartY - 15 + wingYOffset,
@@ -1541,36 +1620,18 @@ ctx.bezierCurveTo(
     leftWingStartX, leftWingStartY
 );
 ctx.closePath();
-ctx.fill();
-
-// Обводка крыла
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-ctx.lineWidth = 2;
 ctx.stroke();
 
-// ПРАВОЕ КРЫЛО - ЕЩЕ БЛИЖЕ К СЕРЕДИНЕ ТЕЛА
+// Правое крыло (обводка)
 ctx.globalCompositeOperation = 'destination-over';
 
-const rightWingTipX = 30; // Еще ближе
-const rightWingTipY = -25 + wingYOffset; // Выше
+const rightWingTipX = 30;
+const rightWingTipY = -25 + wingYOffset;
+const rightWingStartX = 8;
+const rightWingStartY = -5;
 
-// Начальная точка правого крыла
-const rightWingStartX = 8; // Ближе к центру (было 15)
-const rightWingStartY = -5; // Выше (было -8)
-
-const rightWingGradient = ctx.createLinearGradient(
-    rightWingStartX, rightWingStartY,
-    rightWingTipX, rightWingTipY
-);
-rightWingGradient.addColorStop(0, 'rgba(100, 200, 255, 0.9)');
-rightWingGradient.addColorStop(0.3, 'rgba(200, 100, 255, 0.8)');
-rightWingGradient.addColorStop(0.6, 'rgba(255, 100, 200, 0.7)');
-rightWingGradient.addColorStop(1, 'rgba(100, 255, 200, 0.6)');
-
-ctx.fillStyle = rightWingGradient;
 ctx.beginPath();
 ctx.moveTo(rightWingStartX, rightWingStartY);
-// Более компактное и близкое к телу крыло
 ctx.bezierCurveTo(
     rightWingStartX + 10, rightWingStartY - 8 + wingYOffset * 0.5,
     rightWingStartX + 22, rightWingStartY - 15 + wingYOffset,
@@ -1582,11 +1643,6 @@ ctx.bezierCurveTo(
     rightWingStartX, rightWingStartY
 );
 ctx.closePath();
-ctx.fill();
-
-// Обводка крыла
-ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-ctx.lineWidth = 2;
 ctx.stroke();
 
 ctx.globalCompositeOperation = 'source-over';
@@ -2601,52 +2657,56 @@ ctx.globalCompositeOperation = 'source-over';
             });
         }
 
-        function gameLoop(timestamp) {
-            if (!gameActive || isGameOver) return;
-            
-            const deltaTime = timestamp - lastTime;
-            lastTime = timestamp;
-            
-            drawBackground();
-            
-            deadCows.forEach(cow => {
-                cow.update();
-                cow.draw();
-            });
-            
-            cows.forEach(cow => {
-                cow.update();
-                cow.draw();
-            });
-            
-            drawClickEffects();
-            
-            shots.forEach((shot, index) => {
-                shot.update();
-                shot.draw();
-                if (shot.alpha <= 0) shots.splice(index, 1);
-            });
-            
-            explosions.forEach((explosion, index) => {
-                if (!explosion.update()) {
-                    explosions.splice(index, 1);
-                } else {
-                    explosion.draw();
-                }
-            });
-            
-            missTexts.forEach((missText, index) => {
-                if (!missText.update()) {
-                    missTexts.splice(index, 1);
-                } else {
-                    missText.draw();
-                }
-            });
-            
-            drawLifeBonuses();
-            
-            requestAnimationFrame(gameLoop);
+function gameLoop(timestamp) {
+    if (!gameActive || isGameOver) return;
+    
+    const deltaTime = timestamp - lastTime;
+    lastTime = timestamp;
+    
+    // Полупрозрачная очистка для эффекта размытия движения
+    ctx.fillStyle = 'rgba(0, 10, 30, 0.1)'; // Темно-синий с небольшой прозрачностью
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    drawBackground();
+    
+    deadCows.forEach(cow => {
+        cow.update();
+        cow.draw();
+    });
+    
+    cows.forEach(cow => {
+        cow.update();
+        cow.draw();
+    });
+    
+    drawClickEffects();
+    
+    shots.forEach((shot, index) => {
+        shot.update();
+        shot.draw();
+        if (shot.alpha <= 0) shots.splice(index, 1);
+    });
+    
+    explosions.forEach((explosion, index) => {
+        if (!explosion.update()) {
+            explosions.splice(index, 1);
+        } else {
+            explosion.draw();
         }
+    });
+    
+    missTexts.forEach((missText, index) => {
+        if (!missText.update()) {
+            missTexts.splice(index, 1);
+        } else {
+            missText.draw();
+        }
+    });
+    
+    drawLifeBonuses();
+    
+    requestAnimationFrame(gameLoop);
+}
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -2722,7 +2782,8 @@ ctx.globalCompositeOperation = 'source-over';
             }
             
             function animateAurora() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'rgba(0, 10, 30, 0.1)';
+ctx.fillRect(0, 0, canvas.width, canvas.height);
                 time += 0.005;
                 
                 layers.forEach(layer => {
