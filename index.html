@@ -977,162 +977,186 @@ this.trailPoints = [];
 updateNyanTrail() {
     if (!this.alive || isPaused) return;
     
-    // Добавляем текущую позицию коровы в массив точек для шлейфа
-    const trailX = this.x + (this.direction === 1 ? -this.width/4 : this.width/4); // Из центра тела
-    const trailY = this.y;
+    // Точка выхода шлейфа из тела (между крыльями)
+    const trailX = this.x + (this.direction === 1 ? -this.width/2.5 : this.width/2.5);
+    const trailY = this.y - 5; // Немного выше центра
     
-    this.trailPoints.push({x: trailX, y: trailY, alpha: 1.0});
+    this.trailPoints.push({x: trailX, y: trailY});
     
     // Ограничиваем количество точек
     if (this.trailPoints.length > this.maxTrailPoints) {
         this.trailPoints.shift();
     }
     
-    // Обновляем альфа-канал точек
-    for (let i = 0; i < this.trailPoints.length; i++) {
-        const point = this.trailPoints[i];
-        // Прозрачность уменьшается к концу шлейфа
-        point.alpha = i / this.trailPoints.length * 0.9;
+    // Обновляем параметры конусного шлейфа
+    if (this.trailPoints.length >= 2) {
+        this.nyanTrail = {
+            baseWidth: 40, // Ширина у основания
+            tipWidth: 3,   // Ширина на кончике
+            phase: this.rainbowPhase
+        };
     }
 }
 
-
-
 drawNyanTrail() {
-    if (!this.alive || this.trailPoints.length < 2) return;
+    if (!this.alive || !this.nyanTrail || this.trailPoints.length < 3) return;
     
     ctx.save();
     
-    // Рисуем пламя как серию перекрывающихся овалов
-    for (let i = this.trailPoints.length - 1; i > 0; i--) {
-        const currentPoint = this.trailPoints[i];
-        const prevPoint = this.trailPoints[i - 1];
+    // Создаем конусный шлейф
+    ctx.beginPath();
+    
+    // Верхняя линия конуса (от широкого к узкому)
+    for (let i = 0; i < this.trailPoints.length; i++) {
+        const point = this.trailPoints[i];
+        const progress = i / (this.trailPoints.length - 1); // 0 у основания, 1 на кончике
         
-        // Рассчитываем середину между точками для плавности
-        const midX = (currentPoint.x + prevPoint.x) / 2;
-        const midY = (currentPoint.y + prevPoint.y) / 2;
+        // Ширина уменьшается от основания к кончику
+        const width = this.nyanTrail.baseWidth * (1 - progress) + this.nyanTrail.tipWidth * progress;
         
-        // Размер пламени уменьшается к концу
-        const flameSize = 30 * (i / this.trailPoints.length);
-        const flameWidth = flameSize * 0.8;
-        const flameHeight = flameSize * 1.2;
-        
-        // Градиент для огненного эффекта
-        const gradient = ctx.createRadialGradient(
-            midX, midY, 0,
-            midX, midY, flameSize
-        );
-        
-        // Огненная цветовая палитра
-        const alpha = currentPoint.alpha * 0.8;
-        gradient.addColorStop(0, `rgba(255, 255, 100, ${alpha})`); // Ярко-желтая сердцевина
-        gradient.addColorStop(0.3, `rgba(255, 165, 0, ${alpha * 0.8})`); // Оранжевый
-        gradient.addColorStop(0.6, `rgba(255, 69, 0, ${alpha * 0.6})`); // Красный
-        gradient.addColorStop(1, `rgba(139, 0, 0, ${alpha * 0.3})`); // Темно-красный
-        
-        // Рисуем языки пламени
-        for (let j = 0; j < 3; j++) {
-            const angle = (j * Math.PI / 3) + Math.sin(Date.now() / 200 + i) * 0.5;
-            const flameOffsetX = Math.cos(angle) * flameWidth * 0.4;
-            const flameOffsetY = Math.sin(angle) * flameHeight * 0.4;
-            
-            ctx.save();
-            
-            // Перемещаем и вращаем контекст
-            ctx.translate(midX + flameOffsetX, midY + flameOffsetY);
-            ctx.rotate(angle);
-            
-            // Рисуем язычок пламени
-            ctx.beginPath();
-            ctx.moveTo(0, -flameHeight * 0.5);
-            ctx.bezierCurveTo(
-                flameWidth * 0.3, -flameHeight * 0.3,
-                flameWidth * 0.2, flameHeight * 0.5,
-                0, flameHeight * 0.8
-            );
-            ctx.bezierCurveTo(
-                -flameWidth * 0.2, flameHeight * 0.5,
-                -flameWidth * 0.3, -flameHeight * 0.3,
-                0, -flameHeight * 0.5
-            );
-            ctx.closePath();
-            
-            // Заполняем пламя
-            ctx.fillStyle = gradient;
-            ctx.fill();
-            
-            // Добавляем свечение
-            ctx.shadowColor = `rgba(255, 100, 0, ${alpha * 0.5})`;
-            ctx.shadowBlur = 15;
-            ctx.fill();
-            
-            ctx.restore();
+        // Рассчитываем нормаль (перпендикуляр) к направлению движения
+        let angle;
+        if (i === 0) {
+            // Для первой точки используем угол к следующей точке
+            const nextPoint = this.trailPoints[i + 1];
+            angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x);
+        } else if (i === this.trailPoints.length - 1) {
+            // Для последней точки используем угол от предыдущей точки
+            const prevPoint = this.trailPoints[i - 1];
+            angle = Math.atan2(point.y - prevPoint.y, point.x - prevPoint.x);
+        } else {
+            // Для средней точки усредняем углы
+            const prevPoint = this.trailPoints[i - 1];
+            const nextPoint = this.trailPoints[i + 1];
+            angle = Math.atan2(nextPoint.y - prevPoint.y, nextPoint.x - prevPoint.x);
         }
         
-        // Основное тело пламени
-        ctx.save();
-        ctx.translate(midX, midY);
+        // Смещение для верхней точки конуса
+        const offsetX = -Math.sin(angle) * width / 2;
+        const offsetY = Math.cos(angle) * width / 2;
         
-        // Форма основного пламени
-        ctx.beginPath();
-        ctx.moveTo(0, -flameHeight);
-        ctx.bezierCurveTo(
-            flameWidth * 0.6, -flameHeight * 0.8,
-            flameWidth * 0.8, flameHeight * 0.3,
-            0, flameHeight
-        );
-        ctx.bezierCurveTo(
-            -flameWidth * 0.8, flameHeight * 0.3,
-            -flameWidth * 0.6, -flameHeight * 0.8,
-            0, -flameHeight
-        );
-        ctx.closePath();
-        
-        // Градиент для основного пламени
-        const mainGradient = ctx.createLinearGradient(
-            0, -flameHeight,
-            0, flameHeight
-        );
-        mainGradient.addColorStop(0, `rgba(255, 255, 150, ${alpha * 0.9})`);
-        mainGradient.addColorStop(0.3, `rgba(255, 200, 50, ${alpha * 0.8})`);
-        mainGradient.addColorStop(0.6, `rgba(255, 100, 0, ${alpha * 0.7})`);
-        mainGradient.addColorStop(1, `rgba(255, 50, 0, ${alpha * 0.5})`);
-        
-        ctx.fillStyle = mainGradient;
-        ctx.fill();
-        
-        // Яркая сердцевина
-        ctx.fillStyle = `rgba(255, 255, 200, ${alpha * 0.6})`;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, flameWidth * 0.4, flameHeight * 0.6, 0, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.restore();
+        if (i === 0) {
+            ctx.moveTo(point.x + offsetX, point.y + offsetY);
+        } else {
+            ctx.lineTo(point.x + offsetX, point.y + offsetY);
+        }
     }
     
-    // Добавляем искры вокруг пламени
-    if (Math.random() < 0.3) {
-        const lastPoint = this.trailPoints[this.trailPoints.length - 1];
-        for (let i = 0; i < 3; i++) {
-            const sparkX = lastPoint.x + (Math.random() - 0.5) * 20;
-            const sparkY = lastPoint.y + (Math.random() - 0.5) * 20;
-            const sparkSize = Math.random() * 3 + 2;
-            
-            ctx.fillStyle = `rgba(255, ${150 + Math.random() * 105}, 0, 0.8)`;
-            ctx.beginPath();
-            ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Свечение искр
-            ctx.shadowColor = 'rgba(255, 150, 0, 0.6)';
-            ctx.shadowBlur = 8;
-            ctx.fill();
-            ctx.shadowBlur = 0;
+    // Нижняя линия конуса (обратно от кончика к основанию)
+    for (let i = this.trailPoints.length - 1; i >= 0; i--) {
+        const point = this.trailPoints[i];
+        const progress = i / (this.trailPoints.length - 1);
+        const width = this.nyanTrail.baseWidth * (1 - progress) + this.nyanTrail.tipWidth * progress;
+        
+        // Рассчитываем угол как и для верхней линии
+        let angle;
+        if (i === 0) {
+            const nextPoint = this.trailPoints[i + 1];
+            angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x);
+        } else if (i === this.trailPoints.length - 1) {
+            const prevPoint = this.trailPoints[i - 1];
+            angle = Math.atan2(point.y - prevPoint.y, point.x - prevPoint.x);
+        } else {
+            const prevPoint = this.trailPoints[i - 1];
+            const nextPoint = this.trailPoints[i + 1];
+            angle = Math.atan2(nextPoint.y - prevPoint.y, nextPoint.x - prevPoint.x);
+        }
+        
+        // Смещение для нижней точки конуса (противоположное верхней)
+        const offsetX = Math.sin(angle) * width / 2;
+        const offsetY = -Math.cos(angle) * width / 2;
+        
+        ctx.lineTo(point.x + offsetX, point.y + offsetY);
+    }
+    
+    ctx.closePath();
+    
+    // Градиент для конуса
+    const firstPoint = this.trailPoints[0];
+    const lastPoint = this.trailPoints[this.trailPoints.length - 1];
+    const gradient = ctx.createLinearGradient(
+        firstPoint.x, firstPoint.y,
+        lastPoint.x, lastPoint.y
+    );
+    
+    // Сине-бирюзовый градиент
+    gradient.addColorStop(0, 'hsla(210, 100%, 65%, 0.9)');  // Яркий синий у основания
+    gradient.addColorStop(0.5, 'hsla(190, 100%, 65%, 0.7)'); // Бирюзовый
+    gradient.addColorStop(1, 'hsla(170, 100%, 65%, 0.4)');   // Светло-бирюзовый на конце
+    
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    
+    // Внешнее свечение
+    ctx.shadowColor = 'hsla(190, 100%, 65%, 0.5)';
+    ctx.shadowBlur = 20;
+    ctx.fill();
+    
+    // Внутренняя подсветка
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = 'hsla(190, 100%, 85%, 0.5)';
+    
+    // Рисуем внутренний конус (уже)
+    ctx.beginPath();
+    for (let i = 0; i < this.trailPoints.length; i++) {
+        const point = this.trailPoints[i];
+        const progress = i / (this.trailPoints.length - 1);
+        const width = (this.nyanTrail.baseWidth * 0.6) * (1 - progress) + (this.nyanTrail.tipWidth * 2) * progress;
+        
+        let angle;
+        if (i === 0) {
+            const nextPoint = this.trailPoints[i + 1];
+            angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x);
+        } else if (i === this.trailPoints.length - 1) {
+            const prevPoint = this.trailPoints[i - 1];
+            angle = Math.atan2(point.y - prevPoint.y, point.x - prevPoint.x);
+        } else {
+            const prevPoint = this.trailPoints[i - 1];
+            const nextPoint = this.trailPoints[i + 1];
+            angle = Math.atan2(nextPoint.y - prevPoint.y, nextPoint.x - prevPoint.x);
+        }
+        
+        const offsetX = -Math.sin(angle) * width / 2;
+        const offsetY = Math.cos(angle) * width / 2;
+        
+        if (i === 0) {
+            ctx.moveTo(point.x + offsetX, point.y + offsetY);
+        } else {
+            ctx.lineTo(point.x + offsetX, point.y + offsetY);
         }
     }
+    
+    for (let i = this.trailPoints.length - 1; i >= 0; i--) {
+        const point = this.trailPoints[i];
+        const progress = i / (this.trailPoints.length - 1);
+        const width = (this.nyanTrail.baseWidth * 0.6) * (1 - progress) + (this.nyanTrail.tipWidth * 2) * progress;
+        
+        let angle;
+        if (i === 0) {
+            const nextPoint = this.trailPoints[i + 1];
+            angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x);
+        } else if (i === this.trailPoints.length - 1) {
+            const prevPoint = this.trailPoints[i - 1];
+            angle = Math.atan2(point.y - prevPoint.y, point.x - prevPoint.x);
+        } else {
+            const prevPoint = this.trailPoints[i - 1];
+            const nextPoint = this.trailPoints[i + 1];
+            angle = Math.atan2(nextPoint.y - prevPoint.y, nextPoint.x - prevPoint.x);
+        }
+        
+        const offsetX = Math.sin(angle) * width / 2;
+        const offsetY = -Math.cos(angle) * width / 2;
+        
+        ctx.lineTo(point.x + offsetX, point.y + offsetY);
+    }
+    
+    ctx.closePath();
+    ctx.fill();
     
     ctx.restore();
 }
+
             die() {
                 this.alive = false;
                 this.deathAnimation = 1;
