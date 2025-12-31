@@ -888,10 +888,12 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
-                this.nyanTrail = [];
-                this.trailLength = 20; // Увеличенная длина шлейфа
+                this.nyanTrail = null; // Один длинный сегмент
+                this.trailLength = 300; // Очень длинный шлейф
                 this.rainbowPhase = 0;
                 this.rainbowSpeed = 0.03;
+                this.trailPoints = []; // Точки для плавного шлейфа
+                this.maxTrailPoints = 20; // Максимальное количество точек
             }
 
             reset() {
@@ -925,8 +927,9 @@
                 this.tongueOut = false;
                 this.tongueTimer = 0;
                 this.alpha = 1;
-                this.nyanTrail = [];
+                this.nyanTrail = null;
                 this.rainbowPhase = 0;
+                this.trailPoints = [];
             }
 
             updateMovement() {
@@ -974,101 +977,94 @@
             updateNyanTrail() {
                 if (!this.alive || isPaused) return;
                 
-                // Добавляем новую точку в шлейф каждый кадр
-                const trailX = this.x + (this.direction === 1 ? -this.width/2 - 15 : this.width/2 + 15);
-                const trailY = this.y + (Math.random() - 0.5) * 10;
+                // Добавляем текущую позицию коровы в массив точек
+                const trailX = this.x + (this.direction === 1 ? -this.width/2 - 25 : this.width/2 + 25);
+                const trailY = this.y;
                 
-                // Большие и яркие сегменты
-                this.nyanTrail.push({
-                    x: trailX,
-                    y: trailY,
-                    width: 25 + Math.random() * 15, // Больше
-                    height: 10 + Math.random() * 6, // Больше
-                    life: 1.0,
-                    alpha: 0.9 + Math.random() * 0.1, // Ярче
-                    colorIndex: Math.floor(this.nyanTrail.length % 4),
-                    pulse: Math.sin(this.rainbowPhase * 3) * 0.3 + 0.7
-                });
+                this.trailPoints.push({x: trailX, y: trailY});
                 
-                // Ограничиваем длину шлейфа
-                if (this.nyanTrail.length > this.trailLength) {
-                    this.nyanTrail.shift();
+                // Ограничиваем количество точек
+                if (this.trailPoints.length > this.maxTrailPoints) {
+                    this.trailPoints.shift();
                 }
                 
-                // Обновляем существующие части шлейфа
-                for (let i = this.nyanTrail.length - 1; i >= 0; i--) {
-                    const segment = this.nyanTrail[i];
+                // Обновляем шлейф как один длинный сегмент
+                if (this.trailPoints.length >= 2) {
+                    const startPoint = this.trailPoints[0];
+                    const endPoint = this.trailPoints[this.trailPoints.length - 1];
                     
-                    // Уменьшаем жизнь и прозрачность
-                    segment.life -= 0.04;
-                    segment.alpha = segment.life * 0.8;
-                    segment.width *= 0.97;
-                    segment.height *= 0.97;
-                    
-                    // Легкое движение
-                    segment.x += (Math.random() - 0.5) * 0.5;
-                    segment.y += (Math.random() - 0.5) * 0.5;
-                    
-                    // Удаляем старые сегменты
-                    if (segment.life <= 0 || segment.width < 3) {
-                        this.nyanTrail.splice(i, 1);
-                    }
+                    this.nyanTrail = {
+                        startX: startPoint.x,
+                        startY: startPoint.y,
+                        endX: endPoint.x,
+                        endY: endPoint.y,
+                        width: 30 + Math.sin(this.rainbowPhase * 2) * 5, // Пульсирующая ширина
+                        alpha: 0.8,
+                        phase: this.rainbowPhase
+                    };
                 }
             }
 
             drawNyanTrail() {
-                if (!this.alive || this.nyanTrail.length === 0) return;
+                if (!this.alive || !this.nyanTrail || this.trailPoints.length < 2) return;
                 
-                // Рисуем шлейф в стиле Nyan Cat
-                for (let i = 0; i < this.nyanTrail.length; i++) {
-                    const segment = this.nyanTrail[i];
-                    const trailAlpha = (i / this.nyanTrail.length) * segment.alpha;
-                    
-                    ctx.save();
-                    
-                    // Цвета радуги в сине-бирюзовых тонах
-                    const colors = [
-                        'hsla(200, 90%, 60%, ', // Синий
-                        'hsla(190, 90%, 65%, ', // Бирюзовый
-                        'hsla(180, 90%, 70%, ', // Яркий бирюзовый
-                        'hsla(170, 90%, 75%, '  // Светло-бирюзовый
-                    ];
-                    
-                    const colorIndex = segment.colorIndex % colors.length;
-                    const finalAlpha = trailAlpha * segment.pulse;
-                    
-                    // Основной прямоугольник
-                    ctx.fillStyle = colors[colorIndex] + finalAlpha + ')';
-                    ctx.beginPath();
-                    ctx.roundRect(
-                        segment.x - segment.width/2,
-                        segment.y - segment.height/2,
-                        segment.width,
-                        segment.height,
-                        5
-                    );
-                    ctx.fill();
-                    
-                    // Свечение
-                    ctx.shadowColor = colors[colorIndex].replace('hsla(', 'hsla(').replace(', ', ', 100%, ');
-                    ctx.shadowBlur = 15 * finalAlpha;
-                    ctx.fill();
-                    
-                    // Внутренний свет
-                    ctx.fillStyle = 'rgba(255, 255, 255, ' + (finalAlpha * 0.3) + ')';
-                    ctx.beginPath();
-                    ctx.roundRect(
-                        segment.x - segment.width/4,
-                        segment.y - segment.height/4,
-                        segment.width/2,
-                        segment.height/2,
-                        3
-                    );
-                    ctx.fill();
-                    
-                    ctx.shadowBlur = 0;
-                    ctx.restore();
+                ctx.save();
+                
+                // Рисуем плавную линию через все точки
+                ctx.beginPath();
+                ctx.moveTo(this.trailPoints[0].x, this.trailPoints[0].y);
+                
+                // Используем кривую через контрольные точки для плавности
+                for (let i = 1; i < this.trailPoints.length - 2; i++) {
+                    const xc = (this.trailPoints[i].x + this.trailPoints[i + 1].x) / 2;
+                    const yc = (this.trailPoints[i].y + this.trailPoints[i + 1].y) / 2;
+                    ctx.quadraticCurveTo(this.trailPoints[i].x, this.trailPoints[i].y, xc, yc);
                 }
+                
+                // Последний сегмент
+                if (this.trailPoints.length >= 2) {
+                    const lastIndex = this.trailPoints.length - 1;
+                    ctx.quadraticCurveTo(
+                        this.trailPoints[lastIndex - 1].x,
+                        this.trailPoints[lastIndex - 1].y,
+                        this.trailPoints[lastIndex].x,
+                        this.trailPoints[lastIndex].y
+                    );
+                }
+                
+                // Градиент по длине шлейфа (от синего к бирюзовому)
+                const gradient = ctx.createLinearGradient(
+                    this.trailPoints[0].x, this.trailPoints[0].y,
+                    this.trailPoints[this.trailPoints.length - 1].x,
+                    this.trailPoints[this.trailPoints.length - 1].y
+                );
+                
+                // Яркие сине-бирюзовые цвета
+                gradient.addColorStop(0, 'hsla(200, 100%, 70%, 0.9)'); // Яркий синий в начале
+                gradient.addColorStop(0.5, 'hsla(180, 100%, 70%, 0.8)'); // Бирюзовый в середине
+                gradient.addColorStop(1, 'hsla(160, 100%, 70%, 0.6)'); // Светло-бирюзовый в конце
+                
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = this.nyanTrail.width;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.globalAlpha = this.nyanTrail.alpha;
+                ctx.stroke();
+                
+                // Внутреннее свечение
+                ctx.strokeStyle = 'hsla(180, 100%, 90%, 0.6)';
+                ctx.lineWidth = this.nyanTrail.width * 0.6;
+                ctx.stroke();
+                
+                // Внешнее свечение
+                ctx.shadowColor = 'hsla(180, 100%, 70%, 0.5)';
+                ctx.shadowBlur = 20;
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = this.nyanTrail.width;
+                ctx.stroke();
+                
+                ctx.shadowBlur = 0;
+                ctx.restore();
             }
 
             die() {
@@ -1080,10 +1076,8 @@
                 this.deathAnimationProgress = 0;
                 this.alpha = 1;
                 
-                // Воспроизводим звук смерти немедленно
                 playSound(deathSound, 'death');
                 
-                // Создаем части тела для анимации смерти
                 this.limbs = [
                     { // Голова с рожками и ушами
                         x: this.x + (this.direction === 1 ? this.width/2 : -this.width/2),
@@ -1201,7 +1195,6 @@
                         limb.y += limb.vy;
                         limb.rotation += limb.rotationSpeed;
                         
-                        // Обновление движения крыльев для мертвых коров
                         if (limb.wingPhase !== undefined && limb.wingSpeed !== undefined) {
                             limb.wingPhase += limb.wingSpeed;
                         }
@@ -1217,7 +1210,6 @@
             }
 
             draw() {
-                // Рисуем шлейф Nyan Cat ПОД коровой
                 this.drawNyanTrail();
                 
                 ctx.save();
@@ -1372,15 +1364,13 @@
                         ctx.stroke();
                     }      
                     
-                    // Eyebrows (опущенные на 1px)
+                    // Eyebrows
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 1.5;
-                    // Левая бровь
                     ctx.beginPath();
                     ctx.moveTo(headX - 8, -eyeYOffset - 7);
                     ctx.lineTo(headX - 3, -eyeYOffset - 7);
                     ctx.stroke();
-                    // Правая бровь
                     ctx.beginPath();
                     ctx.moveTo(headX + 3, -eyeYOffset - 7);
                     ctx.lineTo(headX + 8, -eyeYOffset - 7);
@@ -1411,11 +1401,10 @@
                         ctx.fill();
                     }
                     
-                    // Horns (светло-коричневый цвет)
+                    // Horns
                     ctx.strokeStyle = '#A0522D';
                     ctx.lineWidth = 2;
 
-                    // Left horn (изогнутый)
                     ctx.save();
                     ctx.translate(headX - 4, -this.headRadius + 2);
                     ctx.rotate(-0.3);
@@ -1425,7 +1414,6 @@
                     ctx.stroke();
                     ctx.restore();
 
-                    // Right horn (изогнутый)
                     ctx.save();
                     ctx.translate(headX + 4, -this.headRadius + 2);
                     ctx.rotate(0.3);
@@ -1435,7 +1423,7 @@
                     ctx.stroke();
                     ctx.restore();   
                     
-                    // Helmet - увеличен на 1px
+                    // Helmet
                     ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
                     ctx.beginPath();
                     ctx.arc(headX, 0, this.headRadius * 1.5 + 1, 0, Math.PI * 2);
@@ -1444,14 +1432,13 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // ЛЕВОЕ КРЫЛО - ЕЩЕ БЛИЖЕ К ГОЛОВЕ И УЖЕ
+                    // ЛЕВОЕ КРЫЛО
                     const wingYOffset = Math.sin(this.wingPhase) * 20;
-                    const leftWingTipX = 35; // Уменьшили еще больше (было 40)
-                    const leftWingTipY = -30 + wingYOffset; // Подняли выше
+                    const leftWingTipX = 35;
+                    const leftWingTipY = -30 + wingYOffset;
 
-                    // Градиент для левого крыла
                     const leftWingGradient = ctx.createLinearGradient(
-                        -15, -8, // ЕЩЕ БЛИЖЕ К ГОЛОВЕ (было -20)
+                        -15, -8,
                         -leftWingTipX, leftWingTipY
                     );
                     leftWingGradient.addColorStop(0, 'rgba(100, 200, 255, 0.9)');
@@ -1461,26 +1448,24 @@
 
                     ctx.fillStyle = leftWingGradient;
                     ctx.beginPath();
-                    ctx.moveTo(-15, -8); // ЕЩЕ БЛИЖЕ К ГОЛОВЕ
-                    // Уже и компактнее
+                    ctx.moveTo(-15, -8);
                     ctx.bezierCurveTo(-18, -12 + wingYOffset * 0.5, -30, -20 + wingYOffset, -leftWingTipX, leftWingTipY);
                     ctx.bezierCurveTo(-30, 0 + wingYOffset * 0.5, -18, 5 + wingYOffset * 0.3, -15, -8);
                     ctx.closePath();
                     ctx.fill();
 
-                    // Обводка крыла
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // ПРАВОЕ КРЫЛО - ЕЩЕ БЛИЖЕ К ГОЛОВЕ И УЖЕ
+                    // ПРАВОЕ КРЫЛО
                     ctx.globalCompositeOperation = 'destination-over';
 
-                    const rightWingTipX = 35; // Уменьшили еще больше
-                    const rightWingTipY = -30 + wingYOffset; // Подняли выше
+                    const rightWingTipX = 35;
+                    const rightWingTipY = -30 + wingYOffset;
 
                     const rightWingGradient = ctx.createLinearGradient(
-                        15, -8, // ЕЩЕ БЛИЖЕ К ГОЛОВЕ (было 20)
+                        15, -8,
                         rightWingTipX, rightWingTipY
                     );
                     rightWingGradient.addColorStop(0, 'rgba(100, 200, 255, 0.9)');
@@ -1490,14 +1475,12 @@
 
                     ctx.fillStyle = rightWingGradient;
                     ctx.beginPath();
-                    ctx.moveTo(15, -8); // ЕЩЕ БЛИЖЕ К ГОЛОВЕ
-                    // Уже и компактнее
+                    ctx.moveTo(15, -8);
                     ctx.bezierCurveTo(18, -12 + wingYOffset * 0.5, 30, -20 + wingYOffset, rightWingTipX, rightWingTipY);
                     ctx.bezierCurveTo(30, 0 + wingYOffset * 0.5, 18, 5 + wingYOffset * 0.3, 15, -8);
                     ctx.closePath();
                     ctx.fill();
 
-                    // Обводка крыла
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.lineWidth = 2;
                     ctx.stroke();
@@ -1665,9 +1648,9 @@
                                 });
                             }
                         } else if (limb === this.limbs[2] || limb === this.limbs[3]) {
-                            // Крылья с движением даже у мертвых коров (также приближены)
+                            // Крылья с движением даже у мертвых коров
                             const wingYOffset = Math.sin(limb.wingPhase) * 20;
-                            const wingTipX = 35; // Уменьшили как у живых
+                            const wingTipX = 35;
                             const wingTipY = -30 + wingYOffset;
                             
                             let wingGradient;
@@ -1779,7 +1762,6 @@
             }
         } // КОНЕЦ КЛАССА Cow
 
-        // Новый класс для эффекта при клике (один цвет, более видно)
         class ClickEffect {
             constructor(x, y) {
                 this.x = x;
