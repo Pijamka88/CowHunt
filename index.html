@@ -1022,7 +1022,7 @@ updateNyanTrail() {
             startY: this.trailPoints[0].y,
             endX: this.trailPoints[this.trailPoints.length - 1].x,
             endY: this.trailPoints[this.trailPoints.length - 1].y,
-            width: 28, // Фиксированная ширина в начале
+            baseWidth: 35, // Широкая у тела
             alpha: 0.95,
             phase: this.rainbowPhase,
             length: this.trailPoints.length
@@ -1035,123 +1035,112 @@ drawNyanTrail() {
     
     ctx.save();
     
-    // ВАЖНО: Точка 0 - самая старая (дальше от коровы), последняя точка - самая новая (у коровы)
-    // Нужно сужаться от коровы к хвосту
+    // Градиент с ПОЛУПРОЗРАЧНЫМ И СУЖАЮЩИМСЯ КОНЦОМ (ШИРОКИЙ У ТЕЛА -> УЗКИЙ НА КОНЦЕ)
+    const startX = this.trailPoints[0].x;
+    const startY = this.trailPoints[0].y;
+    const endX = this.trailPoints[this.trailPoints.length - 1].x;
+    const endY = this.trailPoints[this.trailPoints.length - 1].y;
     
-    // Рисуем плавную линию через все точки
-    ctx.beginPath();
-    ctx.moveTo(this.trailPoints[0].x, this.trailPoints[0].y);
+    const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
     
-    // Используем кривую через контрольные точки для плавности
-    for (let i = 1; i < this.trailPoints.length - 2; i++) {
-        const xc = (this.trailPoints[i].x + this.trailPoints[i + 1].x) / 2;
-        const yc = (this.trailPoints[i].y + this.trailPoints[i + 1].y) / 2;
-        ctx.quadraticCurveTo(this.trailPoints[i].x, this.trailPoints[i].y, xc, yc);
-    }
+    // Плавный переход от яркого у тела к полупрозрачному на конце
+    gradient.addColorStop(0, 'hsla(200, 100%, 75%, 0.95)'); // Яркий синий у тела
+    gradient.addColorStop(0.3, 'hsla(190, 100%, 75%, 0.85)'); 
+    gradient.addColorStop(0.6, 'hsla(180, 100%, 75%, 0.7)'); 
+    gradient.addColorStop(0.8, 'hsla(170, 100%, 75%, 0.5)'); 
+    gradient.addColorStop(0.95, 'hsla(160, 100%, 75%, 0.3)'); // Почти прозрачный
+    gradient.addColorStop(1, 'hsla(160, 100%, 75%, 0.1)'); // ПОЛНОСТЬЮ ПОЛУПРОЗРАЧНЫЙ КОНЕЦ
     
-    // Последний сегмент
-    if (this.trailPoints.length >= 2) {
-        const lastIndex = this.trailPoints.length - 1;
-        ctx.quadraticCurveTo(
-            this.trailPoints[lastIndex - 1].x,
-            this.trailPoints[lastIndex - 1].y,
-            this.trailPoints[lastIndex].x,
-            this.trailPoints[lastIndex].y
-        );
-    }
-    
+    // Рисуем шлейф с ПЕРЕМЕННОЙ ШИРИНОЙ (ШИРОКИЙ У ТЕЛА -> УЗКИЙ НА КОНЦЕ)
     const totalPoints = this.trailPoints.length;
     
-    // ИСПРАВЛЕНИЕ: сужаемся от КОРОВЫ (последняя точка) к ХВОСТУ (первая точка)
-    // Рисуем шлейф сегментами от хвоста к корове, но ширина меняется в обратном порядке
+    // Основная линия шлейфа с переменной шириной
+    ctx.strokeStyle = gradient;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = 1;
     
-    // Внешнее свечение с эффектом рассеивания
-    ctx.shadowColor = 'hsla(180, 100%, 70%, 0.4)';
-    ctx.shadowBlur = 20;
-    
-    // Рисуем от хвоста к корове (от 0 к последней точке)
-    for (let i = 0; i < totalPoints - 1; i++) {
-        // progress = 0 у коровы (последняя точка), 1 у хвоста (первая точка)
-        // Но мы рисуем от хвоста к корове, так что инвертируем
-        const distanceFromCow = (totalPoints - 1 - i) / (totalPoints - 1);
+    // Рисуем шлейф сегментами для контроля ширины - НАОБОРОТ: широкий у тела, узкий на конце
+    for (let i = 0; i < this.trailPoints.length - 1; i++) {
+        const progress = i / (totalPoints - 1);
+        // НАОБОРОТ: начинаем с широкого (35px) и сужаемся к концу (3px)
+        const segmentWidth = 35 * (1 - progress * 0.9); // Ширина уменьшается на 90% к концу
         
-        // Ширина: максимум у коровы, минимум у хвоста
-        let segmentWidth = 0;
-        
-        if (distanceFromCow > 0.7) {
-            // У коровы (первые 30% от коровы): максимальная ширина
-            segmentWidth = 28;
-        } else if (distanceFromCow > 0.3) {
-            // Средняя часть: плавное сужение
-            const t = (distanceFromCow - 0.3) / 0.4;
-            segmentWidth = 28 * (0.3 + 0.7 * t); // От 30% до 100% от максимальной
-        } else {
-            // У хвоста (последние 30%): быстрое сужение до 0
-            const t = distanceFromCow / 0.3;
-            segmentWidth = 28 * 0.3 * t; // От 0 до 30% от максимальной
+        let width = segmentWidth;
+        // Для последнего сегмента делаем совсем узким
+        if (i === this.trailPoints.length - 2) {
+            width = 3; // Очень узкий конец
         }
         
-        // Минимальная ширина 2px
-        segmentWidth = Math.max(2, segmentWidth);
+        ctx.lineWidth = width;
         
-        // Для плавности добавляем небольшую вариацию
-        segmentWidth += Math.sin(this.rainbowPhase * 3 + i * 0.3) * 1.5;
-        
-        ctx.lineWidth = segmentWidth;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        
-        // Градиент цвета: яркий у коровы, бледный у хвоста
-        const colorProgress = distanceFromCow;
-        let hue = 200;
-        let saturation = 100;
-        let lightness = 75;
-        let alpha = 0.95;
-        
-        if (colorProgress < 0.3) {
-            // У хвоста: бледный, почти прозрачный
-            const t = colorProgress / 0.3;
-            hue = 200 + (160 - 200) * t;
-            saturation = 100 * t;
-            lightness = 75 + (90 - 75) * t;
-            alpha = 0.1 + 0.85 * t;
-        } else if (colorProgress < 0.7) {
-            // Средняя часть: переход
-            const t = (colorProgress - 0.3) / 0.4;
-            hue = 200 + (180 - 200) * t;
-            saturation = 100;
-            lightness = 75;
-            alpha = 0.95;
-        } else {
-            // У коровы: яркий
-            const t = (colorProgress - 0.7) / 0.3;
-            hue = 180 + (200 - 180) * t;
-            saturation = 100;
-            lightness = 75;
-            alpha = 0.95;
-        }
-        
-        ctx.strokeStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
-        
-        // Рисуем сегмент
+        // Рисуем маленький сегмент
         if (i === 0) {
             ctx.beginPath();
             ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
         }
         ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-        
-        // Если следующий сегмент будет значительно уже, закрываем путь
-        if (i < totalPoints - 2) {
-            const nextDistanceFromCow = (totalPoints - 2 - i) / (totalPoints - 1);
-            if (Math.abs(segmentWidth - (28 * (1 - nextDistanceFromCow))) > 5) {
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
-            }
-        }
-        
         ctx.stroke();
+        
+        // Начинаем новый путь для следующего сегмента
+        ctx.beginPath();
+        ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
     }
+    
+    // Внешнее свечение с эффектом рассеивания на конце
+    ctx.shadowColor = 'hsla(180, 100%, 70%, 0.4)';
+    ctx.shadowBlur = 25;
+    
+    // Перерисовываем для свечения (только первые 80% шлейфа, где он шире)
+    const glowLength = Math.floor(totalPoints * 0.8);
+    for (let i = 0; i < glowLength; i++) {
+        const progress = i / (glowLength - 1);
+        // НАОБОРОТ: широкое свечение в начале
+        const segmentWidth = 30 * (1 - progress * 0.8);
+        
+        ctx.lineWidth = segmentWidth;
+        
+        if (i === 0) {
+            ctx.beginPath();
+            ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
+        }
+        ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
+        ctx.stroke();
+        
+        if (i < glowLength - 1) {
+            ctx.beginPath();
+            ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
+        }
+    }
+    
+    // Добавляем дополнительное внутреннее свечение в начале шлейфа (у тела)
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.moveTo(this.trailPoints[0].x, this.trailPoints[0].y);
+    
+    // Первые 3 сегмента - самое яркое свечение у тела
+    const brightLength = Math.min(3, this.trailPoints.length - 1);
+    for (let i = 0; i < brightLength; i++) {
+        const progress = i / brightLength;
+        const width = 25 * (1 - progress * 0.5);
+        
+        ctx.lineWidth = width;
+        ctx.strokeStyle = 'hsla(180, 100%, 95%, 0.6)';
+        
+        if (i === 0) {
+            ctx.moveTo(this.trailPoints[i].x, this.trailPoints[i].y);
+        }
+        ctx.lineTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
+        ctx.stroke();
+        
+        if (i < brightLength - 1) {
+            ctx.beginPath();
+            ctx.moveTo(this.trailPoints[i + 1].x, this.trailPoints[i + 1].y);
+        }
+    }
+    
+    ctx.restore();
+}
     
     // Дополнительный внутренний слой для объема
     ctx.shadowBlur = 0;
