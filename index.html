@@ -72,6 +72,8 @@
 
         #gameCanvas {
             display: block;
+            position: relative;
+            z-index: 1;
         }
 
         .menu {
@@ -85,7 +87,7 @@
             text-align: center;
             border-radius: 20px;
             border: 3px solid #3399ff;
-            z-index: 1000;
+            z-index: 1001;
             width: 80%;
             max-width: 500px;
             box-shadow: 0 0 30px rgba(51, 153, 255, 0.8);
@@ -119,9 +121,11 @@
                         inset 0 0 5px rgba(255, 255, 255, 0.5);
             position: relative;
             overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
-        .menu button:hover {
+        .menu button:hover, .menu button:active {
             background: linear-gradient(to bottom, #00aaff, #0077ff);
             transform: scale(1.05);
             box-shadow: 0 7px 20px rgba(51, 153, 255, 0.6), 
@@ -342,6 +346,7 @@
 
         #helpModal {
             max-height: 90vh;
+            z-index: 1002;
         }
 
         #helpModal h2 {
@@ -384,7 +389,7 @@
             box-shadow: 0 0 10px rgba(255, 102, 178, 0.7);
         }
 
-        .menu button.alt-game-btn:hover {
+        .menu button.alt-game-btn:hover, .menu button.alt-game-btn:active {
             background: linear-gradient(to bottom, #ff3399, #ff66b2);
         }
 
@@ -568,6 +573,13 @@
             return false;
         });
 
+        // Исправление проблем с касанием на мобильных устройствах
+        document.addEventListener('touchstart', function(e) {
+            if (e.target.tagName === 'BUTTON') {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
         // Инициализация Telegram WebApp с защитными параметрами
         if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
             Telegram.WebApp.ready();
@@ -630,6 +642,7 @@
         let reloadSoundPlayed = false;
         let clickEffects = [];
         let isInGameMode = false;
+        let crackedHearts = [];
 
         // Configuration
         const config = {
@@ -731,7 +744,7 @@
 
         // Класс для треснувшего сердца
         class CrackedHeart {
-            constructor(x, y, size = 30) {
+            constructor(x, y, size = 25) {
                 this.x = x;
                 this.y = y;
                 this.size = size;
@@ -981,7 +994,7 @@
                         layer: Math.floor(Math.random() * 2) + 1,
                         pulsePhase: Math.random() * Math.PI * 2,
                         pulseSpeed: Math.random() * 0.01 + 0.005,
-                        pulseAmplitude: Math.random() * 0.1 + 0.05
+                        pulseAmplitude: Math.random() * 0.05 + 0.03 // Только для атмосферы
                     };
                     
                     // Check for overlap with existing planets
@@ -2068,15 +2081,15 @@
             
             if (!isPaused) {
                 planet.rotation += planet.rotationSpeed;
+                // Обновляем пульсацию только для атмосферы
                 planet.pulsePhase += planet.pulseSpeed;
             }
 
             const time = Date.now() / 1000;
             const angle = (time * 0.5) % (2 * Math.PI);
             
-            // Пульсация планеты
-            const pulse = 1 + Math.sin(planet.pulsePhase) * planet.pulseAmplitude;
-            const currentRadius = planet.radius * pulse;
+            // Планета НЕ увеличивается - остается постоянного размера
+            const currentRadius = planet.radius; // Без пульсации
 
             const gradient = ctx.createLinearGradient(
                 -currentRadius * Math.cos(angle),
@@ -2121,26 +2134,37 @@
                 planet.pulsePhase += planet.pulseSpeed;
             }
             
+            // Только атмосфера пульсирует
             const pulse = 1 + Math.sin(planet.pulsePhase) * planet.pulseAmplitude;
-            const currentRadius = planet.radius * pulse * 1.05;
+            const atmosphereRadius = planet.radius * 1.1 * pulse; // Атмосфера пульсирует
             
             const atmosphereGradient = ctx.createRadialGradient(
-                0, 0, currentRadius * 0.7,
-                0, 0, currentRadius
+                0, 0, planet.radius * 0.9,
+                0, 0, atmosphereRadius
             );
-            atmosphereGradient.addColorStop(0, 'rgba(255, 255, 255, 0.0)');
-            atmosphereGradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.03)');
-            atmosphereGradient.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+            
+            // Разные цвета атмосферы для разных планет
+            if (planet.color === '#40E0D0' || planet.color === '#00CED1') {
+                atmosphereGradient.addColorStop(0, 'rgba(0, 255, 255, 0.0)');
+                atmosphereGradient.addColorStop(0.7, 'rgba(0, 255, 255, 0.1)');
+                atmosphereGradient.addColorStop(1, 'rgba(0, 255, 255, 0.0)');
+            } else if (planet.color === '#FFD700') {
+                atmosphereGradient.addColorStop(0, 'rgba(255, 215, 0, 0.0)');
+                atmosphereGradient.addColorStop(0.7, 'rgba(255, 215, 0, 0.08)');
+                atmosphereGradient.addColorStop(1, 'rgba(255, 215, 0, 0.0)');
+            } else if (planet.color === '#FFA500') {
+                atmosphereGradient.addColorStop(0, 'rgba(255, 165, 0, 0.0)');
+                atmosphereGradient.addColorStop(0.7, 'rgba(255, 165, 0, 0.08)');
+                atmosphereGradient.addColorStop(1, 'rgba(255, 165, 0, 0.0)');
+            }
             
             ctx.beginPath();
-            ctx.arc(0, 0, currentRadius, 0, Math.PI * 2);
+            ctx.arc(0, 0, atmosphereRadius, 0, Math.PI * 2);
             ctx.fillStyle = atmosphereGradient;
             ctx.fill();
 
             ctx.restore();
         }
-
-        let crackedHearts = [];
 
         function showLevelUp() {
             const levelUp = document.getElementById('levelUp');
@@ -2156,6 +2180,7 @@
         }
 
         function startGame() {
+            console.log('startGame called');
             const effect = document.getElementById('gameOverEffect');
             effect.classList.remove('active');
             
@@ -2236,6 +2261,7 @@
         }
 
         function returnToMainMenu() {
+            console.log('returnToMainMenu called');
             const effect = document.getElementById('gameOverEffect');
             effect.classList.remove('active');
             
@@ -2320,7 +2346,7 @@
             document.getElementById('topHUD').style.display = 'none';
             document.getElementById('bottomHUD').style.display = 'none';
             document.getElementById('reloading').style.display = 'none';
-            document.getElementById('pausedOverlay').style.display = 'none";
+            document.getElementById('pausedOverlay').style.display = 'none';
 
             handlePostGame();
         }
@@ -2770,6 +2796,7 @@
             }
         }
 
+        // Исправление обработчика кликов для canvas
         canvas.addEventListener('pointerdown', (e) => {
             if (!gameActive || isReloading || isGameOver || isPaused) return;
             
@@ -2791,6 +2818,19 @@
                     startReloading();
                 }
             }
+        });
+
+        // Исправление проблемы с кнопками на мобильных устройствах
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('touchstart', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                this.click();
+            }, { passive: false });
+            
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
         });
 
         window.addEventListener('resize', function() {
@@ -2888,18 +2928,21 @@
         window.addEventListener('load', initAurora);
 
         function showHelp() {
+            console.log('showHelp called');
             playClickSound();
             document.getElementById('helpModal').style.display = 'block';
             document.getElementById('mainMenu').style.display = 'none';
         }
 
         function closeHelp() {
+            console.log('closeHelp called');
             playClickSound();
             document.getElementById('helpModal').style.display = 'none';
             document.getElementById('mainMenu').style.display = 'block';
         }
         
         function switchToOtherGame() {
+            console.log('switchToOtherGame called');
             if (gameActive) {
                 gameActive = false;
                 stopBackgroundMusic();
@@ -2909,10 +2952,43 @@
             setTimeout(() => { window.location.href = "index2.html"; }, 500);
         }
 
+        // Инициализация звуков при первом взаимодействии
         document.addEventListener('click', initSounds);
         document.addEventListener('touchstart', initSounds);
 
+        // Инициализация при загрузке
         displayLeaderboard();
+        resizeCanvas();
+        
+        // Добавляем обработчики для всех кнопок
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded');
+            
+            // Принудительно устанавливаем z-index для меню
+            document.getElementById('mainMenu').style.zIndex = '1001';
+            document.getElementById('helpModal').style.zIndex = '1002';
+            document.getElementById('gameOverMenu').style.zIndex = '1001';
+            
+            // Добавляем обработчики для всех кнопок
+            document.querySelectorAll('.menu button').forEach(button => {
+                button.addEventListener('pointerdown', function(e) {
+                    console.log('Button clicked:', this.textContent || this.innerHTML);
+                    e.stopPropagation();
+                    e.preventDefault();
+                    
+                    // Добавляем визуальную обратную связь
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 150);
+                    
+                    // Вызываем обработчик
+                    if (this.onclick) {
+                        this.onclick(e);
+                    }
+                }, { passive: false });
+            });
+        });
     </script>
 </body>
 </html>
