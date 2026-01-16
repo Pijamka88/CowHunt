@@ -219,11 +219,35 @@
             font-size: 28px;
             margin: 0 5px;
             transition: all 0.3s;
+            position: relative;
         }
 
         .heart.burned {
             color: #666;
             text-shadow: none;
+        }
+
+        .heart.burned::before {
+            content: "💔";
+            position: absolute;
+            left: 0;
+            top: 0;
+            animation: crack 0.5s ease-out forwards;
+        }
+
+        @keyframes crack {
+            0% {
+                opacity: 0;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
         .reloading {
@@ -581,6 +605,7 @@
         let stars = [];
         let lifeBonuses = [];
         let planets = [];
+        let bloodDrops = [];
         let score = 0;
         let lives = 3;
         let timeLeft = 60;
@@ -656,6 +681,121 @@
         cowTypes.forEach((cowType, index) => {
             originalCowSpeeds[index] = cowType.speed;
         });
+
+        // Класс для капель крови
+        class BloodDrop {
+            constructor(x, y, size = 5) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8;
+                this.gravity = 0.2;
+                this.life = 1.0;
+                this.alpha = 1.0;
+                this.color = '#32CD32'; // Лаймово-зеленый цвет для инопланетной крови
+            }
+
+            update() {
+                if (isPaused) return true;
+                
+                this.vy += this.gravity;
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= 0.02;
+                this.alpha = this.life;
+                
+                return this.life > 0;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                
+                // Рисуем каплю крови
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y, this.size, this.size * 1.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Добавляем блик
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.beginPath();
+                ctx.ellipse(this.x - this.size * 0.3, this.y - this.size * 0.5, 
+                           this.size * 0.3, this.size * 0.2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+
+        // Класс для треснувшего сердца
+        class CrackedHeart {
+            constructor(x, y, size = 30) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.pieces = [];
+                this.alpha = 1.0;
+                this.createdTime = Date.now();
+                
+                // Создаем 3 куска сердца
+                for (let i = 0; i < 3; i++) {
+                    this.pieces.push({
+                        x: x + (Math.random() - 0.5) * 10,
+                        y: y + (Math.random() - 0.5) * 10,
+                        vx: (Math.random() - 0.5) * 3,
+                        vy: (Math.random() - 0.5) * 3,
+                        rotation: (Math.random() - 0.5) * 0.5,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        scale: 0.8 + Math.random() * 0.4,
+                        alpha: 1.0
+                    });
+                }
+            }
+
+            update() {
+                if (isPaused) return true;
+                
+                const elapsed = Date.now() - this.createdTime;
+                this.alpha = 1 - (elapsed / 1000); // Исчезает за 1 секунду
+                
+                if (this.alpha <= 0) return false;
+                
+                this.pieces.forEach(piece => {
+                    piece.x += piece.vx;
+                    piece.y += piece.vy;
+                    piece.rotation += piece.rotationSpeed;
+                    piece.vy += 0.1; // Гравитация
+                    piece.alpha = this.alpha;
+                });
+                
+                return true;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                
+                this.pieces.forEach(piece => {
+                    ctx.save();
+                    ctx.translate(piece.x, piece.y);
+                    ctx.rotate(piece.rotation);
+                    ctx.scale(piece.scale, piece.scale);
+                    
+                    // Рисуем кусок сердца (символ треснувшего сердца)
+                    ctx.fillStyle = '#ff3366';
+                    ctx.font = `${this.size}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('💔', 0, 0);
+                    
+                    ctx.restore();
+                });
+                
+                ctx.restore();
+            }
+        }
 
         // Инициализация звуков
         function initSounds() {
@@ -838,7 +978,10 @@
                         color: planetColors[Math.floor(Math.random() * planetColors.length)],
                         rotation: Math.random() * Math.PI * 2,
                         rotationSpeed: Math.random() * 0.002 - 0.001,
-                        layer: Math.floor(Math.random() * 2) + 1
+                        layer: Math.floor(Math.random() * 2) + 1,
+                        pulsePhase: Math.random() * Math.PI * 2,
+                        pulseSpeed: Math.random() * 0.01 + 0.005,
+                        pulseAmplitude: Math.random() * 0.1 + 0.05
                     };
                     
                     // Check for overlap with existing planets
@@ -977,7 +1120,7 @@
                 }
             }
 
-            die() {
+            die(hitX, hitY) {
                 this.alive = false;
                 this.deathAnimation = 1;
                 this.deathTime = Date.now();
@@ -987,6 +1130,11 @@
                 this.alpha = 1;
                 
                 playSound(deathSound, 'death');
+                
+                // Создаем капли крови в месте попадания
+                for (let i = 0; i < 8; i++) {
+                    bloodDrops.push(new BloodDrop(hitX, hitY, Math.random() * 4 + 3));
+                }
                 
                 this.limbs = [
                     { // Голова с рожками и ушами
@@ -1135,6 +1283,12 @@
             }
 
             draw() {
+                // Сохраняем глобальный композитинг
+                const originalComposite = ctx.globalCompositeOperation;
+                
+                // Устанавливаем композитинг для рисования поверх планет
+                ctx.globalCompositeOperation = 'source-over';
+                
                 ctx.save();
                 
                 if (this.alive) {
@@ -1287,16 +1441,17 @@
                         ctx.stroke();
                     }      
                     
-                    // Eyebrows
+                    // Eyebrows - теперь в виде дуг
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 1.5;
                     ctx.beginPath();
                     ctx.moveTo(headX - 8, -eyeYOffset - 7);
-                    ctx.lineTo(headX - 3, -eyeYOffset - 7);
+                    ctx.quadraticCurveTo(headX - 5, -eyeYOffset - 10, headX - 2, -eyeYOffset - 7);
                     ctx.stroke();
+                    
                     ctx.beginPath();
-                    ctx.moveTo(headX + 3, -eyeYOffset - 7);
-                    ctx.lineTo(headX + 8, -eyeYOffset - 7);
+                    ctx.moveTo(headX + 2, -eyeYOffset - 7);
+                    ctx.quadraticCurveTo(headX + 5, -eyeYOffset - 10, headX + 8, -eyeYOffset - 7);
                     ctx.stroke();
                     
                     // Nose
@@ -1355,13 +1510,13 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // КРЫЛЬЯ С РАЗМЫТИЕМ (ИЗ ВТОРОГО ФАЙЛА)
+                    // КРЫЛЬЯ С РАЗМЫТИЕМ
                     const currentWingYOffset = Math.sin(this.wingPhase) * 15;
                     
                     // Отрисовываем размытые крылья (от старых к новым)
                     for (let i = this.wingHistory.length - 1; i >= 0; i--) {
                         const wingYOffset = this.wingHistory[i];
-                        const alpha = 0.2 + (i / this.wingHistory.length) * 0.4; // Прозрачность от 0.2 до 0.6
+                        const alpha = 0.2 + (i / this.wingHistory.length) * 0.4;
                         
                         // Левое крыло
                         const leftWingGradient = ctx.createLinearGradient(
@@ -1512,16 +1667,17 @@
                             ctx.ellipse(4, 10, 1.5, 2.5, 0, 0, Math.PI * 2);
                             ctx.fill();
                             
-                            // Брови
+                            // Брови в виде дуг
                             ctx.strokeStyle = '#333';
                             ctx.lineWidth = 1.5;
                             ctx.beginPath();
                             ctx.moveTo(-8, -7);
-                            ctx.lineTo(-3, -7);
+                            ctx.quadraticCurveTo(-5, -10, -2, -7);
                             ctx.stroke();
+                            
                             ctx.beginPath();
-                            ctx.moveTo(3, -7);
-                            ctx.lineTo(8, -7);
+                            ctx.moveTo(2, -7);
+                            ctx.quadraticCurveTo(5, -10, 8, -7);
                             ctx.stroke();
                             
                             if (limb.tongueOut) {
@@ -1732,6 +1888,9 @@
                 }
                 
                 ctx.restore();
+                
+                // Восстанавливаем оригинальный композитинг
+                ctx.globalCompositeOperation = originalComposite;
             }
         } // КОНЕЦ КЛАССА Cow
 
@@ -1794,23 +1953,26 @@
         }
 
         class Explosion {
-            constructor(x, y, color) {
+            constructor(x, y) {
                 this.x = x;
                 this.y = y;
                 this.particles = [];
-                this.color = color;
                 
-                for (let i = 0; i < 20; i++) {
+                for (let i = 0; i < 15; i++) {
                     this.particles.push({
                         x: 0,
                         y: 0,
-                        vx: (Math.random() - 0.5) * 6,
-                        vy: (Math.random() - 0.5) * 6,
-                        size: Math.random() * 6 + 3,
+                        vx: (Math.random() - 0.5) * 8,
+                        vy: (Math.random() - 0.5) * 8,
+                        size: Math.random() * 5 + 2,
                         alpha: 1,
-                        life: Math.random() * 0.5 + 0.5
+                        life: Math.random() * 0.5 + 0.5,
+                        color: `rgba(50, 205, 50, ${Math.random() * 0.5 + 0.5})` // Зеленый цвет для инопланетной крови
                     });
                 }
+                
+                // Создаем эффект треснувшего сердца вместо красных кружков
+                crackedHearts.push(new CrackedHeart(x, y, 25));
             }
             
             update() {
@@ -1829,11 +1991,13 @@
             
             draw() {
                 this.particles.forEach(p => {
-                    ctx.fillStyle = `rgba(${this.color}, ${p.alpha})`;
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = p.alpha;
                     ctx.beginPath();
                     ctx.arc(this.x + p.x, this.y + p.y, p.size, 0, Math.PI * 2);
                     ctx.fill();
                 });
+                ctx.globalAlpha = 1;
             }
         }
 
@@ -1904,16 +2068,21 @@
             
             if (!isPaused) {
                 planet.rotation += planet.rotationSpeed;
+                planet.pulsePhase += planet.pulseSpeed;
             }
 
             const time = Date.now() / 1000;
             const angle = (time * 0.5) % (2 * Math.PI);
+            
+            // Пульсация планеты
+            const pulse = 1 + Math.sin(planet.pulsePhase) * planet.pulseAmplitude;
+            const currentRadius = planet.radius * pulse;
 
             const gradient = ctx.createLinearGradient(
-                -planet.radius * Math.cos(angle),
-                -planet.radius * Math.sin(angle),
-                planet.radius * Math.cos(angle),
-                planet.radius * Math.sin(angle)
+                -currentRadius * Math.cos(angle),
+                -currentRadius * Math.sin(angle),
+                currentRadius * Math.cos(angle),
+                currentRadius * Math.sin(angle)
             );
 
             if (planet.color === '#40E0D0' || planet.color === '#00CED1') {
@@ -1932,11 +2101,11 @@
 
             ctx.fillStyle = gradient;
             ctx.beginPath();
-            ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
+            ctx.arc(0, 0, currentRadius, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.beginPath();
-            ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
+            ctx.arc(0, 0, currentRadius, 0, Math.PI * 2);
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
             ctx.lineWidth = 2;
             ctx.stroke();
@@ -1948,13 +2117,30 @@
             ctx.save();
             ctx.translate(planet.x, planet.y);
             
+            if (!isPaused) {
+                planet.pulsePhase += planet.pulseSpeed;
+            }
+            
+            const pulse = 1 + Math.sin(planet.pulsePhase) * planet.pulseAmplitude;
+            const currentRadius = planet.radius * pulse * 1.05;
+            
+            const atmosphereGradient = ctx.createRadialGradient(
+                0, 0, currentRadius * 0.7,
+                0, 0, currentRadius
+            );
+            atmosphereGradient.addColorStop(0, 'rgba(255, 255, 255, 0.0)');
+            atmosphereGradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.03)');
+            atmosphereGradient.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+            
             ctx.beginPath();
-            ctx.arc(0, 0, planet.radius * 1.05, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.arc(0, 0, currentRadius, 0, Math.PI * 2);
+            ctx.fillStyle = atmosphereGradient;
             ctx.fill();
 
             ctx.restore();
         }
+
+        let crackedHearts = [];
 
         function showLevelUp() {
             const levelUp = document.getElementById('levelUp');
@@ -1998,6 +2184,8 @@
             missTexts = [];
             lifeBonuses = [];
             clickEffects = [];
+            bloodDrops = [];
+            crackedHearts = [];
             score = 0;
             lives = 3;
             timeLeft = config.levelDuration;
@@ -2132,7 +2320,7 @@
             document.getElementById('topHUD').style.display = 'none';
             document.getElementById('bottomHUD').style.display = 'none';
             document.getElementById('reloading').style.display = 'none';
-            document.getElementById('pausedOverlay').style.display = 'none';
+            document.getElementById('pausedOverlay').style.display = 'none";
 
             handlePostGame();
         }
@@ -2169,6 +2357,8 @@
             lifeBonuses = [];
             planets = [];
             clickEffects = [];
+            bloodDrops = [];
+            crackedHearts = [];
 
             score = 0;
             lives = 3;
@@ -2195,7 +2385,9 @@
             const heartElements = document.querySelectorAll('.heart');
             heartElements.forEach((heart, index) => {
                 if (index >= lives) {
-                    heart.classList.add('burned');
+                    if (!heart.classList.contains('burned')) {
+                        heart.classList.add('burned');
+                    }
                 } else {
                     heart.classList.remove('burned');
                 }
@@ -2246,7 +2438,7 @@
                     
                     playSound(lifeBonusSound, 'lifeBonus');
                     
-                    explosions.push(new Explosion(bonus.x, bonus.y, '255, 51, 102'));
+                    explosions.push(new Explosion(bonus.x, bonus.y));
                     hitDetected = true;
                     break;
                 }
@@ -2270,9 +2462,9 @@
                 const inHead = headDist <= headRadius;
                 
                 if (inBody || inHead) {
-                    explosions.push(new Explosion(x, y, '255, 100, 100'));
+                    explosions.push(new Explosion(x, y));
                     if (cow.alive) {
-                        cow.die();
+                        cow.die(x, y);
                         deadCows.push(cow);
                     }
                     score += cowTypes[cow.type].score;
@@ -2380,6 +2572,7 @@
                 );
             });
             
+            // Рисуем планеты и их атмосферы
             planets.forEach(planet => {
                 if (planet.layer !== 1) return;
                 drawPlanetAtmosphere(planet);
@@ -2390,6 +2583,7 @@
                 drawPlanet(planet);
             });
             
+            // Рисуем звезды поверх планет
             stars.forEach(star => {
                 if (star.layer !== 1) return;
                 
@@ -2405,6 +2599,7 @@
                 );
             });
             
+            // Второй слой планет
             planets.forEach(planet => {
                 if (planet.layer !== 2) return;
                 drawPlanetAtmosphere(planet);
@@ -2415,6 +2610,7 @@
                 drawPlanet(planet);
             });
             
+            // Второй слой звезд
             stars.forEach(star => {
                 if (star.layer !== 2) return;
                 
@@ -2468,6 +2664,26 @@
             });
         }
 
+        function drawBloodDrops() {
+            bloodDrops.forEach((drop, index) => {
+                if (!drop.update()) {
+                    bloodDrops.splice(index, 1);
+                } else {
+                    drop.draw();
+                }
+            });
+        }
+
+        function drawCrackedHearts() {
+            crackedHearts.forEach((heart, index) => {
+                if (!heart.update()) {
+                    crackedHearts.splice(index, 1);
+                } else {
+                    heart.draw();
+                }
+            });
+        }
+
         function gameLoop(timestamp) {
             if (!gameActive || isGameOver) return;
             
@@ -2476,15 +2692,14 @@
             
             if (isInGameMode) {
                 // Полупрозрачная очистка для эффекта размытия движения ТОЛЬКО в игровом режиме
-                // Более светлый цвет, чтобы градиентный фон был виден
-                ctx.fillStyle = 'rgba(0, 20, 40, 0.08)'; // Уменьшил прозрачность до 0.08
+                ctx.fillStyle = 'rgba(0, 20, 40, 0.08)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
                 // Также рисуем базовый градиентный фон
                 const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
                 gradient.addColorStop(0, '#001a33');
                 gradient.addColorStop(1, '#30397A');
-                ctx.globalAlpha = 0.3; // Слегка прозрачный градиент
+                ctx.globalAlpha = 0.3;
                 ctx.fillStyle = gradient;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.globalAlpha = 1.0;
@@ -2529,6 +2744,8 @@
                 }
             });
             
+            drawBloodDrops();
+            drawCrackedHearts();
             drawLifeBonuses();
             
             requestAnimationFrame(gameLoop);
