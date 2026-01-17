@@ -66,6 +66,7 @@
             width: 100%;
             height: 100%;
             z-index: -1;
+            background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
             overflow: hidden;
         }
 
@@ -656,6 +657,118 @@
             originalCowSpeeds[index] = cowType.speed;
         });
 
+        // Класс для эффекта "раскола" бонуса
+        class BonusBreakEffect {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.pieces = [];
+                this.createdTime = Date.now();
+                this.duration = 1000; // Длительность эффекта 1 секунда
+                
+                // Создаем 4 осколка сердца
+                for (let i = 0; i < 4; i++) {
+                    this.pieces.push({
+                        x: 0,
+                        y: 0,
+                        vx: (Math.random() - 0.5) * 8,
+                        vy: (Math.random() - 0.5) * 8 - 3, // Немного вверх
+                        rotation: Math.random() * Math.PI * 2,
+                        rotationSpeed: (Math.random() - 0.5) * 0.2,
+                        size: Math.random() * 8 + 12,
+                        color: this.getPieceColor(i),
+                        alpha: 1,
+                        life: 1
+                    });
+                }
+            }
+            
+            getPieceColor(index) {
+                const colors = [
+                    '#ff3366', // красный
+                    '#ff6699', // розовый
+                    '#ff0066', // темно-розовый
+                    '#ff99cc'  // светлый розовый
+                ];
+                return colors[index % colors.length];
+            }
+            
+            update() {
+                if (isPaused) return true;
+                
+                const elapsed = Date.now() - this.createdTime;
+                const progress = elapsed / this.duration;
+                
+                if (progress >= 1) return false;
+                
+                this.pieces.forEach(piece => {
+                    piece.x += piece.vx;
+                    piece.y += piece.vy;
+                    piece.vy += 0.2; // Гравитация
+                    piece.rotation += piece.rotationSpeed;
+                    piece.alpha = 1 - progress;
+                    piece.life = 1 - progress;
+                });
+                
+                return true;
+            }
+            
+            draw() {
+                this.pieces.forEach(piece => {
+                    ctx.save();
+                    ctx.translate(this.x + piece.x, this.y + piece.y);
+                    ctx.rotate(piece.rotation);
+                    ctx.globalAlpha = piece.alpha;
+                    
+                    // Рисуем осколок сердца (треугольную форму)
+                    ctx.fillStyle = piece.color;
+                    ctx.beginPath();
+                    
+                    // Форма осколка - острый треугольник
+                    switch(this.pieces.indexOf(piece) % 4) {
+                        case 0:
+                            ctx.moveTo(0, -piece.size/2);
+                            ctx.lineTo(piece.size/2, piece.size/2);
+                            ctx.lineTo(-piece.size/2, piece.size/2);
+                            break;
+                        case 1:
+                            ctx.moveTo(0, piece.size/2);
+                            ctx.lineTo(piece.size/2, -piece.size/2);
+                            ctx.lineTo(-piece.size/2, -piece.size/2);
+                            break;
+                        case 2:
+                            ctx.moveTo(-piece.size/2, 0);
+                            ctx.lineTo(piece.size/2, piece.size/2);
+                            ctx.lineTo(piece.size/2, -piece.size/2);
+                            break;
+                        case 3:
+                            ctx.moveTo(piece.size/2, 0);
+                            ctx.lineTo(-piece.size/2, piece.size/2);
+                            ctx.lineTo(-piece.size/2, -piece.size/2);
+                            break;
+                    }
+                    
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Обводка осколка
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Эффект свечения
+                    ctx.shadowColor = piece.color;
+                    ctx.shadowBlur = 10;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    
+                    ctx.restore();
+                });
+            }
+        }
+
+        let bonusBreakEffects = []; // Массив для хранения эффектов раскола
+
         // Инициализация звуков
         function initSounds() {
             if (soundsInitialized) return;
@@ -857,150 +970,6 @@
                 } while (overlapping);
                 
                 planets.push(newPlanet);
-            }
-        }
-
-        // Класс HeartBonusExplosion для эффекта расколотого бонуса
-        class HeartBonusExplosion {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.pieces = [];
-                this.color = '#ff3366';
-                this.glowColor = '#ff66b2';
-                
-                // Создаем 8 кусочков расколотого сердца
-                for (let i = 0; i < 8; i++) {
-                    const angle = (i / 8) * Math.PI * 2;
-                    const speed = Math.random() * 3 + 2;
-                    
-                    this.pieces.push({
-                        x: 0,
-                        y: 0,
-                        vx: Math.cos(angle) * speed,
-                        vy: Math.sin(angle) * speed,
-                        size: Math.random() * 8 + 6,
-                        rotation: Math.random() * Math.PI * 2,
-                        rotationSpeed: (Math.random() - 0.5) * 0.2,
-                        alpha: 1,
-                        life: 1,
-                        isHeartPiece: i < 2 // Первые два кусочка - это части сердца
-                    });
-                }
-                
-                // Добавляем несколько маленьких искр
-                for (let i = 0; i < 6; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = Math.random() * 4 + 2;
-                    
-                    this.pieces.push({
-                        x: 0,
-                        y: 0,
-                        vx: Math.cos(angle) * speed,
-                        vy: Math.sin(angle) * speed,
-                        size: Math.random() * 4 + 2,
-                        rotation: 0,
-                        rotationSpeed: 0,
-                        alpha: 1,
-                        life: 1,
-                        isSpark: true
-                    });
-                }
-            }
-            
-            update() {
-                if (isPaused) return true;
-                
-                let allDead = true;
-                
-                this.pieces.forEach(piece => {
-                    piece.x += piece.vx;
-                    piece.y += piece.vy;
-                    piece.rotation += piece.rotationSpeed;
-                    piece.alpha -= 0.02;
-                    piece.life -= 0.02;
-                    piece.vy += 0.1; // Гравитация
-                    
-                    if (piece.life > 0) {
-                        allDead = false;
-                    }
-                });
-                
-                return !allDead;
-            }
-            
-            draw() {
-                this.pieces.forEach(piece => {
-                    if (piece.life <= 0) return;
-                    
-                    ctx.save();
-                    ctx.translate(this.x + piece.x, this.y + piece.y);
-                    ctx.rotate(piece.rotation);
-                    ctx.globalAlpha = piece.alpha;
-                    
-                    if (piece.isHeartPiece) {
-                        // Рисуем части сердца
-                        ctx.fillStyle = this.color;
-                        ctx.beginPath();
-                        
-                        if (piece === this.pieces[0]) {
-                            // Левая часть сердца
-                            ctx.moveTo(0, 0);
-                            ctx.quadraticCurveTo(-piece.size, -piece.size, -piece.size * 0.5, piece.size * 0.5);
-                            ctx.quadraticCurveTo(0, piece.size, piece.size * 0.3, 0);
-                            ctx.closePath();
-                        } else {
-                            // Правая часть сердца
-                            ctx.moveTo(0, 0);
-                            ctx.quadraticCurveTo(piece.size, -piece.size, piece.size * 0.5, piece.size * 0.5);
-                            ctx.quadraticCurveTo(0, piece.size, -piece.size * 0.3, 0);
-                            ctx.closePath();
-                        }
-                        
-                        ctx.fill();
-                        
-                        // Свечение
-                        ctx.shadowColor = this.glowColor;
-                        ctx.shadowBlur = 10;
-                        ctx.fill();
-                        ctx.shadowBlur = 0;
-                    } else if (piece.isSpark) {
-                        // Искры
-                        ctx.fillStyle = '#ffff00';
-                        ctx.beginPath();
-                        ctx.arc(0, 0, piece.size, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        ctx.shadowColor = '#ffff00';
-                        ctx.shadowBlur = 8;
-                        ctx.fill();
-                        ctx.shadowBlur = 0;
-                    } else {
-                        // Осколки
-                        ctx.fillStyle = this.color;
-                        ctx.beginPath();
-                        ctx.moveTo(0, 0);
-                        
-                        for (let i = 0; i < 4; i++) {
-                            const angle = (i / 4) * Math.PI * 2 + piece.rotation;
-                            const radius = piece.size;
-                            ctx.lineTo(
-                                Math.cos(angle) * radius,
-                                Math.sin(angle) * radius
-                            );
-                        }
-                        
-                        ctx.closePath();
-                        ctx.fill();
-                        
-                        ctx.shadowColor = this.glowColor;
-                        ctx.shadowBlur = 6;
-                        ctx.fill();
-                        ctx.shadowBlur = 0;
-                    }
-                    
-                    ctx.restore();
-                });
             }
         }
 
@@ -1278,8 +1247,6 @@
             }
 
             draw() {
-                // Рисуем корову поверх планет
-                ctx.globalCompositeOperation = 'source-over';
                 ctx.save();
                 
                 if (this.alive) {
@@ -1432,16 +1399,18 @@
                         ctx.stroke();
                     }      
                     
-                    // Брови в виде дуг
+                    // Брови в виде дуг (ИЗМЕНЕНО)
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 1.5;
-                    ctx.beginPath();
+                    
                     // Левая бровь (дуга)
-                    ctx.arc(headX - 6, -eyeYOffset - 6, 4, Math.PI * 0.8, Math.PI * 1.2);
-                    ctx.stroke();
                     ctx.beginPath();
+                    ctx.arc(headX - 6, -eyeYOffset - 5, 3, Math.PI, 0, false);
+                    ctx.stroke();
+                    
                     // Правая бровь (дуга)
-                    ctx.arc(headX + 6, -eyeYOffset - 6, 4, Math.PI * 0.8, Math.PI * 1.2);
+                    ctx.beginPath();
+                    ctx.arc(headX + 6, -eyeYOffset - 5, 3, Math.PI, 0, false);
                     ctx.stroke();
                     
                     // Nose
@@ -1500,7 +1469,7 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // КРЫЛЬЯ С РАЗМЫТИЕМ
+                    // КРЫЛЬЯ С РАЗМЫТИЕМ (ИЗ ВТОРОГО ФАЙЛА)
                     const currentWingYOffset = Math.sin(this.wingPhase) * 15;
                     
                     // Отрисовываем размытые крылья (от старых к новым)
@@ -1639,18 +1608,6 @@
                             ctx.lineTo(3, -5);
                             ctx.stroke();
                             
-                            // Брови мертвой коровы (дуги)
-                            ctx.strokeStyle = '#333';
-                            ctx.lineWidth = 1.5;
-                            ctx.beginPath();
-                            // Левая бровь
-                            ctx.arc(-6, -6, 4, Math.PI * 0.8, Math.PI * 1.2);
-                            ctx.stroke();
-                            ctx.beginPath();
-                            // Правая бровь
-                            ctx.arc(6, -6, 4, Math.PI * 0.8, Math.PI * 1.2);
-                            ctx.stroke();
-                            
                             // Нос
                             ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
                             ctx.beginPath();
@@ -1668,6 +1625,20 @@
                             ctx.beginPath();
                             ctx.ellipse(4, 10, 1.5, 2.5, 0, 0, Math.PI * 2);
                             ctx.fill();
+                            
+                            // Брови в виде дуг для мертвой коровы (ИЗМЕНЕНО)
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1.5;
+                            
+                            // Левая бровь (дуга)
+                            ctx.beginPath();
+                            ctx.arc(-6, -2, 3, Math.PI, 0, false);
+                            ctx.stroke();
+                            
+                            // Правая бровь (дуга)
+                            ctx.beginPath();
+                            ctx.arc(6, -2, 3, Math.PI, 0, false);
+                            ctx.stroke();
                             
                             if (limb.tongueOut) {
                                 ctx.fillStyle = '#ff0000';
@@ -1939,23 +1910,21 @@
         }
 
         class Explosion {
-            constructor(x, y) {
+            constructor(x, y, color) {
                 this.x = x;
                 this.y = y;
                 this.particles = [];
-                this.color = '255, 100, 100';
+                this.color = color;
                 
-                // Создаем только желтые и оранжевые частицы для взрыва коровы
-                for (let i = 0; i < 15; i++) {
+                for (let i = 0; i < 20; i++) {
                     this.particles.push({
                         x: 0,
                         y: 0,
                         vx: (Math.random() - 0.5) * 6,
                         vy: (Math.random() - 0.5) * 6,
-                        size: Math.random() * 8 + 4,
+                        size: Math.random() * 6 + 3,
                         alpha: 1,
-                        life: Math.random() * 0.5 + 0.5,
-                        color: Math.random() > 0.5 ? '255, 215, 0' : '255, 165, 0'
+                        life: Math.random() * 0.5 + 0.5
                     });
                 }
             }
@@ -1976,7 +1945,7 @@
             
             draw() {
                 this.particles.forEach(p => {
-                    ctx.fillStyle = `rgba(${p.color}, ${p.alpha})`;
+                    ctx.fillStyle = `rgba(${this.color}, ${p.alpha})`;
                     ctx.beginPath();
                     ctx.arc(this.x + p.x, this.y + p.y, p.size, 0, Math.PI * 2);
                     ctx.fill();
@@ -2145,6 +2114,7 @@
             missTexts = [];
             lifeBonuses = [];
             clickEffects = [];
+            bonusBreakEffects = []; // Очищаем эффекты раскола
             score = 0;
             lives = 3;
             timeLeft = config.levelDuration;
@@ -2316,6 +2286,7 @@
             lifeBonuses = [];
             planets = [];
             clickEffects = [];
+            bonusBreakEffects = [];
 
             score = 0;
             lives = 3;
@@ -2393,8 +2364,8 @@
                     
                     playSound(lifeBonusSound, 'lifeBonus');
                     
-                    // Используем новый эффект расколотого бонуса вместо красных кружков
-                    explosions.push(new HeartBonusExplosion(bonus.x, bonus.y));
+                    // Вместо взрыва создаем эффект раскола
+                    bonusBreakEffects.push(new BonusBreakEffect(bonus.x, bonus.y));
                     hitDetected = true;
                     break;
                 }
@@ -2418,7 +2389,7 @@
                 const inHead = headDist <= headRadius;
                 
                 if (inBody || inHead) {
-                    explosions.push(new Explosion(x, y));
+                    // УБРАЛИ ВЗРЫВ ЧАСТИЦ - теперь просто отмечаем попадание
                     if (cow.alive) {
                         cow.die();
                         deadCows.push(cow);
@@ -2615,6 +2586,16 @@
                 }
             });
         }
+        
+        function drawBonusBreakEffects() {
+            bonusBreakEffects.forEach((effect, index) => {
+                if (!effect.update()) {
+                    bonusBreakEffects.splice(index, 1);
+                } else {
+                    effect.draw();
+                }
+            });
+        }
 
         function gameLoop(timestamp) {
             if (!gameActive || isGameOver) return;
@@ -2643,14 +2624,20 @@
             
             drawBackground();
             
-            // Рисуем коров и их эффекты поверх планет
+            // Сначала рисуем планеты (они будут на заднем плане)
+            planets.forEach(planet => {
+                drawPlanet(planet);
+            });
+            
             deadCows.forEach(cow => {
                 cow.update();
+                // Коровы рисуются поверх планет
                 cow.draw();
             });
             
             cows.forEach(cow => {
                 cow.update();
+                // Коровы рисуются поверх планет
                 cow.draw();
             });
             
@@ -2679,6 +2666,9 @@
             });
             
             drawLifeBonuses();
+            
+            // Рисуем эффекты раскола бонусов
+            drawBonusBreakEffects();
             
             requestAnimationFrame(gameLoop);
         }
@@ -2746,33 +2736,47 @@
             let time = 0;
             const layers = [];
             
-            // Создаем слои с новыми цветами: красный, розовый, фиолетовый
-            const auroraColors = [
-                {
-                    color1: 'rgba(255, 0, 100, 0.2)',   // Красный
-                    color2: 'rgba(255, 100, 200, 0.15)' // Розовый
-                },
-                {
-                    color1: 'rgba(255, 100, 200, 0.18)', // Розовый
-                    color2: 'rgba(200, 0, 255, 0.12)'    // Фиолетовый
-                },
-                {
-                    color1: 'rgba(200, 0, 255, 0.15)',  // Фиолетовый
-                    color2: 'rgba(255, 0, 100, 0.1)'    // Красный
-                },
-                {
-                    color1: 'rgba(255, 50, 150, 0.12)', // Смешанный
-                    color2: 'rgba(150, 0, 255, 0.08)'   // Фиолетовый
-                }
-            ];
-            
+            // ИЗМЕНЕНЫ ЦВЕТА АУР: красные, розовые и фиолетовые полупрозрачные градиенты
             for (let i = 0; i < 4; i++) {
+                // Создаем различные оттенки красного, розового и фиолетового
+                let hue, saturation, lightness, alpha;
+                
+                switch(i) {
+                    case 0:
+                        // Темно-красный
+                        hue = 350;
+                        saturation = 80;
+                        lightness = 45;
+                        alpha = 0.15;
+                        break;
+                    case 1:
+                        // Розовый
+                        hue = 330;
+                        saturation = 90;
+                        lightness = 60;
+                        alpha = 0.2;
+                        break;
+                    case 2:
+                        // Фиолетовый
+                        hue = 280;
+                        saturation = 85;
+                        lightness = 55;
+                        alpha = 0.18;
+                        break;
+                    case 3:
+                        // Светло-розовый
+                        hue = 320;
+                        saturation = 95;
+                        lightness = 70;
+                        alpha = 0.12;
+                        break;
+                }
+                
                 layers.push({
                     speed: 0.002 + Math.random() * 0.002,
                     offset: Math.random() * 1000,
                     height: 80 + Math.random() * 100,
-                    color1: auroraColors[i].color1,
-                    color2: auroraColors[i].color2,
+                    color: `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`,
                     curve: Math.random()
                 });
             }
@@ -2782,12 +2786,11 @@
                 time += 0.005;
                 
                 layers.forEach(layer => {
-                    // Создаем градиент с красными, розовыми и фиолетовыми цветами
+                    // Создаем градиент для каждого слоя
                     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
                     gradient.addColorStop(0, 'transparent');
-                    gradient.addColorStop(0.3, layer.color1);
-                    gradient.addColorStop(0.5, layer.color2);
-                    gradient.addColorStop(0.7, layer.color1);
+                    gradient.addColorStop(0.3, layer.color);
+                    gradient.addColorStop(0.7, layer.color);
                     gradient.addColorStop(1, 'transparent');
                     
                     ctx.fillStyle = gradient;
