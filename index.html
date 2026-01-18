@@ -605,7 +605,7 @@
         let reloadSoundPlayed = false;
         let clickEffects = [];
         let isInGameMode = false;
-        let heartShards = [];
+        let brokenHeartPieces = [];
 
         // Configuration
         const config = {
@@ -862,62 +862,61 @@
             }
         }
 
-        class HeartShard {
-            constructor(x, y, size, angle) {
+        class HeartFragment {
+            constructor(x, y, fragmentType) {
                 this.x = x;
                 this.y = y;
-                this.size = size;
-                this.angle = angle; // Угол направления разлета
-                this.speed = Math.random() * 3 + 2;
+                this.fragmentType = fragmentType; // 0, 1, 2, 3 - разные части сердца
+                this.size = Math.random() * 8 + 6;
                 this.rotation = Math.random() * Math.PI * 2;
-                this.rotationSpeed = (Math.random() - 0.5) * 0.2;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.15;
+                this.vx = (Math.random() - 0.5) * 6;
+                this.vy = (Math.random() - 0.5) * 4 - 2; // немного вверх
                 this.alpha = 1;
                 this.life = 1.0;
                 this.createdTime = Date.now();
+                this.scale = 1;
+                this.pulsePhase = Math.random() * Math.PI * 2;
+                this.pulseSpeed = Math.random() * 0.05 + 0.03;
+                this.glowPhase = Math.random() * Math.PI * 2;
+                this.glowSpeed = Math.random() * 0.03 + 0.02;
                 
-                // Более реалистичные цвета для осколков сердца
+                // Цвета для разных частей сердца
                 this.colors = [
-                    '#ff3366', // Ярко-розовый
-                    '#ff6699', // Светло-розовый
-                    '#ff99cc', // Очень светлый розовый
-                    '#ff0066'  // Темно-розовый
+                    '#ff3366', // основной розовый
+                    '#ff6699', // светлый розовый
+                    '#ff99cc', // очень светлый розовый
+                    '#ff0066'  // темный розовый
                 ];
-                this.color = this.colors[Math.floor(Math.random() * this.colors.length)];
-                
-                // Случайное смещение от центра для реалистичного разлета
-                this.offsetX = (Math.random() - 0.5) * 15;
-                this.offsetY = (Math.random() - 0.5) * 15;
-                
-                // Случайная форма осколка (все однотипные - треугольные осколки)
-                this.type = 'shard'; // Все осколки одного типа
-                
-                // Физические параметры
-                this.vx = Math.cos(this.angle) * this.speed + (Math.random() - 0.5) * 0.5;
-                this.vy = Math.sin(this.angle) * this.speed + (Math.random() - 0.5) * 0.5;
-                this.gravity = 0.1;
-                this.friction = 0.98;
             }
             
             update() {
                 if (isPaused) return true;
                 
                 const elapsed = Date.now() - this.createdTime;
-                this.life = 1 - (elapsed / 1800); // Продолжительность жизни 1.8 секунды
+                this.life = 1 - (elapsed / 1800); // 1.8 секунды жизни
                 
                 if (this.life <= 0) return false;
                 
-                // Физика движения
-                this.vx *= this.friction;
-                this.vy *= this.friction;
-                this.vy += this.gravity;
-                
+                // Физика
                 this.x += this.vx;
                 this.y += this.vy;
-                
                 this.rotation += this.rotationSpeed;
                 
-                // Медленное затухание
-                this.alpha = this.life;
+                // Гравитация
+                this.vy += 0.1;
+                
+                // Трение
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+                
+                // Пульсация
+                this.pulsePhase += this.pulseSpeed;
+                this.scale = 1 + Math.sin(this.pulsePhase) * 0.1;
+                
+                // Мерцание
+                this.glowPhase += this.glowSpeed;
+                this.alpha = 0.7 + Math.sin(this.glowPhase) * 0.3;
                 
                 return true;
             }
@@ -926,70 +925,72 @@
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.rotation);
-                ctx.globalAlpha = this.alpha;
+                ctx.scale(this.scale, this.scale);
+                ctx.globalAlpha = this.alpha * this.life;
                 
-                // Осколок сердца - острый треугольный фрагмент
-                ctx.fillStyle = this.color;
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-                ctx.lineWidth = 1.5;
-                
-                // Размер осколка
-                const shardSize = this.size;
-                
-                // Рисуем треугольный осколок (все однотипные)
-                ctx.beginPath();
-                
-                // Вершины треугольника
-                const points = [
-                    { x: 0, y: -shardSize * 0.8 },           // Верхний угол
-                    { x: shardSize * 0.6, y: shardSize * 0.4 },  // Правый нижний
-                    { x: -shardSize * 0.6, y: shardSize * 0.4 }  // Левый нижний
-                ];
-                
-                // Случайно вращаем осколок для разнообразия
-                ctx.moveTo(points[0].x, points[0].y);
-                for (let i = 1; i < points.length; i++) {
-                    ctx.lineTo(points[i].x, points[i].y);
-                }
-                ctx.closePath();
-                
-                // Заливка с градиентом для реалистичности
-                const gradient = ctx.createLinearGradient(
-                    -shardSize * 0.5, -shardSize * 0.5,
-                    shardSize * 0.5, shardSize * 0.5
-                );
-                gradient.addColorStop(0, this.color);
-                gradient.addColorStop(1, this.color.replace(')', ', 0.7)').replace('rgb', 'rgba'));
-                
-                ctx.fillStyle = gradient;
-                ctx.fill();
-                
-                // Обводка
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-                ctx.lineWidth = 1;
-                ctx.stroke();
-                
-                // Внутренняя текстура осколка (линии скола)
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.lineWidth = 0.5;
-                ctx.beginPath();
-                
-                // Линия от центра к краю
-                const fractureAngle = Math.random() * Math.PI * 2;
-                ctx.moveTo(0, 0);
-                ctx.lineTo(
-                    Math.cos(fractureAngle) * shardSize * 0.5,
-                    Math.sin(fractureAngle) * shardSize * 0.5
-                );
-                ctx.stroke();
-                
-                // Блеск на осколке
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-                ctx.beginPath();
-                ctx.ellipse(-shardSize * 0.2, -shardSize * 0.2, shardSize * 0.1, shardSize * 0.05, 0, 0, Math.PI * 2);
-                ctx.fill();
+                // Рисуем фрагмент сердца
+                this.drawHeartFragment();
                 
                 ctx.restore();
+            }
+            
+            drawHeartFragment() {
+                const color = this.colors[this.fragmentType % this.colors.length];
+                
+                // Создаем градиент для свечения
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.size * 1.5);
+                gradient.addColorStop(0, color);
+                gradient.addColorStop(0.7, color.replace(')', ', 0.7)').replace('rgb', 'rgba'));
+                gradient.addColorStop(1, 'transparent');
+                
+                ctx.fillStyle = gradient;
+                
+                // Рисуем в форме осколка сердца
+                ctx.beginPath();
+                
+                switch(this.fragmentType % 4) {
+                    case 0: // Верхняя левая часть сердца
+                        ctx.moveTo(0, -this.size/2);
+                        ctx.quadraticCurveTo(-this.size, -this.size/2, -this.size/2, this.size/4);
+                        ctx.quadraticCurveTo(0, this.size/2, this.size/4, this.size/3);
+                        ctx.quadraticCurveTo(this.size/2, 0, 0, -this.size/2);
+                        break;
+                        
+                    case 1: // Верхняя правая часть сердца
+                        ctx.moveTo(0, -this.size/2);
+                        ctx.quadraticCurveTo(this.size, -this.size/2, this.size/2, this.size/4);
+                        ctx.quadraticCurveTo(0, this.size/2, -this.size/4, this.size/3);
+                        ctx.quadraticCurveTo(-this.size/2, 0, 0, -this.size/2);
+                        break;
+                        
+                    case 2: // Нижняя левая часть сердца
+                        ctx.moveTo(-this.size/2, this.size/4);
+                        ctx.quadraticCurveTo(-this.size/4, this.size, this.size/3, this.size);
+                        ctx.quadraticCurveTo(this.size/2, this.size/2, 0, 0);
+                        ctx.quadraticCurveTo(-this.size/2, 0, -this.size/2, this.size/4);
+                        break;
+                        
+                    case 3: // Нижняя правая часть сердца
+                        ctx.moveTo(this.size/2, this.size/4);
+                        ctx.quadraticCurveTo(this.size/4, this.size, -this.size/3, this.size);
+                        ctx.quadraticCurveTo(-this.size/2, this.size/2, 0, 0);
+                        ctx.quadraticCurveTo(this.size/2, 0, this.size/2, this.size/4);
+                        break;
+                }
+                
+                ctx.closePath();
+                ctx.fill();
+                
+                // Добавляем белую подсветку для объема
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                
+                // Добавляем точку для эффекта сияния
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size/6, 0, Math.PI * 2);
+                ctx.fill();
             }
         }
 
@@ -2095,7 +2096,7 @@
             missTexts = [];
             lifeBonuses = [];
             clickEffects = [];
-            heartShards = [];
+            brokenHeartPieces = [];
             score = 0;
             lives = 3;
             timeLeft = config.levelDuration;
@@ -2267,7 +2268,7 @@
             lifeBonuses = [];
             planets = [];
             clickEffects = [];
-            heartShards = [];
+            brokenHeartPieces = [];
 
             score = 0;
             lives = 3;
@@ -2345,12 +2346,10 @@
                     
                     playSound(lifeBonusSound, 'lifeBonus');
                     
-                    // Создаем осколки сердца (все однотипные - треугольные фрагменты)
-                    const shardCount = Math.floor(Math.random() * 3) + 3; // 3-5 осколков
-                    for (let j = 0; j < shardCount; j++) {
-                        const size = Math.random() * 10 + 8; // Размер осколка
-                        const angle = (j / shardCount) * Math.PI * 2 + Math.random() * 0.5; // Угол разлета
-                        heartShards.push(new HeartShard(bonus.x, bonus.y, size, angle));
+                    // Создаем осколки сердца - 4-6 однотипных фрагментов
+                    const fragmentCount = Math.floor(Math.random() * 3) + 4; // 4-6 фрагментов
+                    for (let j = 0; j < fragmentCount; j++) {
+                        brokenHeartPieces.push(new HeartFragment(bonus.x, bonus.y, j % 4));
                     }
                     
                     hitDetected = true;
@@ -2574,12 +2573,12 @@
             });
         }
 
-        function drawHeartShards() {
-            heartShards.forEach((shard, index) => {
-                if (!shard.update()) {
-                    heartShards.splice(index, 1);
+        function drawHeartFragments() {
+            brokenHeartPieces.forEach((piece, index) => {
+                if (!piece.update()) {
+                    brokenHeartPieces.splice(index, 1);
                 } else {
-                    shard.draw();
+                    piece.draw();
                 }
             });
         }
@@ -2616,7 +2615,7 @@
             
             // Затем рисуем бонусы и их осколки (они под коровами)
             drawLifeBonuses();
-            drawHeartShards();
+            drawHeartFragments();
             
             // Затем мертвых коров
             deadCows.forEach(cow => {
