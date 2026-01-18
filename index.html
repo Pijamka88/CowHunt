@@ -798,7 +798,7 @@
             });
         }
 
-        // Класс для осколков сердца - НОВЫЙ ДИЗАЙН
+        // Класс для осколков сердца
         class HeartFragment {
             constructor(x, y, type) {
                 this.x = x;
@@ -806,32 +806,22 @@
                 this.type = type; // 0-4: разные типы осколков
                 this.rotation = Math.random() * Math.PI * 2;
                 this.rotationSpeed = (Math.random() - 0.5) * 0.15;
-                this.scale = Math.random() * 0.4 + 0.6;
+                this.scale = Math.random() * 0.3 + 0.7;
                 this.alpha = 1;
                 this.life = 1.0;
                 this.vx = (Math.random() - 0.5) * 8;
-                this.vy = (Math.random() - 0.5) * 6 - 4;
-                this.gravity = 0.12;
+                this.vy = (Math.random() - 0.5) * 8 - 4;
+                this.gravity = 0.15;
                 this.createdTime = Date.now();
-                this.wobblePhase = Math.random() * Math.PI * 2;
-                this.wobbleSpeed = Math.random() * 0.05 + 0.02;
-                this.wobbleAmount = Math.random() * 0.3 + 0.1;
-                
-                // Разные цвета для разных типов осколков
-                this.colors = [
-                    ['#ff3366', '#ff6699', '#ff99cc'], // Ярко-розовый градиент
-                    ['#ff0066', '#ff3399', '#ff66cc'], // Более насыщенный
-                    ['#ff1a75', '#ff4d94', '#ff80b3'], // Средний розовый
-                    ['#ff0080', '#ff33a6', '#ff66cc'], // Фиолетово-розовый
-                    ['#ff0066', '#ff3385', '#ff66a3']  // Темный розовый
-                ];
+                this.pulsePhase = Math.random() * Math.PI * 2;
+                this.pulseSpeed = Math.random() * 0.05 + 0.03;
             }
 
             update() {
                 if (isPaused) return true;
                 
                 const elapsed = Date.now() - this.createdTime;
-                this.life = 1 - (elapsed / 2000); // 2 секунды жизни
+                this.life = 1 - (elapsed / 1800); // 1.8 секунды жизни
                 
                 if (this.life <= 0) return false;
                 
@@ -840,17 +830,14 @@
                 this.y += this.vy;
                 this.vy += this.gravity;
                 
-                // Дрожание/колебание
-                this.wobblePhase += this.wobbleSpeed;
-                this.x += Math.sin(this.wobblePhase) * this.wobbleAmount;
-                this.y += Math.cos(this.wobblePhase) * this.wobbleAmount;
-                
                 // Замедление
                 this.vx *= 0.96;
                 this.vy *= 0.96;
                 
-                // Пульсация масштаба
-                this.scale = (this.life * 0.7 + 0.3) * (0.9 + Math.sin(elapsed * 0.01) * 0.1);
+                // Пульсация
+                this.pulsePhase += this.pulseSpeed;
+                const pulse = 0.8 + Math.sin(this.pulsePhase) * 0.2;
+                this.scale = this.life * 0.6 + 0.4;
                 
                 return true;
             }
@@ -860,150 +847,114 @@
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.rotation);
                 ctx.scale(this.scale, this.scale);
-                ctx.globalAlpha = this.alpha * this.life * 0.9;
+                ctx.globalAlpha = this.alpha * this.life;
                 
-                const colors = this.colors[this.type % this.colors.length];
+                // Интенсивные градиенты для осколков
+                const gradient = ctx.createLinearGradient(-10, -10, 10, 10);
                 
-                // Рисуем разные формы осколков в зависимости от типа
-                switch(this.type % 5) {
-                    case 0: // Большой острый осколок
-                        this.drawSharpFragment(colors, 15);
+                switch(this.type) {
+                    case 0: // Крупный осколок с краю
+                        gradient.addColorStop(0, '#ff3366');
+                        gradient.addColorStop(0.5, '#ff6699');
+                        gradient.addColorStop(1, '#ff99cc');
                         break;
-                    case 1: // Средний закругленный осколок
-                        this.drawRoundedFragment(colors, 12);
+                    case 1: // Средний осколок
+                        gradient.addColorStop(0, '#ff0066');
+                        gradient.addColorStop(0.5, '#ff3388');
+                        gradient.addColorStop(1, '#ff66aa');
                         break;
-                    case 2: // Маленький треугольный осколок
-                        this.drawTriangleFragment(colors, 10);
+                    case 2: // Маленький острый осколок
+                        gradient.addColorStop(0, '#ff0044');
+                        gradient.addColorStop(0.7, '#ff3377');
+                        gradient.addColorStop(1, '#ff5599');
                         break;
-                    case 3: // Осколок в форме капли
-                        this.drawTeardropFragment(colors, 14);
+                    case 3: // Скругленный осколок
+                        gradient.addColorStop(0, '#ff2288');
+                        gradient.addColorStop(0.5, '#ff55aa');
+                        gradient.addColorStop(1, '#ff88cc');
                         break;
-                    case 4: // Неправильной формы
-                        this.drawIrregularFragment(colors, 11);
+                    case 4: // Самый маленький осколок
+                        gradient.addColorStop(0, '#ff1155');
+                        gradient.addColorStop(1, '#ff77aa');
                         break;
                 }
                 
-                // Добавляем маленькие трещинки
-                this.drawCracks();
+                ctx.fillStyle = gradient;
+                ctx.strokeStyle = '#cc0033';
+                ctx.lineWidth = 1.5;
+                
+                // Разные формы осколков
+                switch(this.type) {
+                    case 0: // Большой кривой осколок
+                        ctx.beginPath();
+                        ctx.moveTo(0, -8);
+                        ctx.bezierCurveTo(12, -6, 15, 4, 8, 10);
+                        ctx.lineTo(-4, 6);
+                        ctx.bezierCurveTo(-2, -2, 3, -5, 0, -8);
+                        ctx.closePath();
+                        break;
+                    case 1: // Треугольный осколок
+                        ctx.beginPath();
+                        ctx.moveTo(-8, -6);
+                        ctx.lineTo(10, 0);
+                        ctx.lineTo(-4, 9);
+                        ctx.closePath();
+                        break;
+                    case 2: // Острый осколок
+                        ctx.beginPath();
+                        ctx.moveTo(-6, -8);
+                        ctx.lineTo(8, -3);
+                        ctx.lineTo(4, 7);
+                        ctx.lineTo(-9, 4);
+                        ctx.closePath();
+                        break;
+                    case 3: // Скругленный осколок
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 7, 0, Math.PI * 1.5);
+                        ctx.lineTo(-5, 6);
+                        ctx.quadraticCurveTo(-7, 2, -6, -4);
+                        ctx.closePath();
+                        break;
+                    case 4: // Маленький круглый осколок
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 5, 0, Math.PI * 2);
+                        break;
+                }
+                
+                ctx.fill();
+                ctx.stroke();
+                
+                // Внутренние линии трещин
+                ctx.strokeStyle = '#aa0022';
+                ctx.lineWidth = 0.8;
+                ctx.beginPath();
+                
+                switch(this.type) {
+                    case 0:
+                        ctx.moveTo(2, -4);
+                        ctx.lineTo(6, 2);
+                        break;
+                    case 1:
+                        ctx.moveTo(-2, -1);
+                        ctx.lineTo(4, 5);
+                        break;
+                    case 2:
+                        ctx.moveTo(-2, -4);
+                        ctx.lineTo(3, 2);
+                        break;
+                    case 3:
+                        ctx.moveTo(-3, -2);
+                        ctx.lineTo(2, 3);
+                        break;
+                    case 4:
+                        ctx.moveTo(-2, -2);
+                        ctx.lineTo(2, 2);
+                        break;
+                }
+                
+                ctx.stroke();
                 
                 ctx.restore();
-            }
-            
-            drawSharpFragment(colors, size) {
-                const gradient = ctx.createLinearGradient(-size, -size, size, size);
-                gradient.addColorStop(0, colors[0]);
-                gradient.addColorStop(0.5, colors[1]);
-                gradient.addColorStop(1, colors[2]);
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.moveTo(0, -size);
-                ctx.lineTo(size * 0.8, size * 0.3);
-                ctx.lineTo(size * 0.4, size * 0.8);
-                ctx.lineTo(-size * 0.6, size * 0.5);
-                ctx.closePath();
-                ctx.fill();
-                
-                ctx.strokeStyle = '#cc0044';
-                ctx.lineWidth = 1.2;
-                ctx.stroke();
-            }
-            
-            drawRoundedFragment(colors, size) {
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
-                gradient.addColorStop(0, colors[0]);
-                gradient.addColorStop(1, colors[2]);
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(0, 0, size, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Неровные края
-                ctx.strokeStyle = '#cc0044';
-                ctx.lineWidth = 1.2;
-                ctx.stroke();
-            }
-            
-            drawTriangleFragment(colors, size) {
-                const gradient = ctx.createLinearGradient(-size, 0, size, 0);
-                gradient.addColorStop(0, colors[0]);
-                gradient.addColorStop(1, colors[1]);
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.moveTo(0, -size);
-                ctx.lineTo(size, size * 0.5);
-                ctx.lineTo(-size, size * 0.5);
-                ctx.closePath();
-                ctx.fill();
-                
-                ctx.strokeStyle = '#cc0044';
-                ctx.lineWidth = 1.2;
-                ctx.stroke();
-            }
-            
-            drawTeardropFragment(colors, size) {
-                const gradient = ctx.createLinearGradient(0, -size, 0, size);
-                gradient.addColorStop(0, colors[0]);
-                gradient.addColorStop(1, colors[2]);
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.moveTo(0, -size);
-                ctx.bezierCurveTo(size, -size * 0.3, size * 0.5, size, 0, size * 0.3);
-                ctx.bezierCurveTo(-size * 0.5, size, -size, -size * 0.3, 0, -size);
-                ctx.closePath();
-                ctx.fill();
-                
-                ctx.strokeStyle = '#cc0044';
-                ctx.lineWidth = 1.2;
-                ctx.stroke();
-            }
-            
-            drawIrregularFragment(colors, size) {
-                const gradient = ctx.createLinearGradient(-size, -size, size, size);
-                gradient.addColorStop(0, colors[0]);
-                gradient.addColorStop(0.5, colors[1]);
-                gradient.addColorStop(1, colors[2]);
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.moveTo(-size * 0.5, -size * 0.3);
-                ctx.lineTo(size * 0.8, -size * 0.7);
-                ctx.lineTo(size * 0.9, size * 0.2);
-                ctx.lineTo(0, size * 0.9);
-                ctx.lineTo(-size * 0.8, size * 0.4);
-                ctx.closePath();
-                ctx.fill();
-                
-                ctx.strokeStyle = '#cc0044';
-                ctx.lineWidth = 1.2;
-                ctx.stroke();
-            }
-            
-            drawCracks() {
-                ctx.strokeStyle = 'rgba(204, 0, 68, 0.6)';
-                ctx.lineWidth = 0.8;
-                ctx.lineCap = 'round';
-                
-                // Рисуем 1-3 случайные трещины
-                const crackCount = Math.floor(Math.random() * 3) + 1;
-                for (let i = 0; i < crackCount; i++) {
-                    const length = Math.random() * 10 + 5;
-                    const angle = Math.random() * Math.PI * 2;
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(
-                        Math.cos(angle) * length * 0.3,
-                        Math.sin(angle) * length * 0.3
-                    );
-                    ctx.lineTo(
-                        Math.cos(angle + Math.PI * 0.3) * length,
-                        Math.sin(angle + Math.PI * 0.3) * length
-                    );
-                    ctx.stroke();
-                }
             }
         }
 
@@ -1102,7 +1053,7 @@
                 this.maxHistory = 5;
                 this.floatPhase = Math.random() * Math.PI * 2;
                 this.floatSpeed = Math.random() * 0.03 + 0.02;
-                this.browAngle = (Math.random() - 0.5) * 0.5; // Угол наклона бровей
+                this.eyebrowStyle = Math.floor(Math.random() * 3); // 0-2 разные стили бровей
             }
 
             reset() {
@@ -1139,7 +1090,7 @@
                 this.wingHistory = [];
                 this.floatPhase = Math.random() * Math.PI * 2;
                 this.floatSpeed = Math.random() * 0.03 + 0.02;
-                this.browAngle = (Math.random() - 0.5) * 0.5;
+                this.eyebrowStyle = Math.floor(Math.random() * 3);
             }
 
             updateMovement() {
@@ -1221,7 +1172,7 @@
                             { x: -this.headRadius * 0.6, y: -this.headRadius * 0.6, rotation: -Math.PI/4 },
                             { x: this.headRadius * 0.6, y: -this.headRadius * 0.6, rotation: Math.PI/4 }
                         ],
-                        browAngle: this.browAngle
+                        eyebrowStyle: this.eyebrowStyle
                     },
                     { // Тело
                         x: this.x, y: this.y,
@@ -1300,7 +1251,7 @@
                         pulsePhase: Math.random() * Math.PI * 2,
                         pulseSpeed: 0.05, // Увеличена скорость пульсации
                         scale: 1,
-                        innerScale: 1
+                        pulseIntensity: 0.3 // Увеличена интенсивность пульсации
                     });
                 }
             }
@@ -1504,23 +1455,49 @@
                         ctx.stroke();
                     }      
                     
-                    // НОВЫЕ БРОВИ - УГЛОВЫЕ
+                    // Разные стили бровей
                     ctx.strokeStyle = '#333';
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = 1.8;
                     
-                    // Левая бровь (угловая)
-                    ctx.beginPath();
-                    ctx.moveTo(headX - 10, -eyeYOffset - 7);
-                    ctx.lineTo(headX - 8, -eyeYOffset - 9);
-                    ctx.lineTo(headX - 4, -eyeYOffset - 7);
-                    ctx.stroke();
-                    
-                    // Правая бровь (угловая)
-                    ctx.beginPath();
-                    ctx.moveTo(headX + 4, -eyeYOffset - 7);
-                    ctx.lineTo(headX + 8, -eyeYOffset - 9);
-                    ctx.lineTo(headX + 10, -eyeYOffset - 7);
-                    ctx.stroke();
+                    switch(this.eyebrowStyle) {
+                        case 0: // Угловатые брови
+                            ctx.beginPath();
+                            ctx.moveTo(headX - 10, -eyeYOffset - 6);
+                            ctx.lineTo(headX - 6, -eyeYOffset - 8);
+                            ctx.lineTo(headX - 2, -eyeYOffset - 6);
+                            ctx.stroke();
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(headX + 2, -eyeYOffset - 6);
+                            ctx.lineTo(headX + 6, -eyeYOffset - 8);
+                            ctx.lineTo(headX + 10, -eyeYOffset - 6);
+                            ctx.stroke();
+                            break;
+                            
+                        case 1: // Волнистые брови
+                            ctx.beginPath();
+                            ctx.moveTo(headX - 9, -eyeYOffset - 5);
+                            ctx.quadraticCurveTo(headX - 6, -eyeYOffset - 9, headX - 3, -eyeYOffset - 5);
+                            ctx.stroke();
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(headX + 3, -eyeYOffset - 5);
+                            ctx.quadraticCurveTo(headX + 6, -eyeYOffset - 9, headX + 9, -eyeYOffset - 5);
+                            ctx.stroke();
+                            break;
+                            
+                        case 2: // Закругленные треугольные брови
+                            ctx.beginPath();
+                            ctx.moveTo(headX - 8, -eyeYOffset - 6);
+                            ctx.quadraticCurveTo(headX - 5, -eyeYOffset - 9, headX - 2, -eyeYOffset - 7);
+                            ctx.stroke();
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(headX + 2, -eyeYOffset - 7);
+                            ctx.quadraticCurveTo(headX + 5, -eyeYOffset - 9, headX + 8, -eyeYOffset - 6);
+                            ctx.stroke();
+                            break;
+                    }
                     
                     // Nose
                     ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
@@ -1717,23 +1694,43 @@
                             ctx.lineTo(3, -5);
                             ctx.stroke();
                             
-                            // НОВЫЕ БРОВИ МЕРТВОЙ КОРОВЫ (угловые)
+                            // Брови мертвой коровы
                             ctx.strokeStyle = '#333';
                             ctx.lineWidth = 1.5;
                             
-                            // Левая бровь (угловая)
-                            ctx.beginPath();
-                            ctx.moveTo(-10, -6);
-                            ctx.lineTo(-8, -8);
-                            ctx.lineTo(-4, -6);
-                            ctx.stroke();
-                            
-                            // Правая бровь (угловая)
-                            ctx.beginPath();
-                            ctx.moveTo(4, -6);
-                            ctx.lineTo(8, -8);
-                            ctx.lineTo(10, -6);
-                            ctx.stroke();
+                            if (limb.eyebrowStyle === 0) {
+                                ctx.beginPath();
+                                ctx.moveTo(-10, -6);
+                                ctx.lineTo(-6, -8);
+                                ctx.lineTo(-2, -6);
+                                ctx.stroke();
+                                
+                                ctx.beginPath();
+                                ctx.moveTo(2, -6);
+                                ctx.lineTo(6, -8);
+                                ctx.lineTo(10, -6);
+                                ctx.stroke();
+                            } else if (limb.eyebrowStyle === 1) {
+                                ctx.beginPath();
+                                ctx.moveTo(-9, -5);
+                                ctx.quadraticCurveTo(-6, -9, -3, -5);
+                                ctx.stroke();
+                                
+                                ctx.beginPath();
+                                ctx.moveTo(3, -5);
+                                ctx.quadraticCurveTo(6, -9, 9, -5);
+                                ctx.stroke();
+                            } else {
+                                ctx.beginPath();
+                                ctx.moveTo(-8, -6);
+                                ctx.quadraticCurveTo(-5, -9, -2, -7);
+                                ctx.stroke();
+                                
+                                ctx.beginPath();
+                                ctx.moveTo(2, -7);
+                                ctx.quadraticCurveTo(5, -9, 8, -6);
+                                ctx.stroke();
+                            }
                             
                             // Нос
                             ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
@@ -2430,7 +2427,7 @@
                     
                     playSound(lifeBonusSound, 'lifeBonus');
                     
-                    // Создаем 5 осколков сердца вместо взрыва
+                    // Создаем 5 осколков сердца
                     for (let j = 0; j < 5; j++) {
                         bonusFragments.push(new HeartFragment(bonus.x, bonus.y, j));
                     }
@@ -2626,8 +2623,8 @@
                 
                 if (!isPaused) {
                     bonus.pulsePhase += bonus.pulseSpeed;
-                    bonus.scale = 0.8 + Math.sin(bonus.pulsePhase) * 0.2; // Усиленная пульсация
-                    bonus.innerScale = 0.9 + Math.sin(bonus.pulsePhase * 1.5) * 0.1; // Внутренняя пульсация
+                    const pulseScale = 0.8 + Math.sin(bonus.pulsePhase) * bonus.pulseIntensity;
+                    bonus.scale = pulseScale;
                     bonus.y += 1;
                 }
                 
@@ -2640,62 +2637,58 @@
                 ctx.translate(bonus.x, bonus.y);
                 ctx.scale(bonus.scale, bonus.scale);
                 
-                // Внешняя часть сердца (без свечения)
-                const outerGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, bonus.radius);
-                outerGradient.addColorStop(0, '#ff0066');
-                outerGradient.addColorStop(1, '#cc0044');
+                // Интенсивный градиент для сердца
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, bonus.radius);
+                gradient.addColorStop(0, '#ff66aa');
+                gradient.addColorStop(0.3, '#ff3388');
+                gradient.addColorStop(0.7, '#ff0066');
+                gradient.addColorStop(1, '#cc0044');
                 
-                ctx.fillStyle = outerGradient;
-                ctx.beginPath();
+                ctx.fillStyle = gradient;
                 
                 // Рисуем сердце
+                ctx.beginPath();
+                
+                // Верхняя часть сердца
                 ctx.moveTo(0, -bonus.radius * 0.7);
+                
+                // Левая кривая
                 ctx.bezierCurveTo(
-                    -bonus.radius, -bonus.radius * 0.7,
-                    -bonus.radius, bonus.radius * 0.2,
-                    0, bonus.radius * 0.5
+                    -bonus.radius * 0.8, -bonus.radius * 0.9,
+                    -bonus.radius * 1.2, -bonus.radius * 0.4,
+                    -bonus.radius * 0.8, bonus.radius * 0.1
                 );
+                
+                // Нижняя точка
                 ctx.bezierCurveTo(
-                    bonus.radius, bonus.radius * 0.2,
-                    bonus.radius, -bonus.radius * 0.7,
+                    -bonus.radius * 0.5, bonus.radius * 0.5,
+                    0, bonus.radius * 0.3,
+                    0, bonus.radius * 0.6
+                );
+                
+                // Правая кривая
+                ctx.bezierCurveTo(
+                    0, bonus.radius * 0.3,
+                    bonus.radius * 0.5, bonus.radius * 0.5,
+                    bonus.radius * 0.8, bonus.radius * 0.1
+                );
+                
+                // Завершение правой стороны
+                ctx.bezierCurveTo(
+                    bonus.radius * 1.2, -bonus.radius * 0.4,
+                    bonus.radius * 0.8, -bonus.radius * 0.9,
                     0, -bonus.radius * 0.7
                 );
                 
                 ctx.closePath();
                 ctx.fill();
                 
-                // Внутренняя часть сердца (пульсирующая)
-                ctx.save();
-                ctx.scale(bonus.innerScale, bonus.innerScale);
-                
-                const innerGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, bonus.radius * 0.7);
-                innerGradient.addColorStop(0, '#ff6699');
-                innerGradient.addColorStop(1, '#ff3366');
-                
-                ctx.fillStyle = innerGradient;
-                ctx.beginPath();
-                
-                // Внутреннее сердце (немного меньше)
-                ctx.moveTo(0, -bonus.radius * 0.5);
-                ctx.bezierCurveTo(
-                    -bonus.radius * 0.7, -bonus.radius * 0.5,
-                    -bonus.radius * 0.7, bonus.radius * 0.15,
-                    0, bonus.radius * 0.35
-                );
-                ctx.bezierCurveTo(
-                    bonus.radius * 0.7, bonus.radius * 0.15,
-                    bonus.radius * 0.7, -bonus.radius * 0.5,
-                    0, -bonus.radius * 0.5
-                );
-                
-                ctx.closePath();
-                ctx.fill();
-                ctx.restore();
-                
                 // Контур сердца
-                ctx.strokeStyle = '#990033';
-                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#ff0044';
+                ctx.lineWidth = 2;
                 ctx.stroke();
+                
+                // Убрано свечение
                 
                 ctx.restore();
             });
