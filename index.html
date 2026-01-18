@@ -803,23 +803,27 @@
             constructor(x, y, type) {
                 this.x = x;
                 this.y = y;
-                this.type = type; // 0 - левая часть, 1 - правая часть, 2 - маленький кусочек
+                this.type = type; // 0-4 - разные типы осколков
                 this.rotation = 0;
-                this.rotationSpeed = (Math.random() - 0.5) * 0.2;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.3;
                 this.scale = 1;
                 this.alpha = 1;
                 this.life = 1.0;
-                this.vx = (Math.random() - 0.5) * 6;
-                this.vy = (Math.random() - 0.5) * 6 - 3; // Немного вверх
-                this.gravity = 0.1;
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8 - 4; // Немного вверх
+                this.gravity = 0.15;
                 this.createdTime = Date.now();
+                this.spinSpeed = (Math.random() - 0.5) * 0.1;
+                this.wobblePhase = Math.random() * Math.PI * 2;
+                this.wobbleSpeed = Math.random() * 0.1 + 0.05;
+                this.wobbleAmount = Math.random() * 2 + 1;
             }
 
             update() {
                 if (isPaused) return true;
                 
                 const elapsed = Date.now() - this.createdTime;
-                this.life = 1 - (elapsed / 1500); // 1.5 секунды жизни
+                this.life = 1 - (elapsed / 2000); // 2 секунды жизни
                 
                 if (this.life <= 0) return false;
                 
@@ -828,12 +832,17 @@
                 this.y += this.vy;
                 this.vy += this.gravity;
                 
+                // Вобблинг (дрожание)
+                this.wobblePhase += this.wobbleSpeed;
+                this.x += Math.sin(this.wobblePhase) * 0.5 * this.wobbleAmount;
+                this.y += Math.cos(this.wobblePhase * 1.3) * 0.3 * this.wobbleAmount;
+                
                 // Замедление
-                this.vx *= 0.98;
-                this.vy *= 0.98;
+                this.vx *= 0.97;
+                this.vy *= 0.97;
                 
                 // Уменьшение размера
-                this.scale = this.life * 0.8 + 0.2;
+                this.scale = this.life * 0.7 + 0.3;
                 
                 return true;
             }
@@ -847,60 +856,113 @@
                 
                 // Розовый градиент для осколков
                 const gradient = ctx.createLinearGradient(-15, -15, 15, 15);
-                gradient.addColorStop(0, '#ff6b9d');
-                gradient.addColorStop(1, '#ff3366');
+                gradient.addColorStop(0, '#ff8cb3');
+                gradient.addColorStop(0.5, '#ff3366');
+                gradient.addColorStop(1, '#cc0044');
                 
                 ctx.fillStyle = gradient;
-                ctx.strokeStyle = '#ff0044';
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#ff0022';
+                ctx.lineWidth = 1.5;
                 
-                if (this.type === 0) { // Левая половинка сердца
-                    ctx.beginPath();
-                    ctx.moveTo(0, 0);
-                    ctx.bezierCurveTo(-10, -8, -18, -5, -15, 5);
-                    ctx.bezierCurveTo(-10, 15, 0, 10, 0, 5);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                    
-                    // Трещина
-                    ctx.strokeStyle = '#cc0033';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(-12, -2);
-                    ctx.lineTo(-5, 8);
-                    ctx.stroke();
-                    
-                } else if (this.type === 1) { // Правая половинка сердца
-                    ctx.beginPath();
-                    ctx.moveTo(0, 0);
-                    ctx.bezierCurveTo(10, -8, 18, -5, 15, 5);
-                    ctx.bezierCurveTo(10, 15, 0, 10, 0, 5);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                    
-                    // Трещина
-                    ctx.strokeStyle = '#cc0033';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(12, -2);
-                    ctx.lineTo(5, 8);
-                    ctx.stroke();
-                    
-                } else { // Маленький кусочек
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 6, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.stroke();
-                    
-                    // Небольшая трещинка
-                    ctx.strokeStyle = '#cc0033';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(-4, -4);
-                    ctx.lineTo(4, 4);
-                    ctx.stroke();
+                switch(this.type) {
+                    case 0: // Большой кусок (верхняя часть)
+                        ctx.beginPath();
+                        ctx.moveTo(0, -12);
+                        ctx.bezierCurveTo(-8, -10, -12, -4, -8, 2);
+                        ctx.lineTo(0, 0);
+                        ctx.bezierCurveTo(8, -4, 12, -8, 0, -12);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        
+                        // Трещины
+                        ctx.strokeStyle = '#cc0033';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(-4, -8);
+                        ctx.lineTo(2, -4);
+                        ctx.moveTo(-6, -2);
+                        ctx.lineTo(-1, 1);
+                        ctx.stroke();
+                        break;
+                        
+                    case 1: // Средний кусок (левая сторона)
+                        ctx.beginPath();
+                        ctx.moveTo(-10, 0);
+                        ctx.bezierCurveTo(-12, -6, -8, -10, -2, -8);
+                        ctx.lineTo(0, 0);
+                        ctx.lineTo(-4, 4);
+                        ctx.bezierCurveTo(-8, 2, -10, 0, -10, 0);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        
+                        ctx.strokeStyle = '#cc0033';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(-8, -4);
+                        ctx.lineTo(-2, -2);
+                        ctx.moveTo(-6, 0);
+                        ctx.lineTo(-2, 2);
+                        ctx.stroke();
+                        break;
+                        
+                    case 2: // Средний кусок (правая сторона)
+                        ctx.beginPath();
+                        ctx.moveTo(10, 0);
+                        ctx.bezierCurveTo(12, -6, 8, -10, 2, -8);
+                        ctx.lineTo(0, 0);
+                        ctx.lineTo(4, 4);
+                        ctx.bezierCurveTo(8, 2, 10, 0, 10, 0);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        
+                        ctx.strokeStyle = '#cc0033';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(8, -4);
+                        ctx.lineTo(2, -2);
+                        ctx.moveTo(6, 0);
+                        ctx.lineTo(2, 2);
+                        ctx.stroke();
+                        break;
+                        
+                    case 3: // Нижний левый кусочек
+                        ctx.beginPath();
+                        ctx.moveTo(-6, 4);
+                        ctx.bezierCurveTo(-8, 8, -4, 10, 0, 8);
+                        ctx.lineTo(0, 4);
+                        ctx.lineTo(-2, 2);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        
+                        ctx.strokeStyle = '#cc0033';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(-4, 6);
+                        ctx.lineTo(-1, 4);
+                        ctx.stroke();
+                        break;
+                        
+                    case 4: // Нижний правый кусочек
+                        ctx.beginPath();
+                        ctx.moveTo(6, 4);
+                        ctx.bezierCurveTo(8, 8, 4, 10, 0, 8);
+                        ctx.lineTo(0, 4);
+                        ctx.lineTo(2, 2);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        
+                        ctx.strokeStyle = '#cc0033';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(4, 6);
+                        ctx.lineTo(1, 4);
+                        ctx.stroke();
+                        break;
                 }
                 
                 ctx.restore();
@@ -1002,6 +1064,8 @@
                 this.maxHistory = 5;
                 this.floatPhase = Math.random() * Math.PI * 2;
                 this.floatSpeed = Math.random() * 0.03 + 0.02;
+                this.browAnimation = Math.random() * Math.PI * 2;
+                this.browSpeed = Math.random() * 0.02 + 0.01;
             }
 
             reset() {
@@ -1038,6 +1102,7 @@
                 this.wingHistory = [];
                 this.floatPhase = Math.random() * Math.PI * 2;
                 this.floatSpeed = Math.random() * 0.03 + 0.02;
+                this.browAnimation = Math.random() * Math.PI * 2;
             }
 
             updateMovement() {
@@ -1049,6 +1114,7 @@
                 this.tailPhase += this.tailSpeed;
                 this.wingPhase += this.wingSpeed;
                 this.floatPhase += this.floatSpeed;
+                this.browAnimation += this.browSpeed;
                 
                 if (Math.random() < 0.005) {
                     this.tongueOut = true;
@@ -1191,12 +1257,16 @@
                     lifeBonuses.push({
                         x: this.x,
                         y: this.y,
-                        radius: 20,
+                        radius: 22,
                         collected: false,
                         alpha: 1,
                         pulsePhase: Math.random() * Math.PI * 2,
-                        pulseSpeed: 0.03,
-                        scale: 1
+                        pulseSpeed: 0.05, // Увеличена скорость пульсации
+                        scale: 1,
+                        heartbeat: 0,
+                        heartbeatSpeed: 0.1,
+                        glowPhase: Math.random() * Math.PI * 2,
+                        glowSpeed: 0.03
                     });
                 }
             }
@@ -1400,14 +1470,25 @@
                         ctx.stroke();
                     }      
                     
-                    // Брови в виде дуг
+                    // Новые брови - угловатые и выразительные
+                    const browAnimation = Math.sin(this.browAnimation) * 0.3;
                     ctx.strokeStyle = '#333';
-                    ctx.lineWidth = 1.5;
+                    ctx.lineWidth = 2;
+                    
+                    // Левая бровь - угловатая
                     ctx.beginPath();
-                    ctx.arc(headX - 6, -eyeYOffset - 6, 3, Math.PI, 0, false);
+                    ctx.moveTo(headX - 10, -eyeYOffset - 6 + browAnimation);
+                    ctx.lineTo(headX - 7, -eyeYOffset - 9 + browAnimation);
+                    ctx.lineTo(headX - 4, -eyeYOffset - 7 + browAnimation);
+                    ctx.lineTo(headX - 1, -eyeYOffset - 6 + browAnimation);
                     ctx.stroke();
+                    
+                    // Правая бровь - угловатая
                     ctx.beginPath();
-                    ctx.arc(headX + 6, -eyeYOffset - 6, 3, Math.PI, 0, false);
+                    ctx.moveTo(headX + 1, -eyeYOffset - 6 + browAnimation);
+                    ctx.lineTo(headX + 4, -eyeYOffset - 8 + browAnimation);
+                    ctx.lineTo(headX + 7, -eyeYOffset - 9 + browAnimation);
+                    ctx.lineTo(headX + 10, -eyeYOffset - 6 + browAnimation);
                     ctx.stroke();
                     
                     // Nose
@@ -1466,7 +1547,7 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // КРЫЛЬЯ С РАЗМЫТИЕМ (ИЗ ВТОРОГО ФАЙЛА)
+                    // КРЫЛЬЯ С РАЗМЫТИЕМ
                     const currentWingYOffset = Math.sin(this.wingPhase) * 15;
                     
                     // Отрисовываем размытые крылья (от старых к новым)
@@ -1605,12 +1686,19 @@
                             ctx.lineTo(3, -5);
                             ctx.stroke();
                             
-                            // Брови мертвой коровы (дуги)
+                            // Брови мертвой коровы (угловатые)
+                            ctx.lineWidth = 1.5;
                             ctx.beginPath();
-                            ctx.arc(-6, -6, 3, Math.PI, 0, false);
+                            ctx.moveTo(-10, -6);
+                            ctx.lineTo(-7, -9);
+                            ctx.lineTo(-4, -7);
+                            ctx.lineTo(-1, -6);
                             ctx.stroke();
                             ctx.beginPath();
-                            ctx.arc(6, -6, 3, Math.PI, 0, false);
+                            ctx.moveTo(1, -6);
+                            ctx.lineTo(4, -8);
+                            ctx.lineTo(7, -9);
+                            ctx.lineTo(10, -6);
                             ctx.stroke();
                             
                             // Нос
@@ -2308,8 +2396,8 @@
                     
                     playSound(lifeBonusSound, 'lifeBonus');
                     
-                    // Создаем осколки сердца вместо взрыва
-                    for (let j = 0; j < 3; j++) {
+                    // Создаем 5 осколков сердца вместо взрыва
+                    for (let j = 0; j < 5; j++) {
                         bonusFragments.push(new HeartFragment(bonus.x, bonus.y, j));
                     }
                     
@@ -2504,7 +2592,14 @@
                 
                 if (!isPaused) {
                     bonus.pulsePhase += bonus.pulseSpeed;
-                    bonus.scale = 0.9 + Math.sin(bonus.pulsePhase) * 0.1;
+                    bonus.heartbeat += bonus.heartbeatSpeed;
+                    bonus.glowPhase += bonus.glowSpeed;
+                    
+                    // Усиленная пульсация сердца
+                    const heartbeat = Math.sin(bonus.heartbeat) * 0.3 + 0.7;
+                    const pulse = Math.sin(bonus.pulsePhase) * 0.2 + 0.8;
+                    bonus.scale = heartbeat * pulse;
+                    
                     bonus.y += 1;
                 }
                 
@@ -2515,15 +2610,30 @@
                 
                 ctx.save();
                 ctx.translate(bonus.x, bonus.y);
+                
+                // Свечение сердца
+                const glowRadius = bonus.radius * (1.2 + Math.sin(bonus.glowPhase) * 0.2);
+                const glowGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, glowRadius);
+                glowGradient.addColorStop(0, 'rgba(255, 102, 153, 0.6)');
+                glowGradient.addColorStop(0.7, 'rgba(255, 51, 102, 0.3)');
+                glowGradient.addColorStop(1, 'rgba(255, 0, 51, 0)');
+                
+                ctx.fillStyle = glowGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Само сердце с пульсацией
                 ctx.scale(bonus.scale, bonus.scale);
                 
                 // Градиент для сердца
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, bonus.radius);
-                gradient.addColorStop(0, '#ff99cc');
-                gradient.addColorStop(0.7, '#ff3366');
-                gradient.addColorStop(1, '#cc0066');
+                const heartGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, bonus.radius);
+                heartGradient.addColorStop(0, '#ff99cc');
+                heartGradient.addColorStop(0.5, '#ff3366');
+                heartGradient.addColorStop(0.8, '#ff0066');
+                heartGradient.addColorStop(1, '#cc0044');
                 
-                ctx.fillStyle = gradient;
+                ctx.fillStyle = heartGradient;
                 ctx.beginPath();
                 
                 // Рисуем сердце
@@ -2542,15 +2652,17 @@
                 ctx.closePath();
                 ctx.fill();
                 
-                // Контур сердца
+                // Контур сердца с пульсацией
+                const outlineWidth = 2 + Math.sin(bonus.pulsePhase * 2) * 1;
                 ctx.strokeStyle = '#ff0044';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = outlineWidth;
                 ctx.stroke();
                 
                 // Блеск на сердце
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                const shineSize = 5 + Math.sin(bonus.pulsePhase * 3) * 2;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
                 ctx.beginPath();
-                ctx.ellipse(-bonus.radius * 0.3, -bonus.radius * 0.3, 4, 3, 0, 0, Math.PI * 2);
+                ctx.ellipse(-bonus.radius * 0.3, -bonus.radius * 0.3, shineSize, shineSize * 0.8, 0, 0, Math.PI * 2);
                 ctx.fill();
                 
                 ctx.restore();
