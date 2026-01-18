@@ -409,6 +409,7 @@
             <ul>
                 <li>Иногда при убийстве коровы выпадает бонус жизни (розовое сердце)</li>
                 <li>Соберите его, чтобы восстановить одну жизнь</li>
+                <li>Бонусы не выпадают, если у вас полное здоровье</li>
             </ul>
 
             <p>📈 <strong>Уровни:</strong></p>
@@ -580,6 +581,7 @@
         let missTexts = [];
         let stars = [];
         let lifeBonuses = [];
+        let heartFragments = [];
         let planets = [];
         let score = 0;
         let lives = 3;
@@ -605,7 +607,6 @@
         let reloadSoundPlayed = false;
         let clickEffects = [];
         let isInGameMode = false;
-        let brokenHeartPieces = [];
 
         // Configuration
         const config = {
@@ -862,139 +863,280 @@
             }
         }
 
-        class HeartPiece {
-            constructor(x, y, pieceType, baseColor = '#ff3366') {
+        // Класс для осколков сердца
+        class HeartFragment {
+            constructor(x, y) {
                 this.x = x;
                 this.y = y;
-                this.pieceType = pieceType; // 'top', 'middle', 'bottom'
-                this.baseColor = baseColor;
-                this.vx = (Math.random() - 0.5) * 4;
-                this.vy = (Math.random() - 0.5) * 4 - 2; // Немного вверх
-                this.rotation = 0;
-                this.rotationSpeed = (Math.random() - 0.5) * 0.15;
+                this.vx = (Math.random() - 0.5) * 6;
+                this.vy = (Math.random() - 0.5) * 6;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.2;
+                this.scale = Math.random() * 0.5 + 0.5;
                 this.alpha = 1;
                 this.life = 1.0;
                 this.createdTime = Date.now();
-                this.scale = 1;
                 this.pulsePhase = Math.random() * Math.PI * 2;
-                this.glowIntensity = 0.8 + Math.random() * 0.4;
-                this.shardSize = 10 + Math.random() * 8;
+                this.pulseSpeed = Math.random() * 0.05 + 0.05;
                 
-                // Анимация "раскалывания" - начальное увеличение
-                this.initialScale = 1.5;
-                this.scaleSpeed = -0.03;
+                // Выбираем случайный тип осколка сердца (3 разных вида)
+                this.fragmentType = Math.floor(Math.random() * 3);
+                this.color = [
+                    'rgba(255, 102, 102, 0.9)', // Красный
+                    'rgba(255, 102, 153, 0.9)', // Розовый
+                    'rgba(255, 51, 102, 0.9)'   // Более темный красный
+                ][this.fragmentType];
                 
-                // Цветовые вариации для каждого типа
-                this.colorVariations = {
-                    'top': ['#ff3366', '#ff6699', '#ff0066'],
-                    'middle': ['#ff3366', '#ff0066', '#cc0055'],
-                    'bottom': ['#ff3366', '#cc0055', '#990044']
-                };
+                this.glowColor = 'rgba(255, 204, 204, 0.7)';
+            }
+
+            update() {
+                if (isPaused) return true;
                 
-                this.currentColor = this.colorVariations[pieceType][Math.floor(Math.random() * this.colorVariations[pieceType].length)];
+                const elapsed = Date.now() - this.createdTime;
+                this.life = 1 - (elapsed / 1500); // Осколки живут 1.5 секунды
+                
+                if (this.life <= 0) return false;
+                
+                // Физика падения с гравитацией
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.1; // гравитация
+                this.vx *= 0.98; // сопротивление воздуха
+                this.rotation += this.rotationSpeed;
+                
+                // Пульсация
+                this.pulsePhase += this.pulseSpeed;
+                const pulse = 0.8 + Math.sin(this.pulsePhase) * 0.2;
+                this.currentScale = this.scale * pulse;
+                
+                // Медленно исчезают
+                this.alpha = this.life;
+                
+                // Удаляем, если вылетели за пределы экрана
+                if (this.y > canvas.height + 50 || this.x < -50 || this.x > canvas.width + 50) {
+                    return false;
+                }
+                
+                return true;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.scale(this.currentScale, this.currentScale);
+                ctx.globalAlpha = this.alpha;
+                
+                // Свечение
+                ctx.shadowColor = this.glowColor;
+                ctx.shadowBlur = 15;
+                
+                // Рисуем разные типы осколков сердца
+                switch(this.fragmentType) {
+                    case 0: // Верхняя часть сердца
+                        ctx.fillStyle = this.color;
+                        ctx.beginPath();
+                        ctx.moveTo(0, -5);
+                        ctx.bezierCurveTo(5, -10, 15, -8, 15, 0);
+                        ctx.bezierCurveTo(15, 5, 0, 15, 0, 15);
+                        ctx.bezierCurveTo(-15, 5, -15, 0, -15, 0);
+                        ctx.bezierCurveTo(-15, -8, -5, -10, 0, -5);
+                        ctx.closePath();
+                        ctx.fill();
+                        break;
+                        
+                    case 1: // Средняя часть сердца
+                        ctx.fillStyle = this.color;
+                        ctx.beginPath();
+                        ctx.moveTo(-10, 5);
+                        ctx.quadraticCurveTo(0, -5, 10, 5);
+                        ctx.quadraticCurveTo(15, 10, 10, 15);
+                        ctx.quadraticCurveTo(5, 20, 0, 25);
+                        ctx.quadraticCurveTo(-5, 20, -10, 15);
+                        ctx.quadraticCurveTo(-15, 10, -10, 5);
+                        ctx.closePath();
+                        ctx.fill();
+                        break;
+                        
+                    case 2: // Нижняя часть сердца (кончик)
+                        ctx.fillStyle = this.color;
+                        ctx.beginPath();
+                        ctx.moveTo(0, 20);
+                        ctx.bezierCurveTo(5, 25, 10, 20, 8, 15);
+                        ctx.bezierCurveTo(10, 10, 5, 5, 0, 0);
+                        ctx.bezierCurveTo(-5, 5, -10, 10, -8, 15);
+                        ctx.bezierCurveTo(-10, 20, -5, 25, 0, 20);
+                        ctx.closePath();
+                        ctx.fill();
+                        break;
+                }
+                
+                // Внутреннее свечение
+                ctx.shadowBlur = 5;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                
+                // Внутренние детали в зависимости от типа
+                switch(this.fragmentType) {
+                    case 0:
+                        ctx.beginPath();
+                        ctx.ellipse(5, -5, 3, 4, 0.3, 0, Math.PI * 2);
+                        ctx.ellipse(-5, -5, 3, 4, -0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    case 1:
+                        ctx.beginPath();
+                        ctx.moveTo(-5, 10);
+                        ctx.quadraticCurveTo(0, 5, 5, 10);
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        break;
+                    case 2:
+                        ctx.beginPath();
+                        ctx.moveTo(0, 18);
+                        ctx.quadraticCurveTo(4, 14, 0, 10);
+                        ctx.moveTo(0, 18);
+                        ctx.quadraticCurveTo(-4, 14, 0, 10);
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+                        break;
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        // Класс для разбитого бонуса
+        class BrokenHeartBonus {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.pieces = [];
+                this.animationTime = 1000; // 1 секунда анимации
+                this.createdTime = Date.now();
+                
+                // Создаем 2-3 части разбитого сердца
+                const numPieces = 2 + Math.floor(Math.random() * 2); // 2-3 части
+                
+                for (let i = 0; i < numPieces; i++) {
+                    this.pieces.push({
+                        x: 0,
+                        y: 0,
+                        vx: (Math.random() - 0.5) * 8,
+                        vy: (Math.random() - 0.5) * 8 - 2, // Немного вверх
+                        rotation: Math.random() * Math.PI * 2,
+                        rotationSpeed: (Math.random() - 0.5) * 0.3,
+                        scale: Math.random() * 0.4 + 0.3,
+                        alpha: 1,
+                        pieceType: i % 3 // 3 типа частей
+                    });
+                }
             }
             
             update() {
                 if (isPaused) return true;
                 
                 const elapsed = Date.now() - this.createdTime;
+                if (elapsed > this.animationTime) return false;
                 
-                // Анимация жизни - исчезает через 1.5 секунды
-                this.life = 1 - (elapsed / 1500);
+                const progress = elapsed / this.animationTime;
                 
-                if (this.life <= 0) return false;
-                
-                // Физика движения
-                this.x += this.vx;
-                this.y += this.vy;
-                this.rotation += this.rotationSpeed;
-                
-                // Гравитация
-                this.vy += 0.08;
-                
-                // Сопротивление воздуха
-                this.vx *= 0.98;
-                this.vy *= 0.98;
-                
-                // Анимация масштабирования (сначала увеличивается, потом уменьшается)
-                if (elapsed < 300) {
-                    // Фаза "раскалывания" - быстрое уменьшение от начального увеличения
-                    this.scale = this.initialScale + this.scaleSpeed * (elapsed / 300);
-                } else {
-                    // Фаза плавного исчезания
-                    this.scale = 0.8 + 0.2 * Math.sin(this.pulsePhase + elapsed * 0.01);
-                }
-                
-                // Пульсация
-                this.pulsePhase += 0.05;
+                this.pieces.forEach(piece => {
+                    // Физика
+                    piece.x += piece.vx;
+                    piece.y += piece.vy;
+                    piece.vy += 0.2; // гравитация
+                    piece.vx *= 0.95; // сопротивление
+                    piece.rotation += piece.rotationSpeed;
+                    
+                    // Плавное исчезновение
+                    piece.alpha = 1 - progress * 1.2;
+                });
                 
                 return true;
             }
             
             draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.rotate(this.rotation);
-                ctx.scale(this.scale, this.scale);
-                ctx.globalAlpha = this.alpha * this.life;
-                
-                // Эффект свечения
-                ctx.shadowColor = this.currentColor;
-                ctx.shadowBlur = 10 * this.glowIntensity;
-                ctx.shadowOffsetX = 0;
-                ctx.shadowOffsetY = 0;
-                
-                // Рисуем осколок сердца в зависимости от типа
-                ctx.fillStyle = this.currentColor;
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-                ctx.lineWidth = 1.5;
-                
-                ctx.beginPath();
-                
-                switch(this.pieceType) {
-                    case 'top': // Верхняя часть сердца (закругленная)
-                        ctx.arc(0, 0, this.shardSize * 0.7, -Math.PI * 0.8, Math.PI * 0.2);
-                        ctx.lineTo(this.shardSize * 0.5, this.shardSize * 0.3);
-                        ctx.quadraticCurveTo(
-                            this.shardSize * 0.2, 
-                            this.shardSize * 0.1, 
-                            0, 
-                            0
-                        );
-                        break;
-                        
-                    case 'middle': // Средняя часть (острый осколок)
-                        ctx.moveTo(-this.shardSize * 0.5, -this.shardSize * 0.3);
-                        ctx.lineTo(this.shardSize * 0.5, this.shardSize * 0.3);
-                        ctx.lineTo(-this.shardSize * 0.3, this.shardSize * 0.5);
-                        break;
-                        
-                    case 'bottom': // Нижняя часть (треугольный осколок)
-                        ctx.moveTo(-this.shardSize * 0.4, -this.shardSize * 0.2);
-                        ctx.lineTo(this.shardSize * 0.4, -this.shardSize * 0.2);
-                        ctx.lineTo(0, this.shardSize * 0.6);
-                        break;
-                }
-                
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-                
-                // Внутренняя подсветка
-                ctx.globalCompositeOperation = 'lighter';
-                const innerGradient = ctx.createRadialGradient(
-                    0, 0, 0,
-                    0, 0, this.shardSize * 0.8
-                );
-                innerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
-                innerGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-                
-                ctx.fillStyle = innerGradient;
-                ctx.fill();
-                
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.shadowBlur = 0;
-                ctx.restore();
+                this.pieces.forEach(piece => {
+                    if (piece.alpha <= 0) return;
+                    
+                    ctx.save();
+                    ctx.translate(this.x + piece.x, this.y + piece.y);
+                    ctx.rotate(piece.rotation);
+                    ctx.scale(piece.scale, piece.scale);
+                    ctx.globalAlpha = piece.alpha;
+                    
+                    // Свечение
+                    ctx.shadowColor = 'rgba(255, 100, 150, 0.8)';
+                    ctx.shadowBlur = 10;
+                    
+                    // Рисуем разные части разбитого сердца
+                    ctx.fillStyle = 'rgba(255, 80, 120, 0.9)';
+                    
+                    switch(piece.pieceType) {
+                        case 0: // Левая половина
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.bezierCurveTo(-15, -10, -25, 5, -15, 15);
+                            ctx.bezierCurveTo(-10, 25, 0, 30, 0, 30);
+                            ctx.lineTo(0, 15);
+                            ctx.bezierCurveTo(-8, 12, -12, 5, 0, 0);
+                            ctx.closePath();
+                            ctx.fill();
+                            break;
+                            
+                        case 1: // Правая половина
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.bezierCurveTo(15, -10, 25, 5, 15, 15);
+                            ctx.bezierCurveTo(10, 25, 0, 30, 0, 30);
+                            ctx.lineTo(0, 15);
+                            ctx.bezierCurveTo(8, 12, 12, 5, 0, 0);
+                            ctx.closePath();
+                            ctx.fill();
+                            break;
+                            
+                        case 2: // Центральная часть
+                            ctx.beginPath();
+                            ctx.moveTo(-8, 10);
+                            ctx.quadraticCurveTo(0, 5, 8, 10);
+                            ctx.quadraticCurveTo(12, 15, 8, 20);
+                            ctx.quadraticCurveTo(4, 25, 0, 30);
+                            ctx.quadraticCurveTo(-4, 25, -8, 20);
+                            ctx.quadraticCurveTo(-12, 15, -8, 10);
+                            ctx.closePath();
+                            ctx.fill();
+                            break;
+                    }
+                    
+                    // Внутренние детали
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = 'rgba(255, 180, 200, 0.6)';
+                    
+                    switch(piece.pieceType) {
+                        case 0:
+                            ctx.beginPath();
+                            ctx.ellipse(-10, 5, 3, 4, 0.5, 0, Math.PI * 2);
+                            ctx.fill();
+                            break;
+                        case 1:
+                            ctx.beginPath();
+                            ctx.ellipse(10, 5, 3, 4, -0.5, 0, Math.PI * 2);
+                            ctx.fill();
+                            break;
+                        case 2:
+                            ctx.beginPath();
+                            ctx.moveTo(0, 18);
+                            ctx.quadraticCurveTo(5, 15, 0, 12);
+                            ctx.quadraticCurveTo(-5, 15, 0, 18);
+                            ctx.fill();
+                            break;
+                    }
+                    
+                    ctx.restore();
+                });
             }
         }
 
@@ -1030,7 +1172,6 @@
                 this.maxHistory = 5;
                 this.floatPhase = Math.random() * Math.PI * 2;
                 this.floatSpeed = Math.random() * 0.03 + 0.02;
-                this.zIndex = 100; // Высокий z-index для коров
             }
 
             reset() {
@@ -1067,7 +1208,6 @@
                 this.wingHistory = [];
                 this.floatPhase = Math.random() * Math.PI * 2;
                 this.floatSpeed = Math.random() * 0.03 + 0.02;
-                this.zIndex = 100;
             }
 
             updateMovement() {
@@ -1216,15 +1356,16 @@
                     }
                 ];
                 
-                // ИЗМЕНЕНО: сердце выпадает только если здоровье не полное
-                if (lives < 3 && Math.random() < config.lifeBonusChance) {
+                // Бонусы жизни выпадают только если здоровье не полное
+                if (Math.random() < config.lifeBonusChance && lives < 3) {
                     lifeBonuses.push({
                         x: this.x,
                         y: this.y,
                         radius: 15,
                         collected: false,
                         alpha: 1,
-                        zIndex: 99 // Ниже коров
+                        pulsePhase: Math.random() * Math.PI * 2,
+                        rotation: Math.random() * Math.PI * 2
                     });
                 }
             }
@@ -1428,19 +1569,18 @@
                         ctx.stroke();
                     }      
                     
-                    // Eyebrows - ИЗМЕНЕНО: теперь это дуги
+                    // Eyebrows - изменены на дуги
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 1.5;
+                    
+                    // Левая бровь (дуга)
                     ctx.beginPath();
-                    // Левая бровь - дуга
-                    ctx.moveTo(headX - 8, -eyeYOffset - 7);
-                    ctx.quadraticCurveTo(headX - 5, -eyeYOffset - 10, headX - 2, -eyeYOffset - 7);
+                    ctx.arc(headX - 6, -eyeYOffset - 9, 8, 0.2, Math.PI - 0.2);
                     ctx.stroke();
                     
+                    // Правая бровь (дуга)
                     ctx.beginPath();
-                    // Правая бровь - дуга
-                    ctx.moveTo(headX + 2, -eyeYOffset - 7);
-                    ctx.quadraticCurveTo(headX + 5, -eyeYOffset - 10, headX + 8, -eyeYOffset - 7);
+                    ctx.arc(headX + 6, -eyeYOffset - 9, 8, -0.2, Math.PI + 0.2, true);
                     ctx.stroke();
                     
                     // Nose
@@ -1638,6 +1778,16 @@
                             ctx.lineTo(3, -5);
                             ctx.stroke();
                             
+                            // Брови мертвой коровы (дуги)
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1.5;
+                            ctx.beginPath();
+                            ctx.arc(-6, -7, 8, 0.2, Math.PI - 0.2);
+                            ctx.stroke();
+                            ctx.beginPath();
+                            ctx.arc(6, -7, 8, -0.2, Math.PI + 0.2, true);
+                            ctx.stroke();
+                            
                             // Нос
                             ctx.fillStyle = 'rgba(255, 182, 193, 0.8)';
                             ctx.beginPath();
@@ -1655,21 +1805,6 @@
                             ctx.beginPath();
                             ctx.ellipse(4, 10, 1.5, 2.5, 0, 0, Math.PI * 2);
                             ctx.fill();
-                            
-                            // Брови - дуги (как у живых коров)
-                            ctx.strokeStyle = '#333';
-                            ctx.lineWidth = 1.5;
-                            ctx.beginPath();
-                            // Левая бровь - дуга
-                            ctx.moveTo(-8, -7);
-                            ctx.quadraticCurveTo(-5, -10, -2, -7);
-                            ctx.stroke();
-                            
-                            ctx.beginPath();
-                            // Правая бровь - дуга
-                            ctx.moveTo(2, -7);
-                            ctx.quadraticCurveTo(5, -10, 8, -7);
-                            ctx.stroke();
                             
                             if (limb.tongueOut) {
                                 ctx.fillStyle = '#ff0000';
@@ -2100,8 +2235,8 @@
             explosions = [];
             missTexts = [];
             lifeBonuses = [];
+            heartFragments = [];
             clickEffects = [];
-            brokenHeartPieces = [];
             score = 0;
             lives = 3;
             timeLeft = config.levelDuration;
@@ -2271,9 +2406,9 @@
             explosions = [];
             missTexts = [];
             lifeBonuses = [];
+            heartFragments = [];
             planets = [];
             clickEffects = [];
-            brokenHeartPieces = [];
 
             score = 0;
             lives = 3;
@@ -2351,10 +2486,13 @@
                     
                     playSound(lifeBonusSound, 'lifeBonus');
                     
-                    // Создаем осколки сердца с новой анимацией
-                    const pieceTypes = ['top', 'middle', 'bottom'];
-                    for (let j = 0; j < 3; j++) {
-                        brokenHeartPieces.push(new HeartPiece(bonus.x, bonus.y, pieceTypes[j]));
+                    // Создаем эффект разбитого сердца вместо взрыва
+                    const brokenHeart = new BrokenHeartBonus(bonus.x, bonus.y);
+                    explosions.push(brokenHeart);
+                    
+                    // Создаем осколки сердца
+                    for (let j = 0; j < 8; j++) {
+                        heartFragments.push(new HeartFragment(bonus.x, bonus.y));
                     }
                     
                     hitDetected = true;
@@ -2380,7 +2518,7 @@
                 const inHead = headDist <= headRadius;
                 
                 if (inBody || inHead) {
-                    // УБРАН ВЗРЫВ - теперь просто попадание без эффектов частиц
+                    // УБРАЛИ ВЗРЫВЫ ПРИ ПОПАДАНИИ ПО КОРОВАМ
                     if (cow.alive) {
                         cow.die();
                         deadCows.push(cow);
@@ -2545,18 +2683,71 @@
             lifeBonuses.forEach((bonus, index) => {
                 if (bonus.collected) return;
                 
-                ctx.fillStyle = `rgba(255, 51, 102, ${bonus.alpha})`;
+                // Обновляем пульсацию и вращение
+                if (!isPaused) {
+                    bonus.pulsePhase += 0.05;
+                    bonus.rotation += 0.01;
+                }
+                
+                const pulse = 0.7 + Math.sin(bonus.pulsePhase) * 0.3;
+                const currentRadius = bonus.radius * pulse;
+                
+                // Градиент для сердца
+                const heartGradient = ctx.createRadialGradient(
+                    bonus.x, bonus.y, 0,
+                    bonus.x, bonus.y, currentRadius
+                );
+                heartGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+                heartGradient.addColorStop(0.3, 'rgba(255, 102, 102, 0.8)');
+                heartGradient.addColorStop(0.7, 'rgba(255, 51, 102, 0.7)');
+                heartGradient.addColorStop(1, 'rgba(204, 0, 51, 0.6)');
+                
+                // Свечение
+                ctx.shadowColor = 'rgba(255, 100, 150, 0.8)';
+                ctx.shadowBlur = 15;
+                
+                // Рисуем сердце с вращением
+                ctx.save();
+                ctx.translate(bonus.x, bonus.y);
+                ctx.rotate(bonus.rotation);
+                
+                ctx.fillStyle = heartGradient;
                 ctx.beginPath();
-                ctx.arc(bonus.x, bonus.y, bonus.radius, 0, Math.PI * 2);
+                ctx.moveTo(0, currentRadius * 0.3);
+                ctx.bezierCurveTo(
+                    -currentRadius, -currentRadius * 0.3,
+                    -currentRadius * 0.5, -currentRadius * 0.8,
+                    0, -currentRadius * 0.5
+                );
+                ctx.bezierCurveTo(
+                    currentRadius * 0.5, -currentRadius * 0.8,
+                    currentRadius, -currentRadius * 0.3,
+                    0, currentRadius * 0.3
+                );
+                ctx.closePath();
                 ctx.fill();
                 
-                ctx.fillStyle = 'white';
-                ctx.font = `${bonus.radius}px Arial`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('♥', bonus.x, bonus.y);
+                // Внутреннее свечение
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'rgba(255, 180, 200, 0.6)';
+                ctx.beginPath();
+                ctx.moveTo(0, currentRadius * 0.2);
+                ctx.bezierCurveTo(
+                    -currentRadius * 0.7, -currentRadius * 0.2,
+                    -currentRadius * 0.35, -currentRadius * 0.6,
+                    0, -currentRadius * 0.35
+                );
+                ctx.bezierCurveTo(
+                    currentRadius * 0.35, -currentRadius * 0.6,
+                    currentRadius * 0.7, -currentRadius * 0.2,
+                    0, currentRadius * 0.2
+                );
+                ctx.closePath();
+                ctx.fill();
                 
-                bonus.alpha = 0.7 + Math.sin(Date.now() / 200) * 0.3;
+                ctx.restore();
+                
+                ctx.shadowBlur = 0;
                 
                 if (!isPaused) {
                     bonus.y += 1;
@@ -2564,6 +2755,16 @@
                 
                 if (bonus.y > canvas.height + bonus.radius) {
                     lifeBonuses.splice(index, 1);
+                }
+            });
+        }
+
+        function drawHeartFragments() {
+            heartFragments.forEach((fragment, index) => {
+                if (!fragment.update()) {
+                    heartFragments.splice(index, 1);
+                } else {
+                    fragment.draw();
                 }
             });
         }
@@ -2578,16 +2779,6 @@
             });
         }
 
-        function drawBrokenHeartPieces() {
-            brokenHeartPieces.forEach((piece, index) => {
-                if (!piece.update()) {
-                    brokenHeartPieces.splice(index, 1);
-                } else {
-                    piece.draw();
-                }
-            });
-        }
-
         function gameLoop(timestamp) {
             if (!gameActive || isGameOver) return;
             
@@ -2596,15 +2787,14 @@
             
             if (isInGameMode) {
                 // Полупрозрачная очистка для эффекта размытия движения ТОЛЬКО в игровом режиме
-                // Более светлый цвет, чтобы градиентный фон был виден
-                ctx.fillStyle = 'rgba(0, 20, 40, 0.08)'; // Уменьшил прозрачность до 0.08
+                ctx.fillStyle = 'rgba(0, 20, 40, 0.08)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
                 // Также рисуем базовый градиентный фон
                 const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
                 gradient.addColorStop(0, '#001a33');
                 gradient.addColorStop(1, '#30397A');
-                ctx.globalAlpha = 0.3; // Слегка прозрачный градиент
+                ctx.globalAlpha = 0.3;
                 ctx.fillStyle = gradient;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.globalAlpha = 1.0;
@@ -2615,20 +2805,11 @@
             
             drawBackground();
             
-            // Сначала рисуем планеты и звезды
-            planets.forEach(planet => drawPlanet(planet));
-            
-            // Затем рисуем бонусы и осколки сердец (они под коровами)
-            drawLifeBonuses();
-            drawBrokenHeartPieces();
-            
-            // Затем мертвых коров
             deadCows.forEach(cow => {
                 cow.update();
                 cow.draw();
             });
             
-            // Затем живых коров поверх всего
             cows.forEach(cow => {
                 cow.update();
                 cow.draw();
@@ -2642,6 +2823,14 @@
                 if (shot.alpha <= 0) shots.splice(index, 1);
             });
             
+            explosions.forEach((explosion, index) => {
+                if (!explosion.update()) {
+                    explosions.splice(index, 1);
+                } else {
+                    explosion.draw();
+                }
+            });
+            
             missTexts.forEach((missText, index) => {
                 if (!missText.update()) {
                     missTexts.splice(index, 1);
@@ -2649,6 +2838,9 @@
                     missText.draw();
                 }
             });
+            
+            drawLifeBonuses();
+            drawHeartFragments();
             
             requestAnimationFrame(gameLoop);
         }
@@ -2716,32 +2908,32 @@
             let time = 0;
             const layers = [];
             
-            // ИЗМЕНЕНО: новые цвета для аур - розовый, синий, фиолетовый
+            // Измененные цвета для розовых, синих и фиолетовых градиентов
             const auroraColors = [
-                { // Розовый градиент
-                    start: 'hsla(330, 100%, 70%, 0.2)',
-                    middle: 'hsla(330, 100%, 60%, 0.3)',
-                    end: 'hsla(330, 100%, 50%, 0.2)'
+                {
+                    start: 'rgba(255, 105, 180, 0.3)',  // Розовый
+                    middle: 'rgba(138, 43, 226, 0.4)', // Фиолетовый
+                    end: 'rgba(0, 191, 255, 0.3)'      // Синий
                 },
-                { // Синий градиент
-                    start: 'hsla(210, 100%, 70%, 0.2)',
-                    middle: 'hsla(210, 100%, 60%, 0.3)',
-                    end: 'hsla(210, 100%, 50%, 0.2)'
+                {
+                    start: 'rgba(255, 182, 193, 0.25)', // Светло-розовый
+                    middle: 'rgba(147, 112, 219, 0.35)', // Средне-фиолетовый
+                    end: 'rgba(65, 105, 225, 0.25)'     // Королевский синий
                 },
-                { // Фиолетовый градиент
-                    start: 'hsla(280, 100%, 70%, 0.2)',
-                    middle: 'hsla(280, 100%, 60%, 0.3)',
-                    end: 'hsla(280, 100%, 50%, 0.2)'
+                {
+                    start: 'rgba(255, 20, 147, 0.2)',  // Глубокий розовый
+                    middle: 'rgba(186, 85, 211, 0.3)', // Орхидея
+                    end: 'rgba(30, 144, 255, 0.2)'     // Синий доджер
                 },
-                { // Смешанный розово-фиолетовый
-                    start: 'hsla(300, 100%, 70%, 0.2)',
-                    middle: 'hsla(290, 100%, 60%, 0.3)',
-                    end: 'hsla(320, 100%, 50%, 0.2)'
+                {
+                    start: 'rgba(255, 192, 203, 0.15)', // Розовый
+                    middle: 'rgba(128, 0, 128, 0.25)',  // Пурпурный
+                    end: 'rgba(0, 0, 205, 0.15)'        // Темно-синий
                 }
             ];
             
             for (let i = 0; i < 4; i++) {
-                const colorSet = auroraColors[i % auroraColors.length];
+                const colorSet = auroraColors[i];
                 layers.push({
                     speed: 0.002 + Math.random() * 0.002,
                     offset: Math.random() * 1000,
@@ -2757,10 +2949,11 @@
                 
                 layers.forEach(layer => {
                     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                    gradient.addColorStop(0, layer.colors.start);
-                    gradient.addColorStop(0.3, layer.colors.middle);
-                    gradient.addColorStop(0.7, layer.colors.middle);
-                    gradient.addColorStop(1, layer.colors.end);
+                    gradient.addColorStop(0, 'transparent');
+                    gradient.addColorStop(0.3, layer.colors.start);
+                    gradient.addColorStop(0.5, layer.colors.middle);
+                    gradient.addColorStop(0.7, layer.colors.end);
+                    gradient.addColorStop(1, 'transparent');
                     
                     ctx.fillStyle = gradient;
                     ctx.globalCompositeOperation = 'screen';
